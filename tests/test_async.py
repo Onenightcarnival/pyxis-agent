@@ -7,7 +7,7 @@ import asyncio
 import pytest
 from pydantic import BaseModel
 
-from pyxis import AsyncClient, Client, FakeClient, flow, step, trace
+from pyxis import AsyncClient, Client, CompletionResult, FakeClient, flow, step, trace
 from pyxis.flow import AsyncFlow, Flow
 from pyxis.step import AsyncStep, Step
 
@@ -63,7 +63,9 @@ async def test_fake_client_acomplete_delegates_to_complete():
         response_model=Analysis,
         model="gpt-4o-mini",
     )
-    assert isinstance(result, Analysis)
+    assert isinstance(result, CompletionResult)
+    assert isinstance(result.output, Analysis)
+    assert result.output.observation == "x"
     assert len(fake.calls) == 1
 
 

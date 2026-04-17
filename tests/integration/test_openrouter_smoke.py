@@ -103,3 +103,24 @@ def test_async_parallel_steps_share_trace(openrouter: InstructorClient, model: s
     assert all(isinstance(r, Classification) for r in results)
     assert len(t.records) == 3
     assert all(r.step == "classify" for r in t.records)
+
+
+def test_live_step_captures_usage(openrouter: InstructorClient, model: str) -> None:
+    @step(output=Classification, model=model, client=openrouter)
+    def classify(text: str) -> str:
+        """You classify text. Observe, categorize, score."""
+        return text
+
+    with trace() as t:
+        classify("What is 2+2?")
+
+    (rec,) = t.records
+    assert rec.usage is not None
+    assert rec.usage.prompt_tokens > 0
+    assert rec.usage.completion_tokens > 0
+    assert rec.usage.total_tokens >= rec.usage.prompt_tokens + rec.usage.completion_tokens - 1
+    total = t.total_usage()
+    assert total.total_tokens == rec.usage.total_tokens
+
+    exported = t.to_dict()
+    assert exported["records"][0]["usage"]["total_tokens"] == rec.usage.total_tokens

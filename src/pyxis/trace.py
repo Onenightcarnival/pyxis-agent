@@ -1,20 +1,22 @@
 """Tracing primitives: capture Step calls within a scope.
 
-A `Trace` is a plain bag of `TraceRecord`s. The active trace is propagated
-via a `ContextVar`, so it's safe across asyncio tasks and threads that
-inherit context.
+A `Trace` is a bag of `TraceRecord`s. The active trace is propagated via a
+`ContextVar`, safe across asyncio tasks that inherit context.
+Records are exportable as plain dicts / JSON for logging.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from typing import Any
 
 from pydantic import BaseModel
 
-from .client import Message
+from .client import Message, Usage
 
 
 @dataclass
@@ -25,6 +27,24 @@ class TraceRecord:
     messages: list[Message]
     output: BaseModel
     model: str
+    usage: Usage | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "step": self.step,
+            "messages": list(self.messages),
+            "output": self.output.model_dump(mode="json"),
+            "model": self.model,
+            "usage": (
+                None
+                if self.usage is None
+                else {
+                    "prompt_tokens": self.usage.prompt_tokens,
+                    "completion_tokens": self.usage.completion_tokens,
+                    "total_tokens": self.usage.total_tokens,
+                }
+            ),
+        }
 
 
 @dataclass
@@ -38,6 +58,20 @@ class Trace:
 
     def __len__(self) -> int:
         return len(self.records)
+
+    def total_usage(self) -> Usage:
+        """Sum all non-None usages; returns a zero `Usage` if none captured."""
+        total = Usage()
+        for rec in self.records:
+            if rec.usage is not None:
+                total = total + rec.usage
+        return total
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"records": [rec.to_dict() for rec in self.records]}
+
+    def to_json(self, **json_kwargs: Any) -> str:
+        return json.dumps(self.to_dict(), **json_kwargs)
 
 
 _current: ContextVar[Trace | None] = ContextVar("pyxis_trace", default=None)

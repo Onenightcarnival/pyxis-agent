@@ -6,9 +6,11 @@ code as prompt + schema as workflow.
 from .client import (
     AsyncClient,
     Client,
+    CompletionResult,
     FakeCall,
     FakeClient,
     InstructorClient,
+    Usage,
     get_default_client,
     set_default_client,
 )
@@ -24,6 +26,7 @@ __all__ = [
     "AsyncFlow",
     "AsyncStep",
     "Client",
+    "CompletionResult",
     "FakeCall",
     "FakeClient",
     "Flow",
@@ -32,6 +35,7 @@ __all__ = [
     "Tool",
     "Trace",
     "TraceRecord",
+    "Usage",
     "flow",
     "get_default_client",
     "set_default_client",

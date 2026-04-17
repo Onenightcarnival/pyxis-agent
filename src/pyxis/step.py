@@ -31,11 +31,13 @@ class Step[T: BaseModel]:
         output: type[T],
         *,
         model: str = DEFAULT_MODEL,
+        max_retries: int = 0,
         client: Any = None,
     ):
         self.prompt_fn = prompt_fn
         self.output = output
         self.model = model
+        self.max_retries = max_retries
         self.client = client
         self.system_prompt: str = _normalize_docstring(prompt_fn.__doc__ or "")
         functools.update_wrapper(self, prompt_fn)
@@ -44,16 +46,17 @@ class Step[T: BaseModel]:
         user_content = self.prompt_fn(*args, **kwargs)
         messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
         client = self.client or get_default_client()
-        result: T = client.complete(messages, self.output, self.model)
+        result = client.complete(messages, self.output, self.model, max_retries=self.max_retries)
         record(
             TraceRecord(
                 step=self.__name__,
                 messages=messages,
-                output=result,
+                output=result.output,
                 model=self.model,
+                usage=result.usage,
             )
         )
-        return result
+        return result.output
 
 
 class AsyncStep[T: BaseModel]:
@@ -65,11 +68,13 @@ class AsyncStep[T: BaseModel]:
         output: type[T],
         *,
         model: str = DEFAULT_MODEL,
+        max_retries: int = 0,
         client: Any = None,
     ):
         self.prompt_fn = prompt_fn
         self.output = output
         self.model = model
+        self.max_retries = max_retries
         self.client = client
         self.system_prompt: str = _normalize_docstring(prompt_fn.__doc__ or "")
         functools.update_wrapper(self, prompt_fn)
@@ -79,35 +84,39 @@ class AsyncStep[T: BaseModel]:
         user_content = await ret if inspect.isawaitable(ret) else ret
         messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
         client = self.client or get_default_client()
-        result: T = await client.acomplete(messages, self.output, self.model)
+        result = await client.acomplete(
+            messages, self.output, self.model, max_retries=self.max_retries
+        )
         record(
             TraceRecord(
                 step=self.__name__,
                 messages=messages,
-                output=result,
+                output=result.output,
                 model=self.model,
+                usage=result.usage,
             )
         )
-        return result
+        return result.output
 
 
 def step[T: BaseModel](
     *,
     output: type[T],
     model: str = DEFAULT_MODEL,
+    max_retries: int = 0,
     client: Any = None,
 ) -> Callable[[Callable[..., Any]], Step[T] | AsyncStep[T]]:
     """Decorator: turn a prompt function into a typed Step.
 
     Sync `def` -> `Step[T]`. Async `async def` -> `AsyncStep[T]`.
-    Either way, the docstring is the system prompt, the return string is
-    the user message, and `output=` declares the structured reply schema.
+    `max_retries` is forwarded to the client and, for `InstructorClient`,
+    to instructor's own validation-driven retry loop.
     """
 
     def decorator(fn: Callable[..., Any]) -> Step[T] | AsyncStep[T]:
         if inspect.iscoroutinefunction(fn):
-            return AsyncStep(fn, output, model=model, client=client)
-        return Step(fn, output, model=model, client=client)
+            return AsyncStep(fn, output, model=model, max_retries=max_retries, client=client)
+        return Step(fn, output, model=model, max_retries=max_retries, client=client)
 
     return decorator
 
