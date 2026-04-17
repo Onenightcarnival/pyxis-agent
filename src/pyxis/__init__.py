@@ -13,6 +13,7 @@ from .client import (
 )
 from .flow import Flow, flow
 from .step import Step, step
+from .tool import Tool
 from .trace import Trace, TraceRecord, trace
 
 __version__ = "0.1.0"
@@ -24,6 +25,7 @@ __all__ = [
     "Flow",
     "InstructorClient",
     "Step",
+    "Tool",
     "Trace",
     "TraceRecord",
     "flow",
