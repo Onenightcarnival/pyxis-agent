@@ -7,10 +7,15 @@
 
 ### 新增
 
-- **语言规约**（[规约 006](specs/006-中文化.md)）——项目的文档、规格、
+- **语言规约**（[规格 006](specs/006-中文化.md)）——项目的文档、规格、
   源码 docstring、异常消息、commit message 正文全部切换为中文。代码
   标识符仍按 PEP 8 使用英文。新增 `tests/test_language_policy.py`
   防止未来迭代意外把这些文件回退成英文。
+- **`@tool` 装饰器**（[规格 007](specs/007-tool-装饰器.md)）——把一个普通
+  Python 函数直接转成 Tool 子类：函数名变 PascalCase 类名、自动生成
+  `kind: Literal[...] = ...` 字段、参数推成 Pydantic 字段、函数本体接管
+  `run()`。工具的定义成本降到"就是一个函数"。真实 LLM 小 agent 场景
+  已跑通 `7*6=42` 用 `@tool` 写的 calculate + finish。
 
 ### 变更
 

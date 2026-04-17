@@ -35,7 +35,7 @@ from .client import (
 )
 from .flow import AsyncFlow, Flow, flow
 from .step import AsyncStep, Step, step
-from .tool import Tool
+from .tool import Tool, tool
 from .trace import Trace, TraceRecord, trace
 
 __version__ = "0.2.0"
@@ -59,5 +59,6 @@ __all__ = [
     "get_default_client",
     "set_default_client",
     "step",
+    "tool",
     "trace",
 ]

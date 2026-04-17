@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import asyncio
 import os
+from typing import Annotated
 
 import instructor
 import pytest
 from openai import AsyncOpenAI, OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import InstructorClient, flow, step, trace
+from pyxis import InstructorClient, flow, step, tool, trace
 
 
 @pytest.fixture(scope="module")
@@ -124,3 +125,47 @@ def test_live_step_captures_usage(openrouter: InstructorClient, model: str) -> N
 
     exported = t.to_dict()
     assert exported["records"][0]["usage"]["total_tokens"] == rec.usage.total_tokens
+
+
+def test_live_tool_decorator_agent(openrouter: InstructorClient, model: str) -> None:
+    """用 `@tool` 装饰的纯函数在真实 LLM 上完成一个 ReAct 风格小 agent。"""
+
+    @tool
+    def calculate(expression: str) -> str:
+        """算一个简单的算术表达式。"""
+        return str(eval(expression, {"__builtins__": {}}, {}))
+
+    @tool
+    def finish(answer: str) -> str:
+        """停止并给出最终答案。"""
+        return answer
+
+    Action = Annotated[calculate | finish, Field(discriminator="kind")]
+
+    class Decision(BaseModel):
+        thought: str
+        action: Action
+
+    @step(output=Decision, model=model, client=openrouter)
+    def decide(question: str, scratch: str) -> str:
+        """你是一个会推理的 agent。先思考，再恰好发一次工具调用，
+        拿到答案用 `finish` 结束。"""
+        return f"问题：{question}\n草稿：\n{scratch or '（空）'}"
+
+    @flow
+    def agent(q: str, max_steps: int = 4) -> str:
+        scratch: list[str] = []
+        for _ in range(max_steps):
+            d = decide(q, "\n".join(scratch))
+            scratch += [f"thought: {d.thought}", f"obs: {d.action.run()}"]
+            if isinstance(d.action, finish):
+                return d.action.run()
+        raise RuntimeError("达到 max_steps 仍未结束")
+
+    with trace() as t:
+        answer = agent("7 * 6 等于多少？")
+
+    assert "42" in answer
+    steps = [type(r.output.action).__name__ for r in t.records]
+    assert "Calculate" in steps
+    assert "Finish" in steps

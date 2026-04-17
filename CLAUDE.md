@@ -29,6 +29,8 @@
 - `Tool`：`BaseModel` 子类，带 `run() -> str`。动作即 schema，`run()` 即代码。
   LLM 在 schema 的判别式联合 `action` 字段里选一个工具；Python 用
   `isinstance` / `action.run()` 分派。
+- `@tool` 装饰器：把一个普通函数直接转成 Tool 子类——类名、`kind` 字面量、
+  字段全部从函数签名推出；无需手写样板。
 - `Client` / `AsyncClient`：provider 无关的 LLM 接口，返回
   `CompletionResult[T]`（output + 可选 `Usage`）。生产用 instructor
   背后的真 client，测试用 `FakeClient`。

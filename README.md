@@ -28,6 +28,7 @@
 | `@step(output=M)`    | 把 prompt 函数变成类型化的 LLM 调用。同步或 `async def` 都行。         |
 | `@flow`              | 多步函数的薄包装，附带 `.run_traced()` 一键观测。                     |
 | `Tool`               | `BaseModel` + `run()`。动作即 schema，`run()` 即代码。                |
+| `@tool`              | 把普通函数直接变成 Tool 子类；不用手写样板。                          |
 | `trace()`            | 基于 `ContextVar` 的抓取器，穿透 `asyncio.gather`。                   |
 | `Trace.to_json()`    | 结构化导出 + `total_usage()` 汇总。                                   |
 | `FakeClient`         | 给测试用的预置响应 + call 日志（零网络）。                            |
@@ -77,25 +78,21 @@ print(t.to_json(indent=2))      # 结构化日志
 ## 用工具的 Agent（ReAct 风格，纯 Python 循环）
 
 ```python
-from typing import Annotated, Literal
+from typing import Annotated
 from pydantic import BaseModel, Field
-from pyxis import Tool, flow, step
+from pyxis import flow, step, tool
 
-class Calculate(Tool):
+@tool
+def calculate(expression: str) -> str:
     """算一个数学表达式。"""
-    kind: Literal["calculate"] = "calculate"
-    expression: str
-    def run(self) -> str:
-        return str(eval(self.expression, {"__builtins__": {}}, {}))
+    return str(eval(expression, {"__builtins__": {}}, {}))
 
-class Finish(Tool):
+@tool
+def finish(answer: str) -> str:
     """停止并报出答案。"""
-    kind: Literal["finish"] = "finish"
-    answer: str
-    def run(self) -> str:
-        return self.answer
+    return answer
 
-Action = Annotated[Calculate | Finish, Field(discriminator="kind")]
+Action = Annotated[calculate | finish, Field(discriminator="kind")]
 
 class Decision(BaseModel):
     thought: str
@@ -112,8 +109,8 @@ def agent(q: str, max_steps: int = 6) -> str:
     for _ in range(max_steps):
         d = decide(q, "\n".join(scratch))
         scratch += [f"thought: {d.thought}", f"obs: {d.action.run()}"]
-        if isinstance(d.action, Finish):
-            return d.action.answer
+        if isinstance(d.action, finish):
+            return d.action.run()
     raise RuntimeError("达到最大步数仍未结束")
 ```
 

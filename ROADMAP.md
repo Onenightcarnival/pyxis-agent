@@ -10,8 +10,8 @@
   trace 记录渐进式发出。
 - **退避重试 + 错误可见性** —— 重试耗尽时在 `TraceRecord` 上暴露验证错误；
   可选的指数退避（目前 max_retries 直接转给 instructor，无退避）。
-- **`@tool` 装饰器糖** —— 从普通函数的签名 + docstring 自动生成 Tool 子类
-  （自动推导 Pydantic 字段、自动生成 `kind` 判别字段）。
+- ~~**`@tool` 装饰器糖** —— 从普通函数的签名 + docstring 自动生成 Tool 子类~~
+  （已于 [规格 007](specs/007-tool-装饰器.md) 实现）。
 - **Provider 便捷工厂** —— `openrouter_client(api_key=...)`、
   `anthropic_client(...)`、`openai_client(...)` 返回就绪的 `InstructorClient`。
   框架保持 provider 无关；工厂是可选糖。
