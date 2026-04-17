@@ -44,6 +44,9 @@
   `TraceRecord` 再重抛，保证 trace 完整可复现。
 - `@step(..., max_retries=N)`：把重试预算传给 instructor 用于结构化
   输出的校验重试。
+- `Step.stream(...)` / `AsyncStep.astream(...)`：按字段逐步 yield partial
+  实例，把 schema-as-CoT 的"字段被逐个填完"过程完整暴露给用户。底层
+  借 instructor `create_partial`；一次流完整消费后写一条 TraceRecord。
 
 **不做的事**（违反核心哲学）：图式 DSL、YAML pipeline、节点编辑器、
 隐式响应式状态、function-calling 协议适配、把 agent loop 藏进框架。

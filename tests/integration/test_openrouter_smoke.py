@@ -169,3 +169,32 @@ def test_live_tool_decorator_agent(openrouter: InstructorClient, model: str) -> 
     steps = [type(r.output.action).__name__ for r in t.records]
     assert "Calculate" in steps
     assert "Finish" in steps
+
+
+def test_live_stream_yields_progressively(openrouter: InstructorClient, model: str) -> None:
+    """真实 partial streaming：字段逐步出现，最后一帧所有必选字段都齐了。"""
+
+    class Analysis(BaseModel):
+        observation: str = Field(description="你注意到什么")
+        reasoning: str = Field(description="为什么这重要")
+        conclusion: str = Field(description="一句话结论")
+
+    @step(output=Analysis, model=model, client=openrouter)
+    def analyze(topic: str) -> str:
+        """你是严谨的分析师。观察，推理，结论。"""
+        return f"主题：{topic}"
+
+    frames: list[Analysis] = []
+    with trace() as t:
+        for partial in analyze.stream("为什么雨是咸的"):
+            frames.append(partial)
+
+    assert len(frames) >= 1
+    final = frames[-1]
+    assert final.observation
+    assert final.reasoning
+    assert final.conclusion
+    # 只有一条 TraceRecord，output 是最终帧
+    (rec,) = t.records
+    assert rec.output is not None
+    assert rec.output.observation == final.observation

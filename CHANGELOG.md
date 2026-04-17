@@ -16,6 +16,13 @@
   `kind: Literal[...] = ...` 字段、参数推成 Pydantic 字段、函数本体接管
   `run()`。工具的定义成本降到"就是一个函数"。真实 LLM 小 agent 场景
   已跑通 `7*6=42` 用 `@tool` 写的 calculate + finish。
+- **流式输出**（[规格 010](specs/010-流式输出.md)）——`Step.stream(...)` 与
+  `AsyncStep.astream(...)` 按 schema 字段顺序逐步 yield partial 实例，
+  让"schema 即思维链"变得肉眼可见。`Client` / `AsyncClient` 协议添加
+  `stream` / `astream` 方法；`FakeClient` 模拟单帧流用于单测；
+  `InstructorClient` 直连 instructor 的 `create_partial` 产出真实流。
+  流完整消费后写一条 TraceRecord（output 为最终帧，usage 暂不提供）；
+  流中途异常写 error 记录再重抛。真实 LLM 已跑通渐进式 Analysis 填字段。
 - **错误可见性**（[规格 009](specs/009-错误可见性.md)）——`@step` / `@astep`
   在 `client.complete` 抛任意异常时先写一条 `error` 非空的 `TraceRecord`
   （`output=None`），再重抛原异常（保留 traceback）。`TraceRecord.error`

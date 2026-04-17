@@ -6,8 +6,10 @@
 
 ## 近期候选
 
-- **流式输出** —— 通过 instructor 的 partial streaming 逐 token 填充 schema；
-  trace 记录渐进式发出。
+- ~~**流式输出** —— 通过 instructor 的 partial streaming 逐 token 填充 schema~~
+  （已于 [规格 010](specs/010-流式输出.md) 实现，提供 `Step.stream` /
+  `AsyncStep.astream`；"流式 usage" 仍未做——instructor 在 partial
+  路径下不稳定提供 usage，需要时单独加）。
 - ~~**错误可见性** —— 重试耗尽时在 `TraceRecord` 上暴露验证错误~~
   （已于 [规格 009](specs/009-错误可见性.md) 实现）；**退避重试** 仍待做——
   目前 max_retries 直接转给 instructor，无指数退避；框架层的 retry

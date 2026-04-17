@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import functools
 import inspect
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from typing import Any
 
 from pydantic import BaseModel
@@ -73,6 +73,38 @@ class Step[T: BaseModel]:
         )
         return result.output
 
+    def stream(self, *args: object, **kwargs: object) -> Iterator[T]:
+        """按字段逐步 yield partial 实例；消费完整个流后才写 TraceRecord。"""
+        user_content = self.prompt_fn(*args, **kwargs)
+        messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
+        client = self.client or get_default_client()
+        last: T | None = None
+        try:
+            for partial in client.stream(
+                messages, self.output, self.model, max_retries=self.max_retries
+            ):
+                last = partial
+                yield partial
+        except Exception as exc:
+            record(
+                TraceRecord(
+                    step=self.__name__,
+                    messages=messages,
+                    output=None,
+                    model=self.model,
+                    error=_format_error(exc),
+                )
+            )
+            raise
+        record(
+            TraceRecord(
+                step=self.__name__,
+                messages=messages,
+                output=last,
+                model=self.model,
+            )
+        )
+
 
 class AsyncStep[T: BaseModel]:
     """一次类型化的异步 LLM 调用。当 `@step` 装饰的是 `async def` 时自动生成。"""
@@ -124,6 +156,39 @@ class AsyncStep[T: BaseModel]:
             )
         )
         return result.output
+
+    async def astream(self, *args: object, **kwargs: object) -> AsyncIterator[T]:
+        """异步流式对偶。"""
+        ret = self.prompt_fn(*args, **kwargs)
+        user_content = await ret if inspect.isawaitable(ret) else ret
+        messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
+        client = self.client or get_default_client()
+        last: T | None = None
+        try:
+            async for partial in client.astream(
+                messages, self.output, self.model, max_retries=self.max_retries
+            ):
+                last = partial
+                yield partial
+        except Exception as exc:
+            record(
+                TraceRecord(
+                    step=self.__name__,
+                    messages=messages,
+                    output=None,
+                    model=self.model,
+                    error=_format_error(exc),
+                )
+            )
+            raise
+        record(
+            TraceRecord(
+                step=self.__name__,
+                messages=messages,
+                output=last,
+                model=self.model,
+            )
+        )
 
 
 def step[T: BaseModel](

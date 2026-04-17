@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import AsyncIterator, Iterable, Iterator
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
@@ -54,6 +54,17 @@ class Client(Protocol):
         max_retries: int = 0,
     ) -> CompletionResult[T]: ...
 
+    def stream[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+        *,
+        max_retries: int = 0,
+    ) -> Iterator[T]:
+        """按字段逐步 yield partial 实例；最后一帧是完整实例。"""
+        ...
+
 
 @runtime_checkable
 class AsyncClient(Protocol):
@@ -67,6 +78,15 @@ class AsyncClient(Protocol):
         *,
         max_retries: int = 0,
     ) -> CompletionResult[T]: ...
+
+    def astream[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+        *,
+        max_retries: int = 0,
+    ) -> AsyncIterator[T]: ...
 
 
 @dataclass
@@ -143,6 +163,29 @@ class FakeClient:
         max_retries: int = 0,
     ) -> CompletionResult[T]:
         return self.complete(messages, response_model, model, max_retries=max_retries)
+
+    def stream[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+        *,
+        max_retries: int = 0,
+    ) -> Iterator[T]:
+        """模拟"一帧流"：消费一个 response 并 yield 一次。"""
+        result = self.complete(messages, response_model, model, max_retries=max_retries)
+        yield result.output
+
+    async def astream[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+        *,
+        max_retries: int = 0,
+    ) -> AsyncIterator[T]:
+        result = self.complete(messages, response_model, model, max_retries=max_retries)
+        yield result.output
 
 
 def _extract_usage(raw: Any) -> Usage | None:
@@ -221,6 +264,39 @@ class InstructorClient:
             max_retries=max_retries,
         )
         return CompletionResult(output=result, usage=_extract_usage(raw))
+
+    def stream[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+        *,
+        max_retries: int = 0,
+    ) -> Iterator[T]:
+        """基于 instructor `create_partial` 的同步流式。"""
+        yield from self._get_sync().chat.completions.create_partial(
+            messages=messages,
+            response_model=response_model,
+            model=model,
+            max_retries=max_retries,
+        )
+
+    async def astream[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+        *,
+        max_retries: int = 0,
+    ) -> AsyncIterator[T]:
+        """基于 instructor `create_partial` 的异步流式。"""
+        async for partial in self._get_async().chat.completions.create_partial(
+            messages=messages,
+            response_model=response_model,
+            model=model,
+            max_retries=max_retries,
+        ):
+            yield partial
 
 
 @dataclass
