@@ -47,7 +47,21 @@ class Step[T: BaseModel]:
         user_content = self.prompt_fn(*args, **kwargs)
         messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
         client = self.client or get_default_client()
-        result = client.complete(messages, self.output, self.model, max_retries=self.max_retries)
+        try:
+            result = client.complete(
+                messages, self.output, self.model, max_retries=self.max_retries
+            )
+        except Exception as exc:
+            record(
+                TraceRecord(
+                    step=self.__name__,
+                    messages=messages,
+                    output=None,
+                    model=self.model,
+                    error=_format_error(exc),
+                )
+            )
+            raise
         record(
             TraceRecord(
                 step=self.__name__,
@@ -85,9 +99,21 @@ class AsyncStep[T: BaseModel]:
         user_content = await ret if inspect.isawaitable(ret) else ret
         messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
         client = self.client or get_default_client()
-        result = await client.acomplete(
-            messages, self.output, self.model, max_retries=self.max_retries
-        )
+        try:
+            result = await client.acomplete(
+                messages, self.output, self.model, max_retries=self.max_retries
+            )
+        except Exception as exc:
+            record(
+                TraceRecord(
+                    step=self.__name__,
+                    messages=messages,
+                    output=None,
+                    model=self.model,
+                    error=_format_error(exc),
+                )
+            )
+            raise
         record(
             TraceRecord(
                 step=self.__name__,
@@ -142,3 +168,8 @@ def _build_messages(
 def _normalize_docstring(doc: str) -> str:
     """去首尾空白并规范化缩进，得到干净的 system prompt。"""
     return inspect.cleandoc(doc).strip()
+
+
+def _format_error(exc: BaseException) -> str:
+    """把异常格式化为 `类型: 消息`，写进 TraceRecord.error。"""
+    return f"{type(exc).__name__}: {exc}"

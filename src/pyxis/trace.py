@@ -22,20 +22,25 @@ from .client import Message, Usage
 
 @dataclass
 class TraceRecord:
-    """被捕获的一次 Step 调用。"""
+    """被捕获的一次 Step 调用。
+
+    成功时 `output` 是 Pydantic 实例、`error` 为 None。
+    失败时 `output` 为 None、`error` 是 `"类型: 消息"` 形式的字符串。
+    """
 
     step: str
     messages: list[Message]
-    output: BaseModel
+    output: BaseModel | None
     model: str
     usage: Usage | None = None
+    error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """把这条记录转成纯 dict，便于 JSON 序列化。"""
         return {
             "step": self.step,
             "messages": list(self.messages),
-            "output": self.output.model_dump(mode="json"),
+            "output": None if self.output is None else self.output.model_dump(mode="json"),
             "model": self.model,
             "usage": (
                 None
@@ -46,6 +51,7 @@ class TraceRecord:
                     "total_tokens": self.usage.total_tokens,
                 }
             ),
+            "error": self.error,
         }
 
 
@@ -68,6 +74,10 @@ class Trace:
             if rec.usage is not None:
                 total = total + rec.usage
         return total
+
+    def errors(self) -> list[TraceRecord]:
+        """返回所有 `error is not None` 的失败记录。"""
+        return [rec for rec in self.records if rec.error is not None]
 
     def to_dict(self) -> dict[str, Any]:
         """整个 trace 转成 dict，形如 `{"records": [...]}`。"""

@@ -38,8 +38,10 @@
   已配好 sync + async 两路的 `InstructorClient`；未提供 api_key 时
   自动读对应环境变量。
 - `trace()` + `TraceRecord`：基于 `ContextVar` 的可观测性，跨 asyncio
-  task 自动传播。记录带 `usage`；`Trace.to_dict()` / `to_json()` /
-  `total_usage()` 负责导出。
+  task 自动传播。记录带 `usage` 与 `error`；`Trace.to_dict()` /
+  `to_json()` / `to_jsonl(path)` / `total_usage()` / `errors()` 负责
+  导出与聚合。`@step` 在 LLM 调用抛异常时也会写一条 `error` 非空的
+  `TraceRecord` 再重抛，保证 trace 完整可复现。
 - `@step(..., max_retries=N)`：把重试预算传给 instructor 用于结构化
   输出的校验重试。
 

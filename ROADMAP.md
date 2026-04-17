@@ -8,8 +8,10 @@
 
 - **流式输出** —— 通过 instructor 的 partial streaming 逐 token 填充 schema；
   trace 记录渐进式发出。
-- **退避重试 + 错误可见性** —— 重试耗尽时在 `TraceRecord` 上暴露验证错误；
-  可选的指数退避（目前 max_retries 直接转给 instructor，无退避）。
+- ~~**错误可见性** —— 重试耗尽时在 `TraceRecord` 上暴露验证错误~~
+  （已于 [规格 009](specs/009-错误可见性.md) 实现）；**退避重试** 仍待做——
+  目前 max_retries 直接转给 instructor，无指数退避；框架层的 retry
+  helper 等有需求再加。
 - ~~**`@tool` 装饰器糖** —— 从普通函数的签名 + docstring 自动生成 Tool 子类~~
   （已于 [规格 007](specs/007-tool-装饰器.md) 实现）。
 - ~~**Provider 便捷工厂** —— `openrouter_client(api_key=...)`、
