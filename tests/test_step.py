@@ -1,4 +1,4 @@
-"""Tests for Step primitive — spec 001."""
+"""Step 原语的测试 —— 规格 001。"""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ def test_fake_client_exhausted_raises():
     def plan(req: str) -> str:
         return req
 
-    with pytest.raises(RuntimeError, match="exhausted"):
+    with pytest.raises(RuntimeError, match="耗尽"):
         plan("x")
 
 

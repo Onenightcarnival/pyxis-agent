@@ -1,18 +1,18 @@
-# 003: Tool — actions as declarative schemas
+# 003：Tool —— 把动作声明成 schema
 
-## Purpose
+## 目的
 
-A `Tool` is a `BaseModel` whose fields *are* the action's parameters and whose
-`run()` *is* the action's implementation. The LLM picks a tool by filling
-a discriminated-union `action` field in its output schema; Python executes
-the chosen tool by calling `.run()`. We do *not* adopt function-calling
-protocols — the output schema declares intent, the code fulfills it.
+`Tool` 是一个 `BaseModel`：它的**字段**就是动作的参数，它的 `run()`
+就是动作的实现。LLM 通过在 Step 输出 schema 的 `action` 字段里填入一个
+判别式联合（discriminated union）成员来选择工具；Python 通过 `isinstance`
++ `.run()` 分派。框架**不**引入 function-calling 协议适配——schema 本身
+就是接口，代码负责执行。
 
-This keeps the framework's two layers intact:
-- implicit: schema says "the next token emits one of these tool types";
-- explicit: plain Python drives the loop that calls `.run()` and decides to continue.
+这样两层编排不破：
+- 隐式：schema 告诉 LLM"下一步必须是这些工具类型之一"；
+- 显式：普通 Python 驱动循环，调用 `.run()`，决定继续或停止。
 
-## API sketch
+## API 草图
 
 ```python
 from typing import Annotated, Literal
@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from pyxis import Tool, step
 
 class SearchWeb(Tool):
-    """Search the web for a query."""
+    """在网上搜索一个查询。"""
     kind: Literal["search"] = "search"
     query: str
 
@@ -28,7 +28,7 @@ class SearchWeb(Tool):
         return f"results for {self.query}"
 
 class Finish(Tool):
-    """Stop and report the final answer."""
+    """停止并返回最终答案。"""
     kind: Literal["finish"] = "finish"
     answer: str
 
@@ -43,10 +43,10 @@ class Decision(BaseModel):
 
 @step(output=Decision)
 def decide(question: str, scratch: str) -> str:
-    """You are an agent. Think, then pick a tool."""
+    """你是一个 agent，先思考，再挑工具。"""
     return f"Q: {question}\nSCRATCH:\n{scratch}"
 
-# The explicit loop — plain Python:
+# 显式循环 —— 就是 Python：
 scratch: list[str] = []
 for _ in range(10):
     d = decide(question, "\n".join(scratch))
@@ -57,19 +57,19 @@ for _ in range(10):
         return obs
 ```
 
-## Acceptance criteria
+## 验收标准
 
-- `Tool` is a `BaseModel` subclass. Subclasses add fields and override `run()`.
-- Calling `run()` on a base `Tool` (or a subclass that forgot to override)
-  raises `NotImplementedError` with the subclass's name in the message.
-- `Tool.run()` must return `str` (documented convention, not type-enforced at runtime).
-- `Tool` subclasses participate in discriminated unions via a `Literal` `kind`
-  field — standard Pydantic mechanism, no framework magic.
-- A `Tool` instance inside a Pydantic schema round-trips through `FakeClient`
-  and `@step` unchanged.
+- `Tool` 是 `BaseModel` 子类。子类添加字段，覆盖 `run()`。
+- 如果子类没有覆盖就调用 `run()`（或直接实例化基类并调用），抛
+  `NotImplementedError`，消息里带子类类名。
+- `Tool.run()` 返回 `str`（约定，不做运行时强校验）。
+- Tool 子类参与判别式联合时，用 `Literal` 类型的 `kind` 字段区分；
+  这是标准 Pydantic，框架无需额外魔法。
+- Tool 实例出现在某个 Pydantic schema 里时，经 `FakeClient` + `@step`
+  可以无损往返。
 
-## Non-goals (deferred)
+## 不做（留给后续迭代）
 
-- Auto-generating Tool classes from Python functions.
-- Async tool execution (iter 5 covers async broadly).
-- A built-in agent loop helper — the loop is the user's `@flow`.
+- 从普通 Python 函数自动生成 Tool 子类（iter 9 的 `@tool` 糖会做）。
+- 异步工具执行（iter 5 的 async 总体会覆盖）。
+- 内置的 agent 循环助手——循环就是用户自己的 `@flow`。

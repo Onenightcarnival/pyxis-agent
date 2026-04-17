@@ -1,4 +1,4 @@
-"""Tests for observability pack — spec 005."""
+"""可观测性三件套的测试 —— 规格 005。"""
 
 from __future__ import annotations
 

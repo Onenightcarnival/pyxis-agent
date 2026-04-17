@@ -1,8 +1,9 @@
-"""LLM client abstraction.
+"""LLM 客户端抽象。
 
-A `Client` makes one structured LLM call: messages + response model ->
-`CompletionResult[T]` (output + optional usage). Production uses
-`InstructorClient`; tests use `FakeClient`. Both ship sync and async paths.
+一个 `Client` 做一次结构化的 LLM 调用：输入 messages 与目标 response_model，
+返回 `CompletionResult[T]`（解析出的实例 + 可选的 token 用量）。生产环境
+用 `InstructorClient`（背后是 instructor 补丁过的 provider SDK），测试环境
+用 `FakeClient`（按队列返回预置响应，零网络）。两者都同时提供同步与异步两路。
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ Message = dict[str, str]
 
 @dataclass
 class Usage:
-    """Token accounting for one LLM call. Zero-initialized by default."""
+    """一次 LLM 调用的 token 账单，字段默认为 0。"""
 
     prompt_tokens: int = 0
     completion_tokens: int = 0
@@ -34,7 +35,7 @@ class Usage:
 
 @dataclass
 class CompletionResult[T: BaseModel]:
-    """Result of a single structured completion: the parsed output plus usage."""
+    """一次结构化调用的结果：解析出的 output，以及可选的 usage。"""
 
     output: T
     usage: Usage | None = None
@@ -42,7 +43,7 @@ class CompletionResult[T: BaseModel]:
 
 @runtime_checkable
 class Client(Protocol):
-    """Minimal structured-completion interface (sync)."""
+    """最小同步结构化调用接口。"""
 
     def complete[T: BaseModel](
         self,
@@ -56,7 +57,7 @@ class Client(Protocol):
 
 @runtime_checkable
 class AsyncClient(Protocol):
-    """Async sibling of `Client`."""
+    """`Client` 的异步孪生。"""
 
     async def acomplete[T: BaseModel](
         self,
@@ -70,7 +71,7 @@ class AsyncClient(Protocol):
 
 @dataclass
 class FakeCall:
-    """One call recorded by `FakeClient`."""
+    """`FakeClient` 捕获的一次调用。"""
 
     messages: list[Message]
     response_model: type[BaseModel]
@@ -79,11 +80,15 @@ class FakeCall:
 
 
 class FakeClient:
-    """Deterministic client for tests — returns queued responses in order.
+    """给测试用的确定性客户端——按队列顺序返回预置响应。
 
-    Accepts an optional parallel list of `usages`; each call pops one (or None
-    if the list is exhausted / shorter than responses). Implements both
-    `Client` and `AsyncClient` protocols.
+    构造时可以同时传入 `usages` 并列列表；每次调用弹出一个（列表短于
+    `responses` 时，后续调用的 usage 为 None）。同时实现 `Client` 与
+    `AsyncClient` 两个协议，async 路径直接委托给 sync（共享队列、共享
+    调用日志、共享错误语义）。
+
+    调用耗尽时抛 `RuntimeError`；预置响应与目标 `response_model` 不匹配
+    时抛 `TypeError`。
     """
 
     def __init__(
@@ -115,17 +120,17 @@ class FakeClient:
         )
         if self._cursor >= len(self._responses):
             raise RuntimeError(
-                f"FakeClient exhausted after {self._cursor} call(s); "
-                f"no canned response for call #{self._cursor + 1} "
-                f"(expected {response_model.__name__})"
+                f"FakeClient 已在第 {self._cursor} 次调用后耗尽；"
+                f"第 {self._cursor + 1} 次调用缺少预置响应"
+                f"（期望 {response_model.__name__}）"
             )
         resp = self._responses[self._cursor]
         usage = self._usages[self._cursor] if self._cursor < len(self._usages) else None
         self._cursor += 1
         if not isinstance(resp, response_model):
             raise TypeError(
-                f"FakeClient response #{self._cursor} is "
-                f"{type(resp).__name__}, expected {response_model.__name__}"
+                f"FakeClient 第 {self._cursor} 个响应是 "
+                f"{type(resp).__name__}，期望 {response_model.__name__}"
             )
         return CompletionResult(output=resp, usage=usage)
 
@@ -141,7 +146,7 @@ class FakeClient:
 
 
 def _extract_usage(raw: Any) -> Usage | None:
-    """Pull a `Usage` out of an OpenAI-shaped raw response. Best-effort."""
+    """尽力从 OpenAI 风格的 raw response 里提一个 `Usage` 出来。"""
     if raw is None:
         return None
     u = getattr(raw, "usage", None)
@@ -155,10 +160,10 @@ def _extract_usage(raw: Any) -> Usage | None:
 
 
 class InstructorClient:
-    """Instructor-backed client; sync + async.
+    """基于 instructor 的真实客户端，同时承担同步与异步两路。
 
-    Both backends are lazily constructed from OpenAI defaults when unset.
-    Pass pre-patched instructor clients to swap providers (Anthropic, etc.).
+    两路后端在未指定时都会从 OpenAI 默认环境懒构造出来。想接 Anthropic
+    或其他 provider？直接传一个 instructor 已经 patch 过的 client 进来。
     """
 
     def __init__(
@@ -228,13 +233,13 @@ _default = _DefaultClient()
 
 
 def set_default_client(client: Any) -> None:
-    """Install a process-wide default client. `None` resets to lazy InstructorClient."""
+    """设置进程级默认 client。传 `None` 则重置为懒构造 `InstructorClient`。"""
     _default.client = client
     _default._lazy = None
 
 
 def get_default_client() -> Any:
-    """Resolve the current default client, lazily constructing InstructorClient."""
+    """取当前默认 client，必要时懒构造出 `InstructorClient`。"""
     if _default.client is not None:
         return _default.client
     if _default._lazy is None:

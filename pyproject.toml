@@ -50,7 +50,10 @@ select = [
     "RUF", # ruff-specific
 ]
 ignore = [
-    "E501", # line too long (handled by formatter)
+    "E501",   # 行长交给 formatter 处理
+    "RUF001", # 字符串里的全角标点——中文项目就是要全角
+    "RUF002", # docstring 里的全角标点——同上
+    "RUF003", # 注释里的全角标点——同上
 ]
 
 [tool.ruff.lint.per-file-ignores]

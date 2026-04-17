@@ -1,4 +1,4 @@
-"""Tests for Flow primitive — spec 002."""
+"""Flow 原语的测试 —— 规格 002。"""
 
 from __future__ import annotations
 

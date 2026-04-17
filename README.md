@@ -1,56 +1,54 @@
 # pyxis-agent
 
-Declarative chain-of-thought agent framework for Python.
+**声明式思维链的 Python agent 框架。**
 
-> **`declarative CoT = code as prompt + schema as workflow`**
+> **`声明式思维链 = code as prompt + schema as workflow`**
 
-Most agent frameworks either give you a node-based graph DSL (Airflow for LLMs)
-or hide the reasoning inside opaque `chain.run()` calls. **pyxis** takes a
-different bet:
+市面上的 agent 框架，要么给你一个节点图 DSL（"LLM 版 Airflow"），要么
+把推理藏进不透明的 `chain.run()` 里。pyxis 换一条路：
 
-- The Python **function's docstring** *is* the system prompt.
-- The function's **string return** *is* the user message.
-- The **Pydantic output schema's field order** *is* the chain of thought —
-  the LLM must fill fields top-to-bottom, so the schema literally declares
-  the reasoning steps.
-- For multi-step flows, you write **plain Python**. No DSL. `if`, `for`, and
-  function composition are already the best orchestration language we have.
+- Python 函数的 **docstring** 就是 system prompt。
+- 函数的**字符串返回**就是 user message。
+- Pydantic 输出 schema 的**字段顺序**就是思维链——LLM 必须自上而下把它们
+  填完，于是 schema 直接声明了推理步骤。
+- 多轮编排就写**普通 Python**。没有 DSL。`if`、`for`、函数组合已经是
+  最好的编排语言。
 
-## Two orchestration layers
+## 两层编排
 
-| Scope                      | Mechanism                                       |
-|----------------------------|-------------------------------------------------|
-| Implicit (single LLM call) | `instructor` + the output schema's field order  |
-| Explicit (multiple calls)  | plain Python                                    |
+| 范围                | 机制                                    |
+|---------------------|-----------------------------------------|
+| 隐式（单次 LLM 调用）| `instructor` + 输出 schema 的字段顺序   |
+| 显式（多次 LLM 调用）| 普通 Python                             |
 
-## What's in the box
+## 盒子里有什么
 
-| Primitive            | What it is                                                           |
-|----------------------|----------------------------------------------------------------------|
-| `@step(output=M)`    | Turns a prompt function into a typed LLM call. Sync or `async def`.  |
-| `@flow`              | Thin wrapper for multi-step functions; `.run_traced()` included.     |
-| `Tool`               | `BaseModel` with `run()`. Actions are schemas; code dispatches.      |
-| `trace()`            | `ContextVar`-based capture across sync *and* `asyncio.gather`.       |
-| `Trace.to_json()`    | Structured export + `total_usage()` aggregation.                     |
-| `FakeClient`         | Deterministic canned responses + call log for tests (no network).    |
-| `InstructorClient`   | Production client; OpenAI-compatible; async + sync.                  |
+| 原语                 | 做什么                                                                |
+|----------------------|-----------------------------------------------------------------------|
+| `@step(output=M)`    | 把 prompt 函数变成类型化的 LLM 调用。同步或 `async def` 都行。         |
+| `@flow`              | 多步函数的薄包装，附带 `.run_traced()` 一键观测。                     |
+| `Tool`               | `BaseModel` + `run()`。动作即 schema，`run()` 即代码。                |
+| `trace()`            | 基于 `ContextVar` 的抓取器，穿透 `asyncio.gather`。                   |
+| `Trace.to_json()`    | 结构化导出 + `total_usage()` 汇总。                                   |
+| `FakeClient`         | 给测试用的预置响应 + call 日志（零网络）。                            |
+| `InstructorClient`   | 生产用 client；OpenAI 兼容；异步与同步双路。                          |
 
-## Install
+## 安装
 
 ```bash
 uv add pyxis-agent
 ```
 
-## Quickstart
+## 上手
 
 ```python
 from pydantic import BaseModel, Field
 from pyxis import flow, step, trace
 
 class Analysis(BaseModel):
-    observation: str = Field(description="what you notice")
-    reasoning: str = Field(description="why it matters")
-    conclusion: str = Field(description="one-sentence takeaway")
+    observation: str = Field(description="你注意到什么")
+    reasoning: str = Field(description="为什么这重要")
+    conclusion: str = Field(description="一句话结论")
 
 class Plan(BaseModel):
     goal: str
@@ -59,24 +57,24 @@ class Plan(BaseModel):
 
 @step(output=Analysis)
 def analyze(topic: str) -> str:
-    """You are a careful analyst. Observe, reason, conclude."""
-    return f"Topic: {topic}"
+    """你是严谨的分析师。观察，推理，再下结论。"""
+    return f"主题：{topic}"
 
 @step(output=Plan, max_retries=2)
 def plan_from(a: Analysis) -> str:
-    """You turn analyses into plans."""
+    """你把分析转成计划。"""
     return a.model_dump_json()
 
 @flow
 def research(topic: str) -> Plan:
     return plan_from(analyze(topic))
 
-result, t = research.run_traced("declarative CoT agents")
+result, t = research.run_traced("声明式思维链的 agent 框架")
 print(t.total_usage())          # Usage(prompt_tokens=..., ...)
-print(t.to_json(indent=2))      # structured log
+print(t.to_json(indent=2))      # 结构化日志
 ```
 
-## Agents with tools (ReAct-style, in plain Python)
+## 用工具的 Agent（ReAct 风格，纯 Python 循环）
 
 ```python
 from typing import Annotated, Literal
@@ -84,14 +82,14 @@ from pydantic import BaseModel, Field
 from pyxis import Tool, flow, step
 
 class Calculate(Tool):
-    """Evaluate a math expression."""
+    """算一个数学表达式。"""
     kind: Literal["calculate"] = "calculate"
     expression: str
     def run(self) -> str:
         return str(eval(self.expression, {"__builtins__": {}}, {}))
 
 class Finish(Tool):
-    """Stop and report the answer."""
+    """停止并报出答案。"""
     kind: Literal["finish"] = "finish"
     answer: str
     def run(self) -> str:
@@ -105,7 +103,7 @@ class Decision(BaseModel):
 
 @step(output=Decision)
 def decide(q: str, scratch: str) -> str:
-    """Think. Then emit exactly one tool call."""
+    """先思考，再恰好发出一次工具调用。"""
     return f"Q: {q}\n{scratch}"
 
 @flow
@@ -116,10 +114,10 @@ def agent(q: str, max_steps: int = 6) -> str:
         scratch += [f"thought: {d.thought}", f"obs: {d.action.run()}"]
         if isinstance(d.action, Finish):
             return d.action.answer
-    raise RuntimeError("max_steps exhausted")
+    raise RuntimeError("达到最大步数仍未结束")
 ```
 
-## Async
+## 异步
 
 ```python
 import asyncio
@@ -137,10 +135,10 @@ async def research(topics: list[str]) -> list[Analysis]:
 asyncio.run(research(["x", "y", "z"]))
 ```
 
-## Testing without a key
+## 没 API key 也能测
 
-`FakeClient` is shipped in the library. It returns queued Pydantic instances
-in order, records every call, and supports the async path too:
+`FakeClient` 本身就在库里。它按队列顺序返回预置的 Pydantic 实例，记录
+所有调用，也支持异步路径：
 
 ```python
 from pyxis import FakeClient, Usage, step
@@ -159,24 +157,24 @@ analyze("x")
 assert fake.calls[0].messages[-1]["content"] == "x"
 ```
 
-## Running the examples against OpenRouter
+## 用 OpenRouter 跑 example
 
 ```bash
-cp .env.example .env      # edit in your key
+cp .env.example .env      # 把自己的 key 写进去
 uv run --env-file .env python examples/research.py
 uv run --env-file .env python examples/agent_tool_use.py
 ```
 
-## Dev
+## 开发
 
 ```bash
 uv sync
 uv run ruff format && uv run ruff check
-uv run pytest                                        # unit tests, no network
-uv run --env-file .env pytest tests/integration/     # live smoke tests
+uv run pytest                                        # 单元测试，零网络
+uv run --env-file .env pytest tests/integration/     # 真实 LLM 烟雾测试
 ```
 
-Every iteration lands with a spec in [specs/](specs/) (SDD) and tests first
-(TDD). See [CHANGELOG.md](CHANGELOG.md) for release history and
-[ROADMAP.md](ROADMAP.md) for what's deferred (and what is *intentionally*
-not on the roadmap). Design rationale lives in [CLAUDE.md](CLAUDE.md).
+每次迭代都有对应的规格：[specs/](specs/)（SDD）+ 先写失败测试（TDD）。
+[CHANGELOG.md](CHANGELOG.md) 记录版本历史；[ROADMAP.md](ROADMAP.md) 列出
+待办项以及那些**故意不做**的事（违反核心哲学的都在这一段）。设计
+依据见 [CLAUDE.md](CLAUDE.md)。

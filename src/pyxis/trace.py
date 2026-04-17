@@ -1,8 +1,8 @@
-"""Tracing primitives: capture Step calls within a scope.
+"""trace 原语：在作用域内捕获 Step 调用。
 
-A `Trace` is a bag of `TraceRecord`s. The active trace is propagated via a
-`ContextVar`, safe across asyncio tasks that inherit context.
-Records are exportable as plain dicts / JSON for logging.
+一个 `Trace` 就是 `TraceRecord` 的集合。当前活跃的 trace 通过 `ContextVar`
+传播，因此在继承了 context 的 asyncio task 和普通线程里都能正常工作。
+trace 可以整体 `to_dict()` / `to_json()` 导出，方便写日志。
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from .client import Message, Usage
 
 @dataclass
 class TraceRecord:
-    """One captured Step call."""
+    """被捕获的一次 Step 调用。"""
 
     step: str
     messages: list[Message]
@@ -30,6 +30,7 @@ class TraceRecord:
     usage: Usage | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """把这条记录转成纯 dict，便于 JSON 序列化。"""
         return {
             "step": self.step,
             "messages": list(self.messages),
@@ -49,7 +50,7 @@ class TraceRecord:
 
 @dataclass
 class Trace:
-    """Ordered sequence of Step calls captured within a `trace()` scope."""
+    """`trace()` 作用域内一次运行捕获到的有序记录。"""
 
     records: list[TraceRecord] = field(default_factory=list)
 
@@ -60,7 +61,7 @@ class Trace:
         return len(self.records)
 
     def total_usage(self) -> Usage:
-        """Sum all non-None usages; returns a zero `Usage` if none captured."""
+        """把所有非 None 的 usage 累加起来；一条都没有则返回零 Usage。"""
         total = Usage()
         for rec in self.records:
             if rec.usage is not None:
@@ -68,9 +69,11 @@ class Trace:
         return total
 
     def to_dict(self) -> dict[str, Any]:
+        """整个 trace 转成 dict，形如 `{"records": [...]}`。"""
         return {"records": [rec.to_dict() for rec in self.records]}
 
     def to_json(self, **json_kwargs: Any) -> str:
+        """转成 JSON 字符串，`**json_kwargs` 透传给 `json.dumps`。"""
         return json.dumps(self.to_dict(), **json_kwargs)
 
 
@@ -79,10 +82,9 @@ _current: ContextVar[Trace | None] = ContextVar("pyxis_trace", default=None)
 
 @contextmanager
 def trace() -> Iterator[Trace]:
-    """Open a fresh trace scope. Captures every Step call made inside.
+    """打开一个新的 trace 作用域，捕获其中的所有 Step 调用。
 
-    Nested scopes shadow outer ones: an inner `trace()` captures its own
-    records; the outer does not duplicate them.
+    作用域可以嵌套：内层捕获内层自己的记录，外层在内层期间不重复捕获。
     """
     t = Trace()
     token = _current.set(t)
@@ -93,7 +95,7 @@ def trace() -> Iterator[Trace]:
 
 
 def record(entry: TraceRecord) -> None:
-    """Push a record into the current trace, if any. No-op otherwise."""
+    """把一条记录压入当前的 trace；当前没有 trace 时为空操作。"""
     current = _current.get()
     if current is not None:
         current.records.append(entry)

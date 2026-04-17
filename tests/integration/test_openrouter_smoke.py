@@ -1,7 +1,7 @@
-"""End-to-end smoke tests against OpenRouter.
+"""对 OpenRouter 的端到端烟雾测试。
 
-Skipped unless `OPENROUTER_API_KEY` is set in the environment.
-Load via `uv run --env-file .env pytest tests/integration/`.
+没有设置 `OPENROUTER_API_KEY` 时整体跳过。
+通过 `uv run --env-file .env pytest tests/integration/` 加载环境变量运行。
 """
 
 from __future__ import annotations

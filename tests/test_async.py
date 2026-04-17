@@ -1,4 +1,4 @@
-"""Tests for async support — spec 004."""
+"""异步支持的测试 —— 规格 004。"""
 
 from __future__ import annotations
 
@@ -212,5 +212,5 @@ async def test_fake_client_exhausted_raises_on_async_path():
     async def analyze(t: str) -> str:
         return t
 
-    with pytest.raises(RuntimeError, match="exhausted"):
+    with pytest.raises(RuntimeError, match="耗尽"):
         await analyze("x")

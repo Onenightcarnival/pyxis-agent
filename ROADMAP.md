@@ -1,57 +1,53 @@
-# Roadmap
+# 路线图（Roadmap）
 
-Features intentionally **deferred** so the surface stays aligned with the
-core thesis (`code as prompt + schema as workflow`) and the iteration budget
-stays sane. Each item is a future spec iteration — add `specs/NNN-*.md`
-when you pick one up.
+刻意**推迟**的功能列在这里，这样公共面不会被撑垮，迭代节奏也保得住。
+每一项对应一个**未来的规格迭代**：想做的时候新建 `specs/NNN-*.md`
+再进入 SDD+TDD 流程。
 
-## Near-term candidates
+## 近期候选
 
-- **Streaming** — token-by-token schema population via `instructor`'s
-  partial streaming; trace records emit progressively.
-- **Retry backoff + error visibility** — expose validation errors on
-  `TraceRecord` when retries are exhausted; add optional exponential
-  backoff between retries.
-- **Tool decorator sugar** — `@tool` that generates a `Tool` subclass from
-  a plain function signature + docstring (auto-derived Pydantic fields).
-- **Provider convenience factories** — `openrouter_client(api_key=...)`,
-  `anthropic_client(...)` that return a ready `InstructorClient`. Keep
-  the framework provider-agnostic; factories are opt-in sugar.
-- **Typed `@step` overloads** — `@overload` pair so mypy/pyright infer
-  `Step[T]` vs `AsyncStep[T]` at the call site without `Any` leakage.
+- **流式输出** —— 通过 instructor 的 partial streaming 逐 token 填充 schema；
+  trace 记录渐进式发出。
+- **退避重试 + 错误可见性** —— 重试耗尽时在 `TraceRecord` 上暴露验证错误；
+  可选的指数退避（目前 max_retries 直接转给 instructor，无退避）。
+- **`@tool` 装饰器糖** —— 从普通函数的签名 + docstring 自动生成 Tool 子类
+  （自动推导 Pydantic 字段、自动生成 `kind` 判别字段）。
+- **Provider 便捷工厂** —— `openrouter_client(api_key=...)`、
+  `anthropic_client(...)`、`openai_client(...)` 返回就绪的 `InstructorClient`。
+  框架保持 provider 无关；工厂是可选糖。
+- **类型化 `@step` 重载** —— 一对 `@overload` 让 mypy / pyright 在调用处
+  准确推断 `Step[T]` 或 `AsyncStep[T]`，不再落到 `Any`。
 
-## Medium-term
+## 中期候选
 
-- **Cost estimation** — optional per-model rate table -> currency.
-- **Trace persistence** — JSONL sink for shipping traces to files / log
-  collectors / OpenTelemetry.
-- **Parallel step helpers** — `@flow` utilities for fan-out/gather
-  ergonomics beyond what `asyncio.gather` already gives.
-- **Persistent memory** — conversation-history helpers (still just
-  arguments passed in; no hidden state).
-- **CLI** — `pyxis run path/to/flow.py` with env-file support, dry-run,
-  and trace-as-JSON output.
+- **成本估算** —— 可选的 per-model 费率表，把 Usage 换算到货币。
+- **Trace 持久化** —— JSONL sink，把 trace 推到文件 / log collector /
+  OpenTelemetry 后端。
+- **并行 step 工具** —— `@flow` 的 fan-out/gather 工效糖，超越裸
+  `asyncio.gather`。
+- **对话式记忆** —— 历史记录的 helper（仍只通过参数传入；不藏隐式状态）。
+- **CLI** —— `pyxis run path/to/flow.py`，附带 env-file 支持、dry-run、
+  trace-as-JSON 输出。
 
-## Intentionally not on the roadmap
+## 故意不做
 
-These would violate the core thesis. Don't add them:
+这些会违反核心哲学，**永远不要**加进来：
 
-- Graph/DAG DSL for flows. Python already composes functions.
-- YAML pipeline configs. Python already composes functions.
-- Function-calling protocol adapters baked into the framework. The
-  output schema *is* the interface; users wanting provider function
-  calling can use instructor directly.
-- Hidden reactive state or global mutable agent context. Pass arguments.
-- Agent-loop helpers that hide the loop. The loop is the user's `@flow`.
+- flow 的图/DAG DSL。Python 已经能组合函数。
+- YAML pipeline 配置。Python 已经能组合函数。
+- 把 function-calling 协议适配烧进框架。输出 schema 本身就是接口；
+  想用 provider 的 function-calling 就直接用 instructor。
+- 隐藏的响应式状态或全局可变 agent context。显式传参。
+- 把 agent loop 藏进框架的 helper。loop 是用户自己的 `@flow`。
 
-## Contributing an iteration
+## 怎么贡献一个迭代
 
-1. Pick an item. Open a branch.
-2. Write `specs/NNN-<name>.md` (≤ 40 lines, acceptance criteria, non-goals).
-3. Write failing tests first.
-4. Implement.
-5. `uv run ruff format && uv run ruff check && uv run pytest`.
-6. If touching `Client` or Step/Flow wiring, run
-   `uv run --env-file .env pytest tests/integration/`.
-7. Update `CLAUDE.md` and `CHANGELOG.md`.
-8. One commit per iteration; message references the spec.
+1. 挑一个项目。开分支。
+2. 写 `specs/NNN-<名字>.md`（≤ 40 行，含验收标准、不做）。
+3. 先写失败的测试。
+4. 写实现。
+5. `uv run ruff format && uv run ruff check && uv run pytest`。
+6. 动到 Client / Step / Flow 或 provider 连线，就跑
+   `uv run --env-file .env pytest tests/integration/`。
+7. 更新 `CLAUDE.md` 与 `CHANGELOG.md`（公共面变了才要）。
+8. 一次迭代一次 commit，正文引用规格编号。

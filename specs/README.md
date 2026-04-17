@@ -1,12 +1,14 @@
-# Specs
+# 规格（Specs）
 
-One markdown file per iteration, numbered. Each spec is a contract for the iteration that follows it.
+每次迭代开始前先写一份 markdown 规格文档，编号递增，是这次迭代的契约。
 
-Shape:
+每份规格的固定结构：
 
-- **Purpose** — one sentence.
-- **API sketch** — the public signatures a user will see.
-- **Acceptance criteria** — bullet list of observable behaviors, each testable.
-- **Non-goals** — what this iteration intentionally does not do.
+- **目的**：一句话说清楚为什么要做。
+- **API 草图**：用户会看到的公开签名。
+- **验收标准**：可测的、可观察的行为清单。
+- **不做（Non-goals）**：本迭代故意不做什么，避免范围蔓延。
 
-Keep each spec under ~40 lines. If it grows, split the iteration.
+单份规格控制在 ~40 行以内。超出说明迭代拆得不够细，分拆再写。
+
+规格是契约，不是设计稿；不要在里面塞实现讨论。实现讨论放 PR 或 commit。

@@ -1,11 +1,11 @@
-"""End-to-end demo of declarative chain-of-thought.
+"""端到端示例：声明式思维链。
 
-Shows both axes:
-- implicit CoT: schema field order drives a single LLM call's reasoning
-- explicit CoT: plain Python orchestrates multiple steps
+两条轴同时展示：
+- 隐式 CoT：单次 LLM 调用里由 schema 字段顺序驱动推理；
+- 显式 CoT：多步由普通 Python 编排。
 
-Run against OpenRouter:
-    OPENROUTER_API_KEY=sk-or-... uv run python examples/research.py
+跑起来：
+    OPENROUTER_API_KEY=sk-or-... uv run --env-file .env python examples/research.py
 """
 
 from __future__ import annotations
@@ -21,46 +21,46 @@ from pyxis import InstructorClient, flow, set_default_client, step
 MODEL = "openai/gpt-5.4-nano"
 
 
-# --- Schemas: the chain of thought IS the field order ---
+# ---- Schema：字段顺序即思维链 ----
 
 
 class Analysis(BaseModel):
-    """observe -> reason -> conclude, in that order."""
+    """观察 -> 推理 -> 结论，按这个顺序。"""
 
-    observation: str = Field(description="What you notice about the topic")
-    reasoning: str = Field(description="Why that observation matters")
-    conclusion: str = Field(description="A one-sentence takeaway")
+    observation: str = Field(description="你对主题注意到了什么")
+    reasoning: str = Field(description="这个观察为什么重要")
+    conclusion: str = Field(description="一句话结论")
 
 
 class Plan(BaseModel):
-    """goal -> steps -> next action, in that order."""
+    """目标 -> 步骤 -> 下一步，按这个顺序。"""
 
-    goal: str = Field(description="Restate the user's goal in one line")
-    steps: list[str] = Field(description="Break it into 3-5 concrete steps")
-    next_action: str = Field(description="The first concrete step to execute")
+    goal: str = Field(description="用一行复述用户目标")
+    steps: list[str] = Field(description="拆成 3-5 个具体步骤")
+    next_action: str = Field(description="第一个要做的具体步骤")
 
 
-# --- Steps: docstring = system prompt, return = user message ---
+# ---- Step：docstring = system prompt，返回 = user message ----
 
 
 @step(output=Analysis, model=MODEL)
 def analyze(topic: str) -> str:
-    """You are a careful analyst. Observe, then reason, then conclude."""
-    return f"Topic: {topic}"
+    """你是严谨的分析师。先观察，再推理，最后下结论。"""
+    return f"主题：{topic}"
 
 
 @step(output=Plan, model=MODEL)
 def plan_from_analysis(a: Analysis) -> str:
-    """You are a meticulous planner. Turn the analysis into an action plan."""
-    return f"Analysis:\n{a.model_dump_json(indent=2)}"
+    """你是一丝不苟的规划者。把分析转成行动计划。"""
+    return f"分析：\n{a.model_dump_json(indent=2)}"
 
 
-# --- Flow: explicit orchestration = plain Python ---
+# ---- Flow：显式编排 = 普通 Python ----
 
 
 @flow
 def research(topic: str) -> Plan:
-    """Research: first analyze, then plan from the analysis."""
+    """研究一个主题：先分析，再基于分析产出计划。"""
     a = analyze(topic)
     return plan_from_analysis(a)
 
@@ -73,7 +73,7 @@ def _configure_openrouter() -> None:
 
 def main() -> None:
     _configure_openrouter()
-    result, t = research.run_traced("building an agent framework with declarative CoT")
+    result, t = research.run_traced("用声明式思维链搭一个 agent 框架")
 
     print("=" * 60)
     print("TRACE")

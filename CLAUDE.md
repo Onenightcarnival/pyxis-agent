@@ -1,73 +1,93 @@
 # pyxis-agent
 
-Agent framework built around **declarative chain-of-thought** as its organizing philosophy.
+以**声明式思维链（declarative chain-of-thought）**为组织哲学的 agent 框架。
 
-## Core philosophy
-
-```
-declarative CoT = code as prompt + schema as workflow
-```
-
-- **Code as prompt**: a Python function's docstring is the system prompt; its return value is the user message. The function *is* the prompt.
-- **Schema as workflow**: a Pydantic output model's field order *is* the chain of thought — the LLM must fill it top-to-bottom, so the schema literally declares the reasoning steps.
-
-## Two orchestration layers
-
-| Scope | Mechanism | Responsibility |
-|-------|-----------|----------------|
-| **Implicit** (single LLM call) | `instructor` + Pydantic field order | Chain-of-thought *inside* one call |
-| **Explicit** (multi LLM call) | Plain Python code | Composition, branching, looping *across* calls |
-
-The framework intentionally refuses to invent a DSL for explicit orchestration — Python already has `if`, `for`, and functions. We only supply:
-
-- `@step(output=...)` — decorator turning a prompt function into a typed, callable LLM step. Sync `def` → `Step[T]`; async `async def` → `AsyncStep[T]`.
-- `@flow` — thin wrapper giving explicit flows a `.run_traced(...)` convenience. Same sync/async dispatch.
-- `Tool` — `BaseModel` subclass with `run() -> str`. Actions are schemas; `run()` is the code. The LLM emits a tool by filling a discriminated-union `action` field; Python dispatches via `isinstance` / `action.run()`.
-- `Client` / `AsyncClient` — provider-agnostic LLM interfaces returning `CompletionResult[T]` (output + optional `Usage`). Instructor-backed real client; `FakeClient` for tests.
-- `trace()` + `TraceRecord` — `ContextVar`-based observability that works across asyncio tasks. Records carry `usage`; `Trace.to_dict()` / `to_json()` / `total_usage()` for export.
-- `@step(..., max_retries=N)` forwards a retry budget to instructor for structured-output validation failures.
-
-Non-goals: graph DSLs, YAML pipelines, node-based editors, hidden reactivity, function-calling adapters, agent-loop helpers. If it can be a Python function, it is one.
-
-## Layout
+## 核心哲学
 
 ```
-src/pyxis/        library code
-  step.py         Step / AsyncStep + @step decorator
-  flow.py         Flow / AsyncFlow + @flow decorator
-  tool.py         Tool base class
-  trace.py        Trace / TraceRecord + trace() context manager
-  client.py       Client + AsyncClient protocols, CompletionResult, Usage,
-                  FakeClient, InstructorClient
-tests/            pytest suite (uses FakeClient, no network)
-tests/integration/ live LLM smoke tests — require OPENROUTER_API_KEY
-specs/            SDD specs — one markdown file per primitive/iteration
-examples/         runnable demos against OpenRouter
+声明式思维链 = code as prompt + schema as workflow
 ```
 
-## Dev workflow
+- **code as prompt**：Python 函数的 docstring 就是 system prompt，
+  函数的字符串返回就是 user message。函数**就是** prompt。
+- **schema as workflow**：Pydantic 输出模型的**字段顺序**就是思维链——
+  LLM 必须自上而下把它们填完，于是 schema 直接声明了推理步骤。
 
-- Package manager: **uv** (`uv sync`, `uv run`). Never use pip directly.
-- Lint/format: **ruff** (`uv run ruff check`, `uv run ruff format`).
-- Tests: **pytest** (`uv run pytest`). Unit tests must pass without network.
-- Integration: `uv run --env-file .env pytest tests/integration/` (needs `OPENROUTER_API_KEY`).
-- Python: **3.12+**. Use PEP 695 generics (`class Foo[T: Base]`, `def f[T: Base]`).
-- Keep CLAUDE.md synced with every feature iteration.
+## 两层编排
 
-## Iteration methodology: SDD + TDD
+| 范围 | 机制 | 职责 |
+|------|------|------|
+| **隐式**（单次 LLM 调用） | `instructor` + Pydantic 字段顺序 | 单次调用**内部**的思维链 |
+| **显式**（多次 LLM 调用） | 纯 Python 代码 | 调用**之间**的组合、分支、循环 |
 
-Each iteration lands as **one commit** shaped like:
+框架刻意拒绝为显式编排发明 DSL —— Python 本身就有 `if`、`for`、函数组合。
+我们只提供这些原语：
 
-1. Write `specs/NNN-<name>.md` — short spec: purpose, API sketch, acceptance criteria, non-goals.
-2. Write failing tests in `tests/` that reflect the spec.
-3. Implement until tests pass.
-4. Run `uv run ruff format && uv run ruff check && uv run pytest`.
-5. Run the integration suite with a key when touching Client, Step, or provider wiring.
-6. Update CLAUDE.md and README if the public surface changed.
-7. Commit with a message referencing the spec.
+- `@step(output=...)`：把 prompt 函数变成类型化的 LLM 调用。同步 `def` 得到
+  `Step[T]`；异步 `async def` 得到 `AsyncStep[T]`。
+- `@flow`：多步函数的薄包装，附带 `.run_traced(...)` 一键观测。同步/异步分派。
+- `Tool`：`BaseModel` 子类，带 `run() -> str`。动作即 schema，`run()` 即代码。
+  LLM 在 schema 的判别式联合 `action` 字段里选一个工具；Python 用
+  `isinstance` / `action.run()` 分派。
+- `Client` / `AsyncClient`：provider 无关的 LLM 接口，返回
+  `CompletionResult[T]`（output + 可选 `Usage`）。生产用 instructor
+  背后的真 client，测试用 `FakeClient`。
+- `trace()` + `TraceRecord`：基于 `ContextVar` 的可观测性，跨 asyncio
+  task 自动传播。记录带 `usage`；`Trace.to_dict()` / `to_json()` /
+  `total_usage()` 负责导出。
+- `@step(..., max_retries=N)`：把重试预算传给 instructor 用于结构化
+  输出的校验重试。
 
-Specs are contracts, not design docs. Keep them under ~40 lines; if a spec grows, split the iteration.
+**不做的事**（违反核心哲学）：图式 DSL、YAML pipeline、节点编辑器、
+隐式响应式状态、function-calling 协议适配、把 agent loop 藏进框架。
+能写成 Python 函数的东西，就写成 Python 函数。
 
-## Testing contract
+## 目录
 
-Unit tests never hit a real LLM. The `FakeClient` returns queued Pydantic instances in order (same queue for sync and async paths), records every call in `.calls`, and raises on exhaustion or type mismatch. If you need to assert prompt content, capture it via the fake's `.calls` log. Integration smoke tests live under `tests/integration/` and self-skip when the env var is absent.
+```
+src/pyxis/        库代码
+  step.py         Step / AsyncStep + @step 装饰器
+  flow.py         Flow / AsyncFlow + @flow 装饰器
+  tool.py         Tool 基类
+  trace.py        Trace / TraceRecord + trace() 上下文管理器
+  client.py       Client + AsyncClient 协议、CompletionResult、
+                  Usage、FakeClient、InstructorClient
+tests/            pytest（用 FakeClient，零网络）
+tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
+specs/            SDD 规格 —— 每个迭代一份 markdown
+examples/         跑得起来的 demo（默认接 OpenRouter）
+```
+
+## 开发流
+
+- 包管理器：**uv**（`uv sync`、`uv run`）。禁止直接 pip。
+- Lint/格式化：**ruff**（`uv run ruff check`、`uv run ruff format`）。
+- 测试：**pytest**（`uv run pytest`）。单元测试必须零网络通过。
+- 集成测试：`uv run --env-file .env pytest tests/integration/`，需要
+  `OPENROUTER_API_KEY`。
+- Python：**3.12+**。生词：PEP 695 泛型语法（`class Foo[T: Base]`、
+  `def f[T: Base]`）。
+- **语言**：项目以中文为主（见 [规约 006](specs/006-中文化.md)）。
+  散文、docstring、异常消息用中文；标识符、commit 前缀、配置 key 用英文。
+- **文档必须与代码同步**：公共面变了就改 CLAUDE.md / README / CHANGELOG。
+
+## 迭代方法：SDD + TDD
+
+每个迭代以**一次 commit** 的形式落地：
+
+1. 写 `specs/NNN-<名字>.md`：目的、API 草图、验收标准、不做（简短，≤ 40 行）。
+2. 在 `tests/` 里按规格先写**失败**的测试。
+3. 实现到测试全绿。
+4. 跑 `uv run ruff format && uv run ruff check && uv run pytest`。
+5. 动过 Client、Step、provider 相关代码时，跑集成套件一次。
+6. 公共面变了同步 CLAUDE.md、README 与 CHANGELOG。
+7. Commit，正文引用本次规格。
+
+规格是契约，不是设计稿。长过 40 行说明迭代拆得不够，拆了再写。
+
+## 测试契约
+
+单元测试不碰真 LLM。`FakeClient` 按队列顺序返回预置的 Pydantic 实例
+（同一队列服务同步与异步路径），每次调用写入 `.calls`；用尽或类型不匹配
+抛异常。需要断言 prompt 内容时，就用 `.calls`。集成烟雾测试放
+`tests/integration/`，没有环境变量时整体 skip，保证 CI 不依赖外部。

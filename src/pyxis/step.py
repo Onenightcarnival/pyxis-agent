@@ -1,10 +1,11 @@
-"""Step primitive: one LLM call with schema-as-CoT.
+"""Step 原语：一次 LLM 调用 + 结构即思维链（schema-as-CoT）。
 
-code-as-prompt : the function's docstring is the system prompt,
-                 the function's string return value is the user message.
-schema-as-CoT  : the output Pydantic model's field order is the reasoning chain.
+- **code-as-prompt**：函数的 docstring 是 system prompt，字符串返回是 user message。
+- **schema-as-CoT**：Pydantic 输出模型的字段顺序就是思维链——LLM 必须自上
+  而下把它们填完。
 
-`@step` detects `async def` prompt functions and dispatches to `AsyncStep`.
+`@step` 装饰器会检测 `async def` 的 prompt 函数，并分派到 `AsyncStep`，
+调用方就能拿到一个 coroutine function 直接 `await`。
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ DEFAULT_MODEL = "gpt-4o-mini"
 
 
 class Step[T: BaseModel]:
-    """A typed sync LLM call. Usually built via `@step(output=...)`."""
+    """一次类型化的同步 LLM 调用，通常通过 `@step(output=...)` 构造。"""
 
     def __init__(
         self,
@@ -60,7 +61,7 @@ class Step[T: BaseModel]:
 
 
 class AsyncStep[T: BaseModel]:
-    """A typed async LLM call. Built by `@step` when the prompt fn is `async def`."""
+    """一次类型化的异步 LLM 调用。当 `@step` 装饰的是 `async def` 时自动生成。"""
 
     def __init__(
         self,
@@ -106,11 +107,13 @@ def step[T: BaseModel](
     max_retries: int = 0,
     client: Any = None,
 ) -> Callable[[Callable[..., Any]], Step[T] | AsyncStep[T]]:
-    """Decorator: turn a prompt function into a typed Step.
+    """装饰器：把 prompt 函数变成一个类型化的 Step。
 
-    Sync `def` -> `Step[T]`. Async `async def` -> `AsyncStep[T]`.
-    `max_retries` is forwarded to the client and, for `InstructorClient`,
-    to instructor's own validation-driven retry loop.
+    - 同步 `def` 得到 `Step[T]`；异步 `async def` 得到 `AsyncStep[T]`。
+    - docstring 会被解析为 system prompt（会去首尾空白与缩进）。
+    - 函数的返回值必须是 `str`，它就是 user message。
+    - `max_retries` 会透传给 client；对 `InstructorClient` 而言，它就是
+      instructor 自己的校验驱动重试次数。
     """
 
     def decorator(fn: Callable[..., Any]) -> Step[T] | AsyncStep[T]:
@@ -126,8 +129,8 @@ def _build_messages(
 ) -> list[Message]:
     if not isinstance(user_content, str):
         raise TypeError(
-            f"@step function {prompt_fn.__name__!r} must return str, "
-            f"got {type(user_content).__name__}"
+            f"@step 装饰的函数 {prompt_fn.__name__!r} 必须返回 str，"
+            f"实际返回 {type(user_content).__name__}"
         )
     messages: list[Message] = []
     if system_prompt:
@@ -137,4 +140,5 @@ def _build_messages(
 
 
 def _normalize_docstring(doc: str) -> str:
+    """去首尾空白并规范化缩进，得到干净的 system prompt。"""
     return inspect.cleandoc(doc).strip()

@@ -1,4 +1,4 @@
-"""Tests for Tool primitive — spec 003."""
+"""Tool 原语的测试 —— 规格 003。"""
 
 from __future__ import annotations
 
