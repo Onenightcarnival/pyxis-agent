@@ -47,6 +47,9 @@
 - `Step.stream(...)` / `AsyncStep.astream(...)`：按字段逐步 yield partial
   实例，把 schema-as-CoT 的"字段被逐个填完"过程完整暴露给用户。底层
   借 instructor `create_partial`；一次流完整消费后写一条 TraceRecord。
+- `StepHook`：只读观察者中间件，三个回调 `on_start` / `on_end` / `on_error`。
+  通过 `add_hook()` / `remove_hook()` / `clear_hooks()` 管理。用来接
+  Prometheus、Slack 告警、OpenTelemetry；**不**允许修改 messages / output。
 
 **不做的事**（违反核心哲学）：图式 DSL、YAML pipeline、节点编辑器、
 隐式响应式状态、function-calling 协议适配、把 agent loop 藏进框架。
@@ -63,6 +66,7 @@ src/pyxis/        库代码
   client.py       Client + AsyncClient 协议、CompletionResult、
                   Usage、FakeClient、InstructorClient
   providers.py    provider 便捷工厂：openrouter_client、openai_client
+  hooks.py        StepHook + add_hook/remove_hook/clear_hooks 观察者钩子
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
 specs/            SDD 规格 —— 每个迭代一份 markdown

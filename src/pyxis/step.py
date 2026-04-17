@@ -18,6 +18,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from .client import Message, get_default_client
+from .hooks import notify_end, notify_error, notify_start
 from .trace import TraceRecord, record
 
 DEFAULT_MODEL = "gpt-4o-mini"
@@ -47,30 +48,33 @@ class Step[T: BaseModel]:
         user_content = self.prompt_fn(*args, **kwargs)
         messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
         client = self.client or get_default_client()
+        notify_start(self.__name__, messages, self.model)
         try:
             result = client.complete(
                 messages, self.output, self.model, max_retries=self.max_retries
             )
         except Exception as exc:
+            err = _format_error(exc)
             record(
                 TraceRecord(
                     step=self.__name__,
                     messages=messages,
                     output=None,
                     model=self.model,
-                    error=_format_error(exc),
+                    error=err,
                 )
             )
+            notify_error(self.__name__, messages, self.model, err)
             raise
-        record(
-            TraceRecord(
-                step=self.__name__,
-                messages=messages,
-                output=result.output,
-                model=self.model,
-                usage=result.usage,
-            )
+        rec = TraceRecord(
+            step=self.__name__,
+            messages=messages,
+            output=result.output,
+            model=self.model,
+            usage=result.usage,
         )
+        record(rec)
+        notify_end(rec)
         return result.output
 
     def stream(self, *args: object, **kwargs: object) -> Iterator[T]:
@@ -78,6 +82,7 @@ class Step[T: BaseModel]:
         user_content = self.prompt_fn(*args, **kwargs)
         messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
         client = self.client or get_default_client()
+        notify_start(self.__name__, messages, self.model)
         last: T | None = None
         try:
             for partial in client.stream(
@@ -86,24 +91,26 @@ class Step[T: BaseModel]:
                 last = partial
                 yield partial
         except Exception as exc:
+            err = _format_error(exc)
             record(
                 TraceRecord(
                     step=self.__name__,
                     messages=messages,
                     output=None,
                     model=self.model,
-                    error=_format_error(exc),
+                    error=err,
                 )
             )
+            notify_error(self.__name__, messages, self.model, err)
             raise
-        record(
-            TraceRecord(
-                step=self.__name__,
-                messages=messages,
-                output=last,
-                model=self.model,
-            )
+        rec = TraceRecord(
+            step=self.__name__,
+            messages=messages,
+            output=last,
+            model=self.model,
         )
+        record(rec)
+        notify_end(rec)
 
 
 class AsyncStep[T: BaseModel]:
@@ -131,30 +138,33 @@ class AsyncStep[T: BaseModel]:
         user_content = await ret if inspect.isawaitable(ret) else ret
         messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
         client = self.client or get_default_client()
+        notify_start(self.__name__, messages, self.model)
         try:
             result = await client.acomplete(
                 messages, self.output, self.model, max_retries=self.max_retries
             )
         except Exception as exc:
+            err = _format_error(exc)
             record(
                 TraceRecord(
                     step=self.__name__,
                     messages=messages,
                     output=None,
                     model=self.model,
-                    error=_format_error(exc),
+                    error=err,
                 )
             )
+            notify_error(self.__name__, messages, self.model, err)
             raise
-        record(
-            TraceRecord(
-                step=self.__name__,
-                messages=messages,
-                output=result.output,
-                model=self.model,
-                usage=result.usage,
-            )
+        rec = TraceRecord(
+            step=self.__name__,
+            messages=messages,
+            output=result.output,
+            model=self.model,
+            usage=result.usage,
         )
+        record(rec)
+        notify_end(rec)
         return result.output
 
     async def astream(self, *args: object, **kwargs: object) -> AsyncIterator[T]:
@@ -163,6 +173,7 @@ class AsyncStep[T: BaseModel]:
         user_content = await ret if inspect.isawaitable(ret) else ret
         messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
         client = self.client or get_default_client()
+        notify_start(self.__name__, messages, self.model)
         last: T | None = None
         try:
             async for partial in client.astream(
@@ -171,24 +182,26 @@ class AsyncStep[T: BaseModel]:
                 last = partial
                 yield partial
         except Exception as exc:
+            err = _format_error(exc)
             record(
                 TraceRecord(
                     step=self.__name__,
                     messages=messages,
                     output=None,
                     model=self.model,
-                    error=_format_error(exc),
+                    error=err,
                 )
             )
+            notify_error(self.__name__, messages, self.model, err)
             raise
-        record(
-            TraceRecord(
-                step=self.__name__,
-                messages=messages,
-                output=last,
-                model=self.model,
-            )
+        rec = TraceRecord(
+            step=self.__name__,
+            messages=messages,
+            output=last,
+            model=self.model,
         )
+        record(rec)
+        notify_end(rec)
 
 
 def step[T: BaseModel](

@@ -34,6 +34,7 @@ from .client import (
     set_default_client,
 )
 from .flow import AsyncFlow, Flow, flow
+from .hooks import StepHook, add_hook, clear_hooks, remove_hook
 from .step import AsyncStep, Step, step
 from .tool import Tool, tool
 from .trace import Trace, TraceRecord, trace
@@ -51,12 +52,16 @@ __all__ = [
     "Flow",
     "InstructorClient",
     "Step",
+    "StepHook",
     "Tool",
     "Trace",
     "TraceRecord",
     "Usage",
+    "add_hook",
+    "clear_hooks",
     "flow",
     "get_default_client",
+    "remove_hook",
     "set_default_client",
     "step",
     "tool",

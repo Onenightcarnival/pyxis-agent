@@ -31,6 +31,9 @@
   对接 log collector / OpenTelemetry 后端仍未做。
 - **并行 step 工具** —— `@flow` 的 fan-out/gather 工效糖，超越裸
   `asyncio.gather`。
+- ~~**中间件 hook**~~（已于 [规格 011](specs/011-hook.md) 以**只读观察者**
+  形式落地：`StepHook` + `add_hook` / `remove_hook` / `clear_hooks`；
+  刻意不给 hook 留修改 messages / output 的能力）。
 - **对话式记忆** —— 历史记录的 helper（仍只通过参数传入；不藏隐式状态）。
 - **CLI** —— `pyxis run path/to/flow.py`，附带 env-file 支持、dry-run、
   trace-as-JSON 输出。

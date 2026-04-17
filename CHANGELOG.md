@@ -16,6 +16,15 @@
   `kind: Literal[...] = ...` 字段、参数推成 Pydantic 字段、函数本体接管
   `run()`。工具的定义成本降到"就是一个函数"。真实 LLM 小 agent 场景
   已跑通 `7*6=42` 用 `@tool` 写的 calculate + finish。
+- **观察者中间件 StepHook**（[规格 011](specs/011-hook.md)）——三个回调
+  `on_start` / `on_end` / `on_error` 在每个 Step 的同步、异步、流式三条
+  路径上统一触发。全局注册 `add_hook()` / `remove_hook()` / `clear_hooks()`；
+  单个 hook 内的异常不影响其他 hook 与主流程，仅走 `warnings.warn` 提示。
+  刻意做成**只读观察者**以守护"schema as workflow"哲学：不给 hook 留
+  修改 messages / output / usage 的口子。
+- **示例画廊**：新增 `examples/streaming_demo.py`（流式字段逐个填满）、
+  `examples/plan_then_execute.py`（plan-then-execute + hook 打点），
+  加上已有的 `research.py` 与 `agent_tool_use.py` 共四个典型 agent 模式。
 - **流式输出**（[规格 010](specs/010-流式输出.md)）——`Step.stream(...)` 与
   `AsyncStep.astream(...)` 按 schema 字段顺序逐步 yield partial 实例，
   让"schema 即思维链"变得肉眼可见。`Client` / `AsyncClient` 协议添加
