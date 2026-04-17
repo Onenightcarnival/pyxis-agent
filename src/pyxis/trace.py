@@ -12,6 +12,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -75,6 +76,19 @@ class Trace:
     def to_json(self, **json_kwargs: Any) -> str:
         """转成 JSON 字符串，`**json_kwargs` 透传给 `json.dumps`。"""
         return json.dumps(self.to_dict(), **json_kwargs)
+
+    def to_jsonl(self, path: str | Path) -> None:
+        """以 append 模式把每条 TraceRecord 写成一行 JSON。
+
+        - `ensure_ascii=False`：中文不被 escape 成 `\\uXXXX`，日志肉眼可读。
+        - 文件不存在会自动创建；父目录必须存在（显式优于隐式，不递归创建）。
+        - 空 trace 仍会打开并关闭文件（确认可写），但不写任何内容。
+        """
+        p = Path(path)
+        with p.open("a", encoding="utf-8") as f:
+            for rec in self.records:
+                f.write(json.dumps(rec.to_dict(), ensure_ascii=False))
+                f.write("\n")
 
 
 _current: ContextVar[Trace | None] = ContextVar("pyxis_trace", default=None)

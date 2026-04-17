@@ -146,7 +146,7 @@ def test_live_tool_decorator_agent(openrouter: InstructorClient, model: str) -> 
         thought: str
         action: Action
 
-    @step(output=Decision, model=model, client=openrouter)
+    @step(output=Decision, model=model, max_retries=2, client=openrouter)
     def decide(question: str, scratch: str) -> str:
         """你是一个会推理的 agent。先思考，再恰好发一次工具调用，
         拿到答案用 `finish` 结束。"""

@@ -34,6 +34,9 @@
 - `Client` / `AsyncClient`：provider 无关的 LLM 接口，返回
   `CompletionResult[T]`（output + 可选 `Usage`）。生产用 instructor
   背后的真 client，测试用 `FakeClient`。
+- `pyxis.providers.openrouter_client()` / `openai_client()`：一行拿到
+  已配好 sync + async 两路的 `InstructorClient`；未提供 api_key 时
+  自动读对应环境变量。
 - `trace()` + `TraceRecord`：基于 `ContextVar` 的可观测性，跨 asyncio
   task 自动传播。记录带 `usage`；`Trace.to_dict()` / `to_json()` /
   `total_usage()` 负责导出。
@@ -54,6 +57,7 @@ src/pyxis/        库代码
   trace.py        Trace / TraceRecord + trace() 上下文管理器
   client.py       Client + AsyncClient 协议、CompletionResult、
                   Usage、FakeClient、InstructorClient
+  providers.py    provider 便捷工厂：openrouter_client、openai_client
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
 specs/            SDD 规格 —— 每个迭代一份 markdown

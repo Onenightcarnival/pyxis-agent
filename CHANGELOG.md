@@ -16,6 +16,12 @@
   `kind: Literal[...] = ...` 字段、参数推成 Pydantic 字段、函数本体接管
   `run()`。工具的定义成本降到"就是一个函数"。真实 LLM 小 agent 场景
   已跑通 `7*6=42` 用 `@tool` 写的 calculate + finish。
+- **Provider 工厂与 JSONL 落盘**（[规格 008](specs/008-providers-and-jsonl.md)）——
+  `pyxis.providers.openrouter_client()` 与 `openai_client()` 一行拿到
+  已配好 sync + async 两路的 `InstructorClient`（未传 api_key 时自动读
+  环境变量并给出带变量名的错误消息）。`Trace.to_jsonl(path)` 以 append
+  模式把每条 `TraceRecord` 写成一行 JSON，`ensure_ascii=False` 让中文
+  肉眼可读。examples/*.py 迁到工厂 API。
 
 ### 变更
 

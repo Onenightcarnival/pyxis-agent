@@ -12,11 +12,10 @@ from __future__ import annotations
 
 import os
 
-import instructor
-from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import InstructorClient, flow, set_default_client, step
+from pyxis import flow, set_default_client, step
+from pyxis.providers import openrouter_client
 
 MODEL = "openai/gpt-5.4-nano"
 
@@ -66,9 +65,7 @@ def research(topic: str) -> Plan:
 
 
 def _configure_openrouter() -> None:
-    key = os.environ["OPENROUTER_API_KEY"]
-    openai = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
-    set_default_client(InstructorClient(instructor.from_openai(openai)))
+    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
 
 
 def main() -> None:

@@ -12,17 +12,19 @@
   可选的指数退避（目前 max_retries 直接转给 instructor，无退避）。
 - ~~**`@tool` 装饰器糖** —— 从普通函数的签名 + docstring 自动生成 Tool 子类~~
   （已于 [规格 007](specs/007-tool-装饰器.md) 实现）。
-- **Provider 便捷工厂** —— `openrouter_client(api_key=...)`、
-  `anthropic_client(...)`、`openai_client(...)` 返回就绪的 `InstructorClient`。
-  框架保持 provider 无关；工厂是可选糖。
+- ~~**Provider 便捷工厂** —— `openrouter_client(api_key=...)`、
+  `openai_client(...)` 返回就绪的 `InstructorClient`~~（已于
+  [规格 008](specs/008-providers-and-jsonl.md) 实现；`anthropic_client`
+  仍未做——instructor 对 Anthropic 的调用面不同，留到 v1.1）。
 - **类型化 `@step` 重载** —— 一对 `@overload` 让 mypy / pyright 在调用处
   准确推断 `Step[T]` 或 `AsyncStep[T]`，不再落到 `Any`。
 
 ## 中期候选
 
 - **成本估算** —— 可选的 per-model 费率表，把 Usage 换算到货币。
-- **Trace 持久化** —— JSONL sink，把 trace 推到文件 / log collector /
-  OpenTelemetry 后端。
+- **Trace 持久化** —— ~~JSONL sink 到文件~~（已于
+  [规格 008](specs/008-providers-and-jsonl.md) 实现基础版 `Trace.to_jsonl`）；
+  对接 log collector / OpenTelemetry 后端仍未做。
 - **并行 step 工具** —— `@flow` 的 fan-out/gather 工效糖，超越裸
   `asyncio.gather`。
 - **对话式记忆** —— 历史记录的 helper（仍只通过参数传入；不藏隐式状态）。
