@@ -20,43 +20,52 @@ declarative CoT = code as prompt + schema as workflow
 
 The framework intentionally refuses to invent a DSL for explicit orchestration — Python already has `if`, `for`, and functions. We only supply:
 
-- `@step(output=...)` — decorator turning a prompt function into a typed, callable LLM step.
-- `@flow` — thin wrapper giving explicit flows a context for tracing and config injection.
-- `Client` — provider-agnostic LLM interface (instructor-backed real clients + a `FakeClient` for tests).
+- `@step(output=...)` — decorator turning a prompt function into a typed, callable LLM step. Sync `def` → `Step[T]`; async `async def` → `AsyncStep[T]`.
+- `@flow` — thin wrapper giving explicit flows a `.run_traced(...)` convenience. Same sync/async dispatch.
+- `Tool` — `BaseModel` subclass with `run() -> str`. Actions are schemas; `run()` is the code. The LLM emits a tool by filling a discriminated-union `action` field; Python dispatches via `isinstance` / `action.run()`.
+- `Client` / `AsyncClient` — provider-agnostic LLM interfaces (instructor-backed real clients + a `FakeClient` for tests).
+- `trace()` + `TraceRecord` — `ContextVar`-based observability that works across asyncio tasks.
 
-Non-goals: graph DSLs, YAML pipelines, node-based editors, hidden reactivity. If it can be a Python function, it is one.
+Non-goals: graph DSLs, YAML pipelines, node-based editors, hidden reactivity, function-calling adapters, agent-loop helpers. If it can be a Python function, it is one.
 
 ## Layout
 
 ```
 src/pyxis/        library code
-  step.py         @step decorator + Step primitive
-  flow.py         @flow decorator + run context
-  client.py       Client protocol + instructor-backed impl + FakeClient
+  step.py         Step / AsyncStep + @step decorator
+  flow.py         Flow / AsyncFlow + @flow decorator
+  tool.py         Tool base class
+  trace.py        Trace / TraceRecord + trace() context manager
+  client.py       Client + AsyncClient protocols, FakeClient, InstructorClient
 tests/            pytest suite (uses FakeClient, no network)
+tests/integration/ live LLM smoke tests — require OPENROUTER_API_KEY
 specs/            SDD specs — one markdown file per primitive/iteration
-examples/         runnable demos
+examples/         runnable demos against OpenRouter
 ```
 
 ## Dev workflow
 
 - Package manager: **uv** (`uv sync`, `uv run`). Never use pip directly.
 - Lint/format: **ruff** (`uv run ruff check`, `uv run ruff format`).
-- Tests: **pytest** (`uv run pytest`). All tests must pass without network.
-- Python: **3.12+**.
+- Tests: **pytest** (`uv run pytest`). Unit tests must pass without network.
+- Integration: `uv run --env-file .env pytest tests/integration/` (needs `OPENROUTER_API_KEY`).
+- Python: **3.12+**. Use PEP 695 generics (`class Foo[T: Base]`, `def f[T: Base]`).
+- Keep CLAUDE.md synced with every feature iteration.
 
 ## Iteration methodology: SDD + TDD
 
 Each iteration lands as **one commit** shaped like:
 
-1. Write `specs/NNN-<name>.md` — short spec: purpose, API sketch, acceptance criteria.
+1. Write `specs/NNN-<name>.md` — short spec: purpose, API sketch, acceptance criteria, non-goals.
 2. Write failing tests in `tests/` that reflect the spec.
 3. Implement until tests pass.
 4. Run `uv run ruff format && uv run ruff check && uv run pytest`.
-5. Commit with message referencing the spec.
+5. Run the integration suite with a key when touching Client, Step, or provider wiring.
+6. Update CLAUDE.md and README if the public surface changed.
+7. Commit with a message referencing the spec.
 
 Specs are contracts, not design docs. Keep them under ~40 lines; if a spec grows, split the iteration.
 
 ## Testing contract
 
-Tests never hit a real LLM. The `FakeClient` returns canned Pydantic instances keyed by `(response_model, call_index)`. If you need to assert prompt content, capture it via the fake's `.calls` log.
+Unit tests never hit a real LLM. The `FakeClient` returns queued Pydantic instances in order (same queue for sync and async paths), records every call in `.calls`, and raises on exhaustion or type mismatch. If you need to assert prompt content, capture it via the fake's `.calls` log. Integration smoke tests live under `tests/integration/` and self-skip when the env var is absent.
