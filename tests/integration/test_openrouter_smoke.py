@@ -6,11 +6,12 @@ Load via `uv run --env-file .env pytest tests/integration/`.
 
 from __future__ import annotations
 
+import asyncio
 import os
 
 import instructor
 import pytest
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from pydantic import BaseModel, Field
 
 from pyxis import InstructorClient, flow, step, trace
@@ -22,8 +23,10 @@ def openrouter() -> InstructorClient:
     if not key:
         pytest.skip("OPENROUTER_API_KEY not set; skipping integration test")
     base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-    openai_client = OpenAI(api_key=key, base_url=base_url)
-    return InstructorClient(instructor.from_openai(openai_client))
+    return InstructorClient(
+        instructor_client=instructor.from_openai(OpenAI(api_key=key, base_url=base_url)),
+        async_instructor_client=instructor.from_openai(AsyncOpenAI(api_key=key, base_url=base_url)),
+    )
 
 
 @pytest.fixture(scope="module")
@@ -78,3 +81,25 @@ def test_flow_multi_step_with_trace(openrouter: InstructorClient, model: str) ->
     assert [r.step for r in t.records] == ["classify", "summarize"]
     assert isinstance(t.records[0].output, Classification)
     assert isinstance(t.records[1].output, Summary)
+
+
+def test_async_parallel_steps_share_trace(openrouter: InstructorClient, model: str) -> None:
+    @step(output=Classification, model=model, client=openrouter)
+    async def classify(text: str) -> str:
+        """You classify text. Observe, categorize, score."""
+        return text
+
+    async def fan_out():
+        with trace() as t:
+            results = await asyncio.gather(
+                classify("Python 3.12 supports PEP 695 type parameters."),
+                classify("Claude supports long context windows."),
+                classify("The capital of France is Paris."),
+            )
+        return results, t
+
+    results, t = asyncio.run(fan_out())
+    assert len(results) == 3
+    assert all(isinstance(r, Classification) for r in results)
+    assert len(t.records) == 3
+    assert all(r.step == "classify" for r in t.records)

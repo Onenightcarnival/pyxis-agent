@@ -3,6 +3,7 @@
 A `Client` makes one structured LLM call: messages + response model -> instance.
 Production uses `InstructorClient` (instructor-patched provider SDK).
 Tests use `FakeClient` (canned responses, no network).
+Both ship sync and async variants.
 """
 
 from __future__ import annotations
@@ -18,9 +19,21 @@ Message = dict[str, str]
 
 @runtime_checkable
 class Client(Protocol):
-    """Minimal structured-completion interface."""
+    """Minimal structured-completion interface (sync)."""
 
     def complete[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+    ) -> T: ...
+
+
+@runtime_checkable
+class AsyncClient(Protocol):
+    """Async sibling of `Client`."""
+
+    async def acomplete[T: BaseModel](
         self,
         messages: list[Message],
         response_model: type[T],
@@ -40,11 +53,8 @@ class FakeCall:
 class FakeClient:
     """Deterministic client for tests — returns queued responses in order.
 
-    Queued responses are returned sequentially regardless of call site.
-    Each call is appended to `.calls` for assertion.
-
-    Raises `RuntimeError` when exhausted; `TypeError` when a queued response
-    isn't an instance of the requested `response_model`.
+    Implements both `Client` and `AsyncClient` protocols. The async path
+    delegates to the sync path (same queue, same call log, same errors).
     """
 
     def __init__(self, responses: Iterable[BaseModel]):
@@ -76,20 +86,45 @@ class FakeClient:
             )
         return resp
 
+    async def acomplete[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+    ) -> T:
+        return self.complete(messages, response_model, model)
+
 
 class InstructorClient:
-    """Instructor-backed client. Default = `instructor.from_openai(OpenAI())`.
+    """Instructor-backed client; sync + async.
 
-    Pass a pre-patched instructor client to swap providers (Anthropic, etc.).
+    Both backends are lazily constructed from OpenAI defaults when unset.
+    Pass pre-patched instructor clients to swap providers (Anthropic, etc.).
     """
 
-    def __init__(self, instructor_client: Any = None):
-        if instructor_client is None:
+    def __init__(
+        self,
+        instructor_client: Any = None,
+        async_instructor_client: Any = None,
+    ):
+        self._sync = instructor_client
+        self._async = async_instructor_client
+
+    def _get_sync(self) -> Any:
+        if self._sync is None:
             import instructor
             from openai import OpenAI
 
-            instructor_client = instructor.from_openai(OpenAI())
-        self._client = instructor_client
+            self._sync = instructor.from_openai(OpenAI())
+        return self._sync
+
+    def _get_async(self) -> Any:
+        if self._async is None:
+            import instructor
+            from openai import AsyncOpenAI
+
+            self._async = instructor.from_openai(AsyncOpenAI())
+        return self._async
 
     def complete[T: BaseModel](
         self,
@@ -97,7 +132,19 @@ class InstructorClient:
         response_model: type[T],
         model: str,
     ) -> T:
-        return self._client.chat.completions.create(  # type: ignore[no-any-return]
+        return self._get_sync().chat.completions.create(  # type: ignore[no-any-return]
+            messages=messages,
+            response_model=response_model,
+            model=model,
+        )
+
+    async def acomplete[T: BaseModel](
+        self,
+        messages: list[Message],
+        response_model: type[T],
+        model: str,
+    ) -> T:
+        return await self._get_async().chat.completions.create(
             messages=messages,
             response_model=response_model,
             model=model,
@@ -106,21 +153,25 @@ class InstructorClient:
 
 @dataclass
 class _DefaultClient:
-    client: Client | None = None
-    _lazy: Client | None = field(default=None, repr=False)
+    client: Any = None
+    _lazy: Any = field(default=None, repr=False)
 
 
 _default = _DefaultClient()
 
 
-def set_default_client(client: Client | None) -> None:
-    """Install a process-wide default client. `None` resets to lazy InstructorClient."""
+def set_default_client(client: Any) -> None:
+    """Install a process-wide default client. `None` resets to lazy InstructorClient.
+
+    The client should implement `Client` and/or `AsyncClient` depending on
+    which step flavors you'll use.
+    """
     _default.client = client
     _default._lazy = None
 
 
-def get_default_client() -> Client:
-    """Resolve the current default client, constructing `InstructorClient` lazily."""
+def get_default_client() -> Any:
+    """Resolve the current default client, lazily constructing InstructorClient."""
     if _default.client is not None:
         return _default.client
     if _default._lazy is None:

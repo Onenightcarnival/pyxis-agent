@@ -4,6 +4,7 @@ code as prompt + schema as workflow.
 """
 
 from .client import (
+    AsyncClient,
     Client,
     FakeCall,
     FakeClient,
@@ -11,14 +12,17 @@ from .client import (
     get_default_client,
     set_default_client,
 )
-from .flow import Flow, flow
-from .step import Step, step
+from .flow import AsyncFlow, Flow, flow
+from .step import AsyncStep, Step, step
 from .tool import Tool
 from .trace import Trace, TraceRecord, trace
 
 __version__ = "0.1.0"
 
 __all__ = [
+    "AsyncClient",
+    "AsyncFlow",
+    "AsyncStep",
     "Client",
     "FakeCall",
     "FakeClient",
