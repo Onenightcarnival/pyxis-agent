@@ -13,6 +13,7 @@ from collections.abc import Callable
 from pydantic import BaseModel
 
 from .client import Client, Message, get_default_client
+from .trace import TraceRecord, record
 
 DEFAULT_MODEL = "gpt-4o-mini"
 
@@ -48,7 +49,16 @@ class Step[T: BaseModel]:
             messages.append({"role": "system", "content": self.system_prompt})
         messages.append({"role": "user", "content": user_content})
         client = self.client or get_default_client()
-        return client.complete(messages, self.output, self.model)
+        result = client.complete(messages, self.output, self.model)
+        record(
+            TraceRecord(
+                step=self.__name__,
+                messages=messages,
+                output=result,
+                model=self.model,
+            )
+        )
+        return result
 
 
 def step[T: BaseModel](
