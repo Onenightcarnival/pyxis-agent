@@ -1,6 +1,6 @@
 [project]
 name = "pyxis-agent"
-version = "0.2.0"
+version = "1.0.0"
 description = "Declarative chain-of-thought agent framework: code as prompt, schema as workflow."
 readme = "README.md"
 requires-python = ">=3.12"

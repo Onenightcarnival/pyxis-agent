@@ -3,7 +3,11 @@
 本文件按 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 的格式
 记录每次发布，版本号遵守 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [1.0.0] — 2026-04-18
+
+首个稳定版本。0.2.0 → 1.0.0 的跨度覆盖：项目中文化、`@tool` 装饰器糖、
+provider 工厂、JSONL 落盘、错误可见性、流式输出、观察者中间件、示例
+画廊。此后 API 保持向后兼容，按语义化版本演进。
 
 ### 新增
 
@@ -16,40 +20,48 @@
   `kind: Literal[...] = ...` 字段、参数推成 Pydantic 字段、函数本体接管
   `run()`。工具的定义成本降到"就是一个函数"。真实 LLM 小 agent 场景
   已跑通 `7*6=42` 用 `@tool` 写的 calculate + finish。
-- **观察者中间件 StepHook**（[规格 011](specs/011-hook.md)）——三个回调
-  `on_start` / `on_end` / `on_error` 在每个 Step 的同步、异步、流式三条
-  路径上统一触发。全局注册 `add_hook()` / `remove_hook()` / `clear_hooks()`；
-  单个 hook 内的异常不影响其他 hook 与主流程，仅走 `warnings.warn` 提示。
-  刻意做成**只读观察者**以守护"schema as workflow"哲学：不给 hook 留
-  修改 messages / output / usage 的口子。
-- **示例画廊**：新增 `examples/streaming_demo.py`（流式字段逐个填满）、
-  `examples/plan_then_execute.py`（plan-then-execute + hook 打点），
-  加上已有的 `research.py` 与 `agent_tool_use.py` 共四个典型 agent 模式。
-- **流式输出**（[规格 010](specs/010-流式输出.md)）——`Step.stream(...)` 与
-  `AsyncStep.astream(...)` 按 schema 字段顺序逐步 yield partial 实例，
-  让"schema 即思维链"变得肉眼可见。`Client` / `AsyncClient` 协议添加
-  `stream` / `astream` 方法；`FakeClient` 模拟单帧流用于单测；
-  `InstructorClient` 直连 instructor 的 `create_partial` 产出真实流。
-  流完整消费后写一条 TraceRecord（output 为最终帧，usage 暂不提供）；
-  流中途异常写 error 记录再重抛。真实 LLM 已跑通渐进式 Analysis 填字段。
-- **错误可见性**（[规格 009](specs/009-错误可见性.md)）——`@step` / `@astep`
-  在 `client.complete` 抛任意异常时先写一条 `error` 非空的 `TraceRecord`
-  （`output=None`），再重抛原异常（保留 traceback）。`TraceRecord.error`
-  字段为 `str | None`；`Trace.errors()` 返回所有失败记录；`to_dict` /
-  `to_json` / `to_jsonl` 一并支持 `error` 字段与 `output: None` 的序列化。
-  调试结构化输出失败时，用户终于能看到完整的调用历史与具体失败原因。
 - **Provider 工厂与 JSONL 落盘**（[规格 008](specs/008-providers-and-jsonl.md)）——
   `pyxis.providers.openrouter_client()` 与 `openai_client()` 一行拿到
   已配好 sync + async 两路的 `InstructorClient`（未传 api_key 时自动读
   环境变量并给出带变量名的错误消息）。`Trace.to_jsonl(path)` 以 append
   模式把每条 `TraceRecord` 写成一行 JSON，`ensure_ascii=False` 让中文
   肉眼可读。examples/*.py 迁到工厂 API。
+- **错误可见性**（[规格 009](specs/009-错误可见性.md)）——`@step` / `@astep`
+  在 `client.complete` 抛任意异常时先写一条 `error` 非空的 `TraceRecord`
+  （`output=None`），再重抛原异常（保留 traceback）。`TraceRecord.error`
+  字段为 `str | None`；`Trace.errors()` 返回所有失败记录；`to_dict` /
+  `to_json` / `to_jsonl` 一并支持 `error` 字段与 `output: None` 的序列化。
+- **流式输出**（[规格 010](specs/010-流式输出.md)）——`Step.stream(...)` 与
+  `AsyncStep.astream(...)` 按 schema 字段顺序逐步 yield partial 实例，
+  让"schema 即思维链"变得肉眼可见。`Client` / `AsyncClient` 协议添加
+  `stream` / `astream` 方法；`FakeClient` 模拟单帧流用于单测；
+  `InstructorClient` 直连 instructor 的 `create_partial` 产出真实流。
+- **观察者中间件 StepHook**（[规格 011](specs/011-hook.md)）——三个回调
+  `on_start` / `on_end` / `on_error` 在每个 Step 的同步、异步、流式三条
+  路径上统一触发。全局注册 `add_hook()` / `remove_hook()` / `clear_hooks()`；
+  单个 hook 内的异常不影响其他 hook 与主流程，仅走 `warnings.warn` 提示。
+  刻意做成**只读观察者**以守护"schema as workflow"哲学。
+- **示例画廊**：新增 `examples/streaming_demo.py`（流式字段逐个填满）、
+  `examples/plan_then_execute.py`（plan-then-execute + hook 打点），
+  加上已有的 `research.py` 与 `agent_tool_use.py` 共四个典型 agent 模式。
+- **对比文档**（[docs/对比.md](docs/对比.md)）——诚实地对比 pyxis 与
+  LangGraph / DSPy：何时选 pyxis、何时该选别的、同一个"分析 + 规划"
+  例子三种框架下的代码放一起看。
 
 ### 变更
 
 - 所有既存的 README、CLAUDE.md、CHANGELOG、ROADMAP、规格 001–005、
   源码 docstring、示例 docstring 一次性重写为中文。Commit 历史按惯例
   不做破坏性重写。
+- ruff 规则：禁用 `RUF001/002/003`（全角标点是中文写作里的正常形态）。
+
+### 质量
+
+- 133 个测试全绿：127 单元（零网络）+ 6 真实 LLM 烟雾（OpenRouter +
+  `openai/gpt-5.4-nano`）。
+- 11 份规格文档（001–011）落档；每份对应一次 commit。
+- 新增语言规约测试：24 个关键文件（README、CLAUDE、CHANGELOG、ROADMAP、
+  specs/*、src/pyxis/*）均被强制要求至少 100 个 CJK 字符。
 
 ## [0.2.0] — 2026-04-18
 

@@ -175,3 +175,11 @@ uv run --env-file .env pytest tests/integration/     # 真实 LLM 烟雾测试
 [CHANGELOG.md](CHANGELOG.md) 记录版本历史；[ROADMAP.md](ROADMAP.md) 列出
 待办项以及那些**故意不做**的事（违反核心哲学的都在这一段）。设计
 依据见 [CLAUDE.md](CLAUDE.md)。
+
+## 和 LangGraph / DSPy 的关系
+
+一句话：pyxis 不和它们抢"功能最全"或"自动调优"。pyxis 赌的是**可读性
+与哲学一致性**——一个项目里的每个 LLM 调用都长得像一个普通 Python 函数，
+每条思维链都是一段 Pydantic schema。诚实的三框架对比见
+[docs/对比.md](docs/对比.md)（含"分析 + 规划"这个同一例子在三种框架下
+的代码放一起看）。
