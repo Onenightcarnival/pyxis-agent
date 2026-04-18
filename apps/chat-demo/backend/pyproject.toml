@@ -1,0 +1,17 @@
+[project]
+name = "pyxis-chat-demo-backend"
+version = "0.1.0"
+description = "pyxis chat-demo 的 FastAPI + SSE 后端（应用，非库）。"
+requires-python = ">=3.12"
+dependencies = [
+    "pyxis-agent",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.30",
+]
+
+[tool.uv.sources]
+# 把本地的 pyxis-agent 作为 editable 依赖装进来，monorepo 风格
+pyxis-agent = { path = "../../..", editable = true }
+
+[tool.uv]
+package = false  # 这只是个应用，不需要打包

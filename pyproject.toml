@@ -26,6 +26,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyxis"]
 
+[tool.hatch.build]
+# 打包 wheel/sdist 时排除 apps/ 里的示例应用
+exclude = ["apps"]
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",
@@ -38,6 +42,8 @@ dev = [
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+# apps/ 是示例应用的 monorepo，自己管自己，不走库的 lint 通道
+extend-exclude = ["apps"]
 
 [tool.ruff.lint]
 select = [

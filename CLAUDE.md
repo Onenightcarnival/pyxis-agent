@@ -77,7 +77,10 @@ src/pyxis/        库代码
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
 specs/            SDD 规格 —— 每个迭代一份 markdown
-examples/         跑得起来的 demo（默认接 OpenRouter）
+examples/         跑得起来的单文件 demo（默认接 OpenRouter）
+apps/             monorepo 风格的示例应用（非库；打包时 exclude）
+  chat-demo/      FastAPI + Vite+React+TS：一个开关切换
+                  Chat / Inspect 两种前端渲染风格
 ```
 
 ## 开发流
@@ -92,6 +95,9 @@ examples/         跑得起来的 demo（默认接 OpenRouter）
 - **语言**：项目以中文为主（见 [规约 006](specs/006-中文化.md)）。
   散文、docstring、异常消息用中文；标识符、commit 前缀、配置 key 用英文。
 - **文档必须与代码同步**：公共面变了就改 CLAUDE.md / README / CHANGELOG。
+- **apps/ 不是库**：`ruff` 与打包都 `exclude = ["apps"]`；apps/ 里的应用
+  有自己的 `pyproject.toml` / `package.json`，依赖库通过本地 path
+  link（`tool.uv.sources.pyxis-agent = { path = "../../..", editable = true }`）。
 
 ## 迭代方法：SDD + TDD
 

@@ -193,6 +193,17 @@ uv run --env-file .env python examples/research.py
 uv run --env-file .env python examples/agent_tool_use.py
 ```
 
+## 带前端的聊天应用示例
+
+`apps/chat-demo/` 是一个完整的 **FastAPI + Vite+React+TS** 聊天应用，
+展示同一份后端流式数据下、前端**一键切换**两种渲染风格：
+
+- **Chat view**：`{role, content}` 气泡流（用户熟悉心智）
+- **Inspect view**：Pydantic schema 字段逐个亮起（pyxis 独特的可视化）
+
+这是"展示层归应用代码"的活证据——schema 是结构化骨架，怎么渲染由前端
+自由决定。跑起来见 [apps/chat-demo/README.md](apps/chat-demo/README.md)。
+
 ## 开发
 
 ```bash

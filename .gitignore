@@ -180,3 +180,14 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 .idea
+
+# Claude Code 本地工作目录（launch.json 是机器本地的 dev server 配置）
+.claude/
+
+# apps/ 前端：Node 产物
+node_modules/
+apps/*/frontend/dist/
+
+# Vite / TSC 缓存
+*.tsbuildinfo
+.vite/

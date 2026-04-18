@@ -3,6 +3,28 @@
 本文件按 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 的格式
 记录每次发布，版本号遵守 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新增
+
+- **`apps/chat-demo/` —— 带前端的聊天应用示例**。monorepo 风格的子目录
+  应用（非库，打包时 exclude）。
+  - 后端：FastAPI + pyxis，POST `/chat` 返回 SSE 流，逐帧推 partial
+    Pydantic JSON（`ChatReply{thought, response}`）。历史由前端维护并
+    随请求发来，后端无状态。
+  - 前端：Vite + React + TS + Tailwind。顶部 **Chat / Inspect** 视图切换：
+    - Chat view：`{role, content}` 气泡流，只显示 `response`（熟悉心智）；
+    - Inspect view：schema 字段逐个亮起（`thought` 先 filled、`response`
+      后 filled），schema-as-CoT 的可视化。
+  - 两种视图**共享同一份后端流式数据**，按一下开关就是"展示层归应用代码"
+    的活证据——schema 在两种渲染风格下同时自然。
+  - 多轮对话直接可跑：第二轮能正确引用第一轮语境。
+  - 详见 [apps/chat-demo/README.md](apps/chat-demo/README.md)。
+- 根 `pyproject.toml` 加 `[tool.hatch.build] exclude = ["apps"]` 与 ruff
+  `extend-exclude = ["apps"]`。
+- `.gitignore` 加 `node_modules/`、`apps/*/frontend/dist/`、`.claude/`、
+  `*.tsbuildinfo`。
+
 ## [1.1.0] — 2026-04-18
 
 两处关键 use case 补齐：**人工介入多轮对话** 与 **托管级可观测性**。
