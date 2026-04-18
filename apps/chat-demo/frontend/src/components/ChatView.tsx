@@ -25,7 +25,9 @@ export function ChatView({ messages }: { messages: ChatMessage[] }) {
 function Bubble({ m }: { m: ChatMessage }) {
   const isUser = m.role === "user";
   const text = isUser ? m.content : (m.reply?.response ?? "");
+  // "正在想"=流式但 response 尚未开始填；"正在打字"=已开始填到 response
   const showTyping = !isUser && m.streaming && !text;
+  const showCaret = !isUser && m.streaming && !!text;
   return (
     <div className={"flex " + (isUser ? "justify-end" : "justify-start")}>
       <div
@@ -41,7 +43,15 @@ function Bubble({ m }: { m: ChatMessage }) {
         ) : showTyping ? (
           <TypingDots />
         ) : (
-          text || <span className="text-zinc-400">（空）</span>
+          <>
+            {text || <span className="text-zinc-400">（空）</span>}
+            {showCaret && (
+              <span
+                aria-hidden="true"
+                className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-[caret-blink_900ms_steps(2,end)_infinite] bg-zinc-500 align-middle"
+              />
+            )}
+          </>
         )}
       </div>
     </div>

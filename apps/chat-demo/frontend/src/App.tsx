@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { ChatView } from "./components/ChatView";
 import { InspectView } from "./components/InspectView";
 import { ViewToggle } from "./components/ViewToggle";
@@ -47,44 +48,53 @@ export default function App() {
     const ac = new AbortController();
     abortRef.current = ac;
 
+    // React 18 在 async 回调里会 automatic-batch 多次 setState，SSE 的
+    // 打字机效果会被合成一次 flush。用 flushSync 强制每一帧立刻提交到
+    // DOM，才能真的看到字段一字一字填满。
+    const applyPartial = (thought: string | null, response: string | null) =>
+      flushSync(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  reply: { thought, response },
+                  content: response ?? "",
+                }
+              : m,
+          ),
+        );
+      });
+
     try {
       for await (const frame of streamChat(text, historyForServer, ac.signal)) {
         if (frame.kind === "partial") {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? {
-                    ...m,
-                    reply: {
-                      thought: frame.thought,
-                      response: frame.response,
-                    },
-                    content: frame.response ?? "",
-                  }
-                : m,
-            ),
-          );
+          applyPartial(frame.thought, frame.response);
         } else if (frame.kind === "done") {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? {
-                    ...m,
-                    reply: frame.final,
-                    content: frame.final.response ?? "",
-                    streaming: false,
-                  }
-                : m,
-            ),
-          );
+          flushSync(() => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      reply: frame.final,
+                      content: frame.final.response ?? "",
+                      streaming: false,
+                    }
+                  : m,
+              ),
+            );
+          });
         } else if (frame.kind === "error") {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, streaming: false, error: frame.message }
-                : m,
-            ),
-          );
+          flushSync(() => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, streaming: false, error: frame.message }
+                  : m,
+              ),
+            );
+          });
         }
       }
     } catch (e) {

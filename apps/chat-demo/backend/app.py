@@ -113,7 +113,15 @@ async def _stream_reply(req: ChatRequest) -> AsyncIterator[bytes]:
 
 @app.post("/chat")
 async def chat(req: ChatRequest) -> StreamingResponse:
-    return StreamingResponse(_stream_reply(req), media_type="text/event-stream")
+    # 关键头：阻止各层代理/浏览器把流攒起来一次性交付
+    headers = {
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",  # nginx / 某些反代的"别缓冲" hint
+    }
+    return StreamingResponse(
+        _stream_reply(req), media_type="text/event-stream", headers=headers
+    )
 
 
 @app.get("/healthz")
