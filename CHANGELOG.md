@@ -3,30 +3,45 @@
 本文件按 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 的格式
 记录每次发布，版本号遵守 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [1.1.0] — 2026-04-18
+
+两处关键 use case 补齐：**人工介入多轮对话** 与 **托管级可观测性**。
+核心 API 向后兼容 1.0.0；新增能力都走新入口，老代码不用改。
 
 ### 新增
 
-- **Langfuse 零侵入接入指南** ——
-  新增 [docs/langfuse.md](docs/langfuse.md) 与
-  [examples/with_langfuse.py](examples/with_langfuse.py)。接入方式不在
-  pyxis 里加任何代码：用户把 `OpenAI` 的 import 换成
-  `from langfuse.openai import OpenAI`，塞进 `instructor.from_openai(...)`，
-  其他代码完全不动。CLAUDE.md 与 README 都显式把可观测性拆成两层
-  （框架层 trace / LLM 层 langfuse），各司其职，不重复造。
 - **Human-in-the-loop**（[规格 012](specs/012-human-in-the-loop.md)）——
   `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起等人回答；
   `run_flow` / `run_aflow` 驱动生成器，把 `on_ask` 的返回值（可选
   Pydantic 验证）`.send()` 回去。异步生成器用 `yield finish(value)`
-  替代 `return value`（Python 禁用语法限制）。不走 checkpoint，生成器
-  本身就是活的状态；跨进程恢复不做。
+  替代 `return value`（Python 禁用语法限制）。不走 checkpoint——生成器
+  本身就是活的状态；跨进程恢复是用户的事。
   - 配套示例 `examples/human_review.py`：LLM 产计划 → 终端审核 →
     根据意见迭代最多 3 轮。
   - 真实 LLM live smoke：plan + review 路径跑通。
   - 18 个新单元测试覆盖同步/异步生成器、schema 验证、多轮对话、
     异常透传、finish 哨兵、metadata 保留。
-- **tool-decorator live smoke 稳定性**：`max_retries=2` → `3` 让 LLM 偶发
-  schema 不匹配时有更多重试机会。
+  - 多轮对话 use case 无需额外 API：把 `yield ask_human` 放进
+    `while True` 就是 chat session。
+- **Langfuse 零侵入接入指南** ——
+  新增 [docs/langfuse.md](docs/langfuse.md) 与
+  [examples/with_langfuse.py](examples/with_langfuse.py)。接入方式不在
+  pyxis 里加任何代码：用户把 `OpenAI` 的 import 换成
+  `from langfuse.openai import OpenAI`，塞进 `instructor.from_openai(...)`，
+  其他代码完全不动。
+  - 可观测性被显式拆成**两层**：框架层 pyxis `trace()`（Step 名、
+    Pydantic schema、flow 结构、错误可见性）+ LLM 层 langfuse
+    （prompt / response / token / 延迟、跨服务 trace 拼接）。
+  - 两层同时开、互不干扰。pyxis 不再造 dashboard。
+
+### 变更
+
+- `tool-decorator` live smoke 的 `max_retries` 从 2 升到 3，应付 LLM
+  偶发的 schema 不匹配。
+- ROADMAP 标记"对接 OpenTelemetry"在框架层不再做——走 Langfuse 或用户
+  自己写 `StepHook` 就够了。
+
+## [1.0.0] — 2026-04-18
 
 ## [1.0.0] — 2026-04-18
 

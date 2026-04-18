@@ -47,7 +47,7 @@ from .step import AsyncStep, Step, step
 from .tool import Tool, tool
 from .trace import Trace, TraceRecord, trace
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = [
     "AsyncClient",
