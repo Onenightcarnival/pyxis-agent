@@ -3,6 +3,24 @@
 本文件按 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 的格式
 记录每次发布，版本号遵守 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新增
+
+- **Human-in-the-loop**（[规格 012](specs/012-human-in-the-loop.md)）——
+  `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起等人回答；
+  `run_flow` / `run_aflow` 驱动生成器，把 `on_ask` 的返回值（可选
+  Pydantic 验证）`.send()` 回去。异步生成器用 `yield finish(value)`
+  替代 `return value`（Python 禁用语法限制）。不走 checkpoint，生成器
+  本身就是活的状态；跨进程恢复不做。
+  - 配套示例 `examples/human_review.py`：LLM 产计划 → 终端审核 →
+    根据意见迭代最多 3 轮。
+  - 真实 LLM live smoke：plan + review 路径跑通。
+  - 18 个新单元测试覆盖同步/异步生成器、schema 验证、多轮对话、
+    异常透传、finish 哨兵、metadata 保留。
+- **tool-decorator live smoke 稳定性**：`max_retries=2` → `3` 让 LLM 偶发
+  schema 不匹配时有更多重试机会。
+
 ## [1.0.0] — 2026-04-18
 
 首个稳定版本。0.2.0 → 1.0.0 的跨度覆盖：项目中文化、`@tool` 装饰器糖、

@@ -35,6 +35,14 @@ from .client import (
 )
 from .flow import AsyncFlow, Flow, flow
 from .hooks import StepHook, add_hook, clear_hooks, remove_hook
+from .human import (
+    FlowResult,
+    HumanQuestion,
+    ask_human,
+    finish,
+    run_aflow,
+    run_flow,
+)
 from .step import AsyncStep, Step, step
 from .tool import Tool, tool
 from .trace import Trace, TraceRecord, trace
@@ -50,6 +58,8 @@ __all__ = [
     "FakeCall",
     "FakeClient",
     "Flow",
+    "FlowResult",
+    "HumanQuestion",
     "InstructorClient",
     "Step",
     "StepHook",
@@ -58,10 +68,14 @@ __all__ = [
     "TraceRecord",
     "Usage",
     "add_hook",
+    "ask_human",
     "clear_hooks",
+    "finish",
     "flow",
     "get_default_client",
     "remove_hook",
+    "run_aflow",
+    "run_flow",
     "set_default_client",
     "step",
     "tool",

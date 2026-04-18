@@ -146,7 +146,7 @@ def test_live_tool_decorator_agent(openrouter: InstructorClient, model: str) -> 
         thought: str
         action: Action
 
-    @step(output=Decision, model=model, max_retries=2, client=openrouter)
+    @step(output=Decision, model=model, max_retries=3, client=openrouter)
     def decide(question: str, scratch: str) -> str:
         """你是一个会推理的 agent。先思考，再恰好发一次工具调用，
         拿到答案用 `finish` 结束。"""
@@ -198,3 +198,37 @@ def test_live_stream_yields_progressively(openrouter: InstructorClient, model: s
     (rec,) = t.records
     assert rec.output is not None
     assert rec.output.observation == final.observation
+
+
+def test_live_human_in_the_loop_review(openrouter: InstructorClient, model: str) -> None:
+    """真实 LLM 出计划 → 模拟人工审核后继续。"""
+    from pyxis import ask_human, flow, run_flow
+
+    class Plan(BaseModel):
+        goal: str = Field(description="一行复述目标")
+        steps: list[str] = Field(description="3-5 个具体步骤")
+
+    class Decision(BaseModel):
+        approve: bool
+        comments: str | None = None
+
+    @step(output=Plan, model=model, client=openrouter)
+    def make_plan(q: str) -> str:
+        """你是严谨的规划者。先复述目标，再列 3-5 个具体步骤。"""
+        return f"问题：{q}"
+
+    @flow
+    def plan_then_review(q: str):
+        plan = make_plan(q)
+        decision: Decision = yield ask_human("审核", schema=Decision, plan=plan.goal)
+        if not decision.approve:
+            return {"status": "rejected"}
+        return {"status": "done", "plan_goal": plan.goal}
+
+    # 脚本式 on_ask：直接批准
+    result = run_flow(
+        plan_then_review("怎么演示声明式 CoT 框架？"),
+        on_ask=lambda q: Decision(approve=True),
+    )
+    assert result["status"] == "done"
+    assert result["plan_goal"]

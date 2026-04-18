@@ -132,6 +132,37 @@ async def research(topics: list[str]) -> list[Analysis]:
 asyncio.run(research(["x", "y", "z"]))
 ```
 
+## 人在中间（Human-in-the-loop）
+
+把 `@flow` 写成**生成器**，中间 `yield ask_human(...)` 挂起；`run_flow`
+驱动生成器、把人类答案 `.send()` 回去。没有 checkpoint、没有状态快照——
+生成器本身就是活的状态。
+
+```python
+from pydantic import BaseModel
+from pyxis import ask_human, flow, run_flow, step
+
+class Decision(BaseModel):
+    approve: bool
+    comments: str | None = None
+
+@flow
+def plan_with_review(q: str):
+    plan = make_plan(q)
+    d: Decision = yield ask_human("审核计划？", schema=Decision, plan=plan.model_dump())
+    if not d.approve:
+        return {"status": "rejected", "comments": d.comments}
+    return {"status": "done", "plan": plan}
+
+result = run_flow(
+    plan_with_review("做一个博客"),
+    on_ask=lambda q: Decision(approve=input("y/N: ").lower() == "y"),
+)
+```
+
+完整跑起来的示例见 [examples/human_review.py](examples/human_review.py)。
+多轮对话同一个模板：把 `yield ask_human` 放进 `while True` 就是 chat session。
+
 ## 没 API key 也能测
 
 `FakeClient` 本身就在库里。它按队列顺序返回预置的 Pydantic 实例，记录

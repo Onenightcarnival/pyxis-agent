@@ -50,6 +50,11 @@
 - `StepHook`：只读观察者中间件，三个回调 `on_start` / `on_end` / `on_error`。
   通过 `add_hook()` / `remove_hook()` / `clear_hooks()` 管理。用来接
   Prometheus、Slack 告警、OpenTelemetry；**不**允许修改 messages / output。
+- `ask_human` / `finish` / `run_flow` / `run_aflow`：human-in-the-loop。
+  `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起；驱动器把
+  人类答案 `.send()` 回生成器。没有 checkpoint、没有状态快照——生成器
+  本身就是活的状态。异步生成器里用 `yield finish(value)` 作终态哨兵
+  （Python 禁用 async gen 的值返回）。
 
 **不做的事**（违反核心哲学）：图式 DSL、YAML pipeline、节点编辑器、
 隐式响应式状态、function-calling 协议适配、把 agent loop 藏进框架。
@@ -67,6 +72,8 @@ src/pyxis/        库代码
                   Usage、FakeClient、InstructorClient
   providers.py    provider 便捷工厂：openrouter_client、openai_client
   hooks.py        StepHook + add_hook/remove_hook/clear_hooks 观察者钩子
+  human.py        HumanQuestion / FlowResult / ask_human / finish /
+                  run_flow / run_aflow 人工介入原语
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
 specs/            SDD 规格 —— 每个迭代一份 markdown

@@ -35,6 +35,8 @@
   形式落地：`StepHook` + `add_hook` / `remove_hook` / `clear_hooks`；
   刻意不给 hook 留修改 messages / output 的能力）。
 - **对话式记忆** —— 历史记录的 helper（仍只通过参数传入；不藏隐式状态）。
+  （多轮对话已经可以用 human-in-the-loop 生成器 flow 直接写，
+  [规格 012](specs/012-human-in-the-loop.md)；是否再加 helper 看需求。）
 - **CLI** —— `pyxis run path/to/flow.py`，附带 env-file 支持、dry-run、
   trace-as-JSON 输出。
 
