@@ -67,3 +67,20 @@ pnpm dev
 用 `exclude = ["apps"]` 把它从 wheel 打包里移除；`ruff` / `pytest` 也都
 跳过 `apps/`，保持库本体清爽。未来可以再加别的示例应用（agent 市场
 浏览器、代码审查 agent 等），都走这个 `apps/<name>/` 的约定。
+
+## 诚实的丝滑度说明
+
+pyxis 是 **agent-for-machine** 阵营：LLM 直接产出 `ChatReply{thought, response}`
+给代码消费，Chat view 的气泡是前端**从字段里拿 `response` 出来再渲染**
+的结果。这和 Claude Desktop / ChatGPT "LLM 直出文本给人看" 的路径不同。
+
+实际体感上：
+
+- **Chat view 的丝滑度永远不如**原生 chat app——后端要把 `thought` 和
+  `response` 两个字段都流式填（schema-as-CoT），用户才看见 response
+  的 caret 开始跳。token 到字段到屏幕的链路比"直出文本"多了一步。
+- **Inspect view 才是 pyxis 的主场**——你能肉眼看到 `thought` 先 filled、
+  `response` 后 filled。每一轮都是可解析、可断言、可入库的 Pydantic。
+
+这个开关**就是两种哲学的并置**：想看"给人"的体感切 Chat，想看"给机器"
+的本质切 Inspect。要求 pyxis 两个都做到极致是贪心——它的赢点在右边。

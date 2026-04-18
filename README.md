@@ -1,8 +1,26 @@
 # pyxis-agent
 
-**声明式思维链的 Python agent 框架。**
+**声明式思维链的 Python agent 框架 —— agent-for-machine 阵营。**
 
 > **`声明式思维链 = code as prompt + schema as workflow`**
+
+## 定位一句话
+
+**pyxis 把 LLM 当"带自然语言理解能力的结构化数据生成器"，不是"对话伙伴"。**
+LLM 的直接输出喂给下一段 Python 代码消费；给人看的东西是应用层用 schema
+字段拼出来的（CLI / Web UI / Slack 各自渲染，schema 一份）。
+
+| | Claude Desktop 风 | pyxis |
+|---|---|---|
+| LLM 直出 | 给人看的自然语言 | 给机器解析的 Pydantic |
+| 对话丝滑度 | 高 | 低（先填 schema） |
+| 可测、可审计、可回放 | 低 | 高 |
+
+要和 Claude Desktop / ChatGPT 比聊天丝滑度，pyxis 会输。它的战场在别处：
+**把 LLM 嵌进 pipeline、业务 agent、多 agent 机器对机器协作**——那些需要
+每一轮 LLM 输出都**能被代码消费、能写断言、能回归测试**的场景。
+
+## 为什么不是另一个 LangChain
 
 市面上的 agent 框架，要么给你一个节点图 DSL（"LLM 版 Airflow"），要么
 把推理藏进不透明的 `chain.run()` 里。pyxis 换一条路：

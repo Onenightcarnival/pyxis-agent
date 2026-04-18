@@ -7,6 +7,14 @@
 
 ### 新增
 
+- **顶层定位加一层**：项目被重新定位为 **agent-for-machine** 阵营——
+  LLM 直接输出喂给下一段 Python 代码消费，不喂给人眼。这句话比"声明式
+  思维链"更易 catch，明确告诉读者 pyxis 服务谁、不服务谁。落到
+  CLAUDE.md（新加"定位"段 + 对照 Claude Desktop 的表）、README（新加
+  "定位一句话"段）、ROADMAP 的"故意不做"段（加了"对标 Claude Desktop
+  丝滑度"这条）、`examples/human_review.py` 顶 docstring（加"诚实提示"
+  承认 HITL 丝滑度权衡）、`apps/chat-demo/README.md`（加"诚实的丝滑度
+  说明"，解释 Chat view 永远不如原生 chat app 的原因）。
 - **`apps/chat-demo/` —— 带前端的聊天应用示例**。monorepo 风格的子目录
   应用（非库，打包时 exclude）。
   - 后端：FastAPI + pyxis，POST `/chat` 返回 SSE 流，逐帧推 partial

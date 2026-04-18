@@ -2,7 +2,27 @@
 
 以**声明式思维链（declarative chain-of-thought）**为组织哲学的 agent 框架。
 
-## 核心哲学
+## 定位：agent-for-machine
+
+> **LLM 的直接输出喂给下一段 Python 代码消费，不是喂给人眼消费。**
+> **给人看的东西由应用层用 schema 字段拼出来。**
+
+| | Claude Desktop / ChatGPT 风 | pyxis |
+|---|---|---|
+| LLM 直接输出 | 给人看的自然语言 | 给机器解析的 Pydantic |
+| 人能看的东西来自 | LLM 本身 | 应用层渲染（`render_plan`、Chat view 从字段取气泡） |
+| 对话丝滑度 | 高 | 低（先填 schema 再渲染） |
+| 可测试 / 可审计 / 可回放 | 低（文本语义断言难） | 高（`==` 对 Pydantic 实例） |
+
+**赛道**：pyxis 不对标 Claude Desktop 的聊天丝滑度。它的 sweet spot 是
+**LLM 作为结构化数据生成器**：数据 pipeline 里的 LLM 节点、需要回归测试的
+业务 agent、多 agent 之间机器对机器协作、LLM 产出入库/分析的场景。
+
+想做丝滑 chat app，直接用 Anthropic SDK 的 native tool use 更直；
+想做 prompt 自动调优，用 DSPy；想做多 agent 图，用 LangGraph。
+pyxis 不抢这些位子。
+
+## 核心机制
 
 ```
 声明式思维链 = code as prompt + schema as workflow

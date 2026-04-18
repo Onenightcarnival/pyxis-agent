@@ -56,6 +56,10 @@
   想用 provider 的 function-calling 就直接用 instructor。
 - 隐藏的响应式状态或全局可变 agent context。显式传参。
 - 把 agent loop 藏进框架的 helper。loop 是用户自己的 `@flow`。
+- **对标 Claude Desktop / ChatGPT 的对话丝滑度**。pyxis 是 agent-for-machine
+  阵营，LLM 直接输出是结构化 Pydantic（给代码消费），给人看的东西是
+  应用层再拼出来的——天然就丝滑不过"LLM 直出文本"的原生 chat app。
+  想做人机聊天流畅体验直接用 Anthropic SDK 的 native tool use。
 
 ## 怎么贡献一个迭代
 
