@@ -7,6 +7,13 @@
 
 ### 新增
 
+- **Langfuse 零侵入接入指南** ——
+  新增 [docs/langfuse.md](docs/langfuse.md) 与
+  [examples/with_langfuse.py](examples/with_langfuse.py)。接入方式不在
+  pyxis 里加任何代码：用户把 `OpenAI` 的 import 换成
+  `from langfuse.openai import OpenAI`，塞进 `instructor.from_openai(...)`，
+  其他代码完全不动。CLAUDE.md 与 README 都显式把可观测性拆成两层
+  （框架层 trace / LLM 层 langfuse），各司其职，不重复造。
 - **Human-in-the-loop**（[规格 012](specs/012-human-in-the-loop.md)）——
   `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起等人回答；
   `run_flow` / `run_aflow` 驱动生成器，把 `on_ask` 的返回值（可选

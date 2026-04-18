@@ -207,6 +207,20 @@ uv run --env-file .env pytest tests/integration/     # 真实 LLM 烟雾测试
 待办项以及那些**故意不做**的事（违反核心哲学的都在这一段）。设计
 依据见 [CLAUDE.md](CLAUDE.md)。
 
+## 可观测性
+
+两层分工：
+
+| 层 | 工具 | 场景 |
+|----|------|------|
+| 框架层 | pyxis `trace()` / `TraceRecord` / `to_jsonl` / `StepHook` | 单测、本地 debug、自家日志 |
+| LLM 层 | Langfuse、OpenTelemetry 等 | 生产 dashboard、告警、回归分析 |
+
+pyxis 不在框架里造第二个 dashboard——世上已经有 Langfuse。接入方式是
+**零侵入**：换一个 `OpenAI` 的 import，其他代码完全不动。两层可以同时
+开。完整接入指南：[docs/langfuse.md](docs/langfuse.md)；可跑示例：
+[examples/with_langfuse.py](examples/with_langfuse.py)。
+
 ## 和 LangGraph / DSPy 的关系
 
 一句话：pyxis 不和它们抢"功能最全"或"自动调优"。pyxis 赌的是**可读性

@@ -113,3 +113,17 @@ examples/         跑得起来的 demo（默认接 OpenRouter）
 （同一队列服务同步与异步路径），每次调用写入 `.calls`；用尽或类型不匹配
 抛异常。需要断言 prompt 内容时，就用 `.calls`。集成烟雾测试放
 `tests/integration/`，没有环境变量时整体 skip，保证 CI 不依赖外部。
+
+## 可观测性分两层
+
+不在框架里造 dashboard —— 世上已经有 Langfuse、OpenTelemetry 这些。
+
+| 层 | 工具 | 关心什么 |
+|----|------|---------|
+| 框架层 | pyxis `trace()` / `TraceRecord` / `StepHook` | Step 名、Pydantic schema、flow 结构、错误可见性 |
+| LLM 层 | Langfuse（或 OpenTelemetry 等） | 原始 prompt / response / token / 延迟、跨服务 trace 拼接 |
+
+接 Langfuse 的方式是**零侵入**：换个 import（`from langfuse.openai import OpenAI`）
+塞进 `instructor.from_openai(...)`，其他代码完全不动。细节见
+[docs/langfuse.md](docs/langfuse.md)。pyxis 本地 `trace()` 与 Langfuse
+可以同时开、互不干扰。

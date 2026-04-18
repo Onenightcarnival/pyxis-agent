@@ -28,7 +28,10 @@
 - **成本估算** —— 可选的 per-model 费率表，把 Usage 换算到货币。
 - **Trace 持久化** —— ~~JSONL sink 到文件~~（已于
   [规格 008](specs/008-providers-and-jsonl.md) 实现基础版 `Trace.to_jsonl`）；
-  对接 log collector / OpenTelemetry 后端仍未做。
+  对接 **Langfuse** 已由其自己的 `from langfuse.openai import OpenAI`
+  实现零侵入接入（见 [docs/langfuse.md](docs/langfuse.md)）；
+  对接 log collector / OpenTelemetry 后端在框架层仍不做——走 Langfuse
+  或用户自己写 `StepHook` 就够了。
 - **并行 step 工具** —— `@flow` 的 fan-out/gather 工效糖，超越裸
   `asyncio.gather`。
 - ~~**中间件 hook**~~（已于 [规格 011](specs/011-hook.md) 以**只读观察者**
