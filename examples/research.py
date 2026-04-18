@@ -68,21 +68,39 @@ def _configure_openrouter() -> None:
     set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
 
 
+# ---- 展示层：给人看的时候拿字段拼自然语言。这段属于应用代码。 ----
+#
+# schema 是给 LLM 的结构化骨架（机器可读）；trace 是 debug 用的（JSON 合
+# 适）；但给用户看的最终产出，应该是按 schema 字段拼出来的自然语言。
+# pyxis 刻意不替你做这一步——schema 字段是你自己定义的，对不同前端
+# （CLI / Web / Slack）渲染方式都不一样。
+
+
+def render_plan(p: Plan) -> str:
+    lines = [f"目标：{p.goal}", "", "步骤："]
+    for i, s in enumerate(p.steps, 1):
+        lines.append(f"  {i}. {s}")
+    lines.extend(["", f"下一步：{p.next_action}"])
+    return "\n".join(lines)
+
+
 def main() -> None:
     _configure_openrouter()
     result, t = research.run_traced("用声明式思维链搭一个 agent 框架")
 
+    # TRACE 是 debug 视图，JSON 合适（给工具 / 机器看）
     print("=" * 60)
-    print("TRACE")
+    print("TRACE（机器可读）")
     print("=" * 60)
     for i, rec in enumerate(t.records, 1):
         print(f"\n[{i}] step={rec.step}  model={rec.model}")
         print(rec.output.model_dump_json(indent=2))
 
+    # FINAL 是给人看的，自然语言拼字段
     print("\n" + "=" * 60)
-    print("FINAL")
+    print("最终计划（给人看）")
     print("=" * 60)
-    print(result.model_dump_json(indent=2))
+    print(render_plan(result))
 
 
 if __name__ == "__main__":

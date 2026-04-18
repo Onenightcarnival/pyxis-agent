@@ -4,13 +4,19 @@
 1. `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起等人拍板。
 2. `run_flow(gen, on_ask=...)` 驱动：把问题丢给回调，把答案 send 回生成器。
 
+顺带演示一条原则 —— **展示层属于上层开发者，框架不替你做**。
+
+Pydantic schema 是给 LLM 推理的结构化骨架（schema-as-CoT）；给人看的
+时候，拿字段自己拼自然语言（见下方 `_render_plan`）。换成 Web UI、
+Slack bot、微信机器人，**只需换这个渲染函数**，schema / step / flow 全
+不用动。统一成"JSON dump"给用户看是谁都不爽的偷懒。
+
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/human_review.py
 """
 
 from __future__ import annotations
 
-import json
 import os
 
 from pydantic import BaseModel, Field
@@ -53,20 +59,41 @@ def plan_with_review(question: str, max_rounds: int = 3):
         decision: ReviewDecision = yield ask_human(
             "请审阅这个计划",
             schema=ReviewDecision,
-            plan=plan.model_dump(),
+            plan=plan,  # 直接把 Plan 实例塞进 context，怎么渲染留给 on_ask 决定
         )
         if decision.approve:
-            return {"status": "approved", "plan": plan.model_dump()}
+            return {"status": "approved", "plan": plan}
         plan = refine_plan(question, plan, decision.comments or "请更加具体")
-    return {"status": "max_rounds_reached", "last_plan": plan.model_dump()}
+    return {"status": "max_rounds_reached", "last_plan": plan}
+
+
+# ---- 展示层：拿 Pydantic 字段拼自然语言。这段属于"应用代码"，不属于框架。 ----
+
+
+def render_plan(plan: Plan) -> str:
+    """把 Plan 渲染成给人看的自然语言。
+
+    换 Web UI 就是换这一段；换 Slack 就把换行改成 Markdown；加"纯文本
+    机器人"就写成一段连贯的话。schema 字段是你自己定义的，怎么拼你说
+    了算。
+    """
+    lines = [f"目标：{plan.goal}", "", "步骤："]
+    for i, step_text in enumerate(plan.steps, 1):
+        lines.append(f"  {i}. {step_text}")
+    return "\n".join(lines)
 
 
 def terminal_on_ask(q) -> ReviewDecision:
-    """一个最朴素的命令行前端。真实场景可以换成 Web UI / Slack bot。"""
-    print("\n======  人工审核点  ======")
+    """终端前端：渲染自然语言，接收 y/N + 意见。
+
+    on_ask 拿到 HumanQuestion 之后怎么展示、怎么收答案，完全是这一层
+    的自由。框架管的只是"把问题交给你、把你的答案送回生成器"。
+    """
+    print("\n=======  人工审核点  =======")
     print(q.question)
-    print("\n上下文：")
-    print(json.dumps(q.context, indent=2, ensure_ascii=False))
+    print()
+    plan: Plan = q.context["plan"]
+    print(render_plan(plan))
     approve = input("\n批准？[y/N] ").strip().lower() == "y"
     comments = None
     if not approve:
@@ -82,8 +109,16 @@ def main() -> None:
         on_ask=terminal_on_ask,
     )
 
-    print("\n======  结果  ======")
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    print("\n=======  结果  =======")
+    status = result["status"]
+    if status == "approved":
+        print("[已批准] 最终计划：\n")
+        print(render_plan(result["plan"]))
+    elif status == "rejected":
+        print(f"[被驳回] 意见：{result.get('comments', '无')}")
+    else:
+        print("[达到轮数上限] 最后一版：\n")
+        print(render_plan(result["last_plan"]))
 
 
 if __name__ == "__main__":
