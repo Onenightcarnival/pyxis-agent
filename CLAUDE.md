@@ -71,7 +71,7 @@ pyxis 不抢这些位子。
 | **显式**（多次 LLM 调用） | 纯 Python 代码 | 调用**之间**的组合、分支、循环 |
 
 框架刻意拒绝为显式编排发明 DSL —— Python 本身就有 `if`、`for`、函数组合。
-我们只提供这些原语：
+我们只提供这些概念：
 
 - `@step(output=...)`：把 prompt 函数变成类型化的 LLM 调用。同步 `def` 得到
   `Step[T]`；异步 `async def` 得到 `AsyncStep[T]`。
@@ -137,7 +137,7 @@ src/pyxis/        库代码
   providers.py    provider 便捷工厂：openrouter_client、openai_client
   hooks.py        StepHook + add_hook/remove_hook/clear_hooks 观察者钩子
   human.py        HumanQuestion / FlowResult / ask_human / finish /
-                  run_flow / run_aflow 人工介入原语
+                  run_flow / run_aflow 人工介入相关的核心概念
   mcp.py          MCPServer / StdioMCP / HttpMCP / mcp_toolset MCP 适配层
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
@@ -149,7 +149,7 @@ apps/             monorepo 风格的示例应用（非库；打包时 exclude）
   mcp-demo/       FastAPI + Vite+React+TS：native Tool + MCP server
                   混合注册的可视化（工具清单 + agent 每步 + source 徽章）
 docs/             MkDocs Material 文档站源（规格 014、015、016）
-  concepts/       哲学与每个原语的概念说明 + observability.md（Langfuse 接入）
+  concepts/       哲学与每个概念的说明 + observability.md（Langfuse 接入）
   demos/          apps/ 两个示例应用的文档站路由页（规格 016）
   _hooks/         构建期钩子：
                     gen_api.py      每个模块翻成 API 页

@@ -1,6 +1,7 @@
 # Step：code-as-prompt
 
-`@step` 是 pyxis 最小的构件。它把一个 Python 函数包装成一次类型化的 LLM 调用。
+`@step` 是 pyxis 里最基本的一个概念——把一个 Python 函数包装成一次
+类型化的 LLM 调用。
 
 ## 最小例子
 
