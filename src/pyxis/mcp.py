@@ -1,6 +1,6 @@
 """MCP（Model Context Protocol）适配层：把一个 MCP server 变成一批 Tool 子类。
 
-职责范围（见 [specs/013-mcp.md](../../specs/013-mcp.md)）：
+职责范围：
 
 - `MCPServer` / `StdioMCP` / `HttpMCP`：声明式连接配置（Pydantic 数据）。
 - `mcp_toolset(server)`：异步上下文管理器；入口建立连接、发 `tools/list`、

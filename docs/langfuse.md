@@ -111,5 +111,5 @@ t.to_jsonl("logs/local.jsonl")    # 推本地日志
 
 ## 可运行示例
 
-完整的可跑示例见 [examples/with_langfuse.py](../examples/with_langfuse.py)；
+完整的可跑示例见 [examples/with_langfuse.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/with_langfuse.py)；
 装了 langfuse 就能跑，没装就友好提示并退出。

@@ -1,4 +1,4 @@
-"""Tool 原语：把动作声明成 schema。
+"""Tool：把动作声明成 schema。
 
 一个 `Tool` 就是一个 `BaseModel`：它的字段**就是**动作的参数，它的 `run()`
 **就是**动作的实现。LLM 通过在 Step 输出 schema 的 `action` 字段里填入

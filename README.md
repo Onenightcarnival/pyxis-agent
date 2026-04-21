@@ -4,6 +4,8 @@
 
 > **`声明式思维链 = code as prompt + schema as workflow`**
 
+**在线文档**：<https://onenightcarnival.github.io/pyxis-agent/>
+
 ## 定位一句话
 
 **pyxis 把 LLM 当"带自然语言理解能力的结构化数据生成器"，不是"对话伙伴"。**

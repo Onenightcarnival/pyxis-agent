@@ -1,7 +1,7 @@
 """Human-in-the-loop：用生成器 flow 在中间挂起等人。
 
-核心：`@flow` 本来就能接受生成器函数（`yield` + `return value`）。我们
-加三个配套原语——`HumanQuestion`（问什么）、`FlowResult`（终态哨兵）、
+核心：`@flow` 本来就能接受生成器函数（`yield` + `return value`）。围着
+它加三样东西——`HumanQuestion`（问什么）、`FlowResult`（终态哨兵）、
 `run_flow` / `run_aflow`（把生成器驱动起来并把人类答案 send 回去）。
 
 没有 checkpoint、没有 state 快照、没有特殊语法——生成器本身就是活的
@@ -70,7 +70,7 @@ def run_flow(
     *,
     on_ask: Callable[[HumanQuestion], Any],
 ) -> Any:
-    """同步驱动一个 `@flow` 生成器。详见 [规格 012](../specs/012-human-in-the-loop.md)。"""
+    """同步驱动一个 `@flow` 生成器。"""
     try:
         req = next(gen)
     except StopIteration as stop:

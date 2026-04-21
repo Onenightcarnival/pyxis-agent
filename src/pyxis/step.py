@@ -1,4 +1,4 @@
-"""Step 原语：一次 LLM 调用 + 结构即思维链（schema-as-CoT）。
+"""Step：一次 LLM 调用 + 结构即思维链（schema-as-CoT）。
 
 - **code-as-prompt**：函数的 docstring 是 system prompt，字符串返回是 user message。
 - **schema-as-CoT**：Pydantic 输出模型的字段顺序就是思维链——LLM 必须自上

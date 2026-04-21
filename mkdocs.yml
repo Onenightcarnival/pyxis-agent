@@ -1,0 +1,126 @@
+site_name: pyxis-agent
+site_description: 声明式思维链 agent 框架：code as prompt, schema as workflow
+site_url: https://onenightcarnival.github.io/pyxis-agent/
+repo_url: https://github.com/Onenightcarnival/pyxis-agent
+repo_name: pyxis-agent
+edit_uri: edit/main/docs/
+copyright: MIT License
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - search.highlight
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: 切换到暗色
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到亮色
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+extra_css:
+  - assets/custom.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - pymdownx.critic
+  - pymdownx.mark
+  - pymdownx.caret
+  - pymdownx.keys
+
+plugins:
+  - search:
+      lang:
+        - zh
+        - en
+  - gen-files:
+      scripts:
+        - docs/_hooks/gen_api.py
+        - docs/_hooks/gen_specs.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            docstring_section_style: table
+            members_order: source
+            filters: ["!^_"]
+
+nav:
+  - 首页: index.md
+  - 概念:
+      - concepts/index.md
+      - 哲学与定位: concepts/philosophy.md
+      - Step：code-as-prompt: concepts/step.md
+      - Flow：显式编排: concepts/flow.md
+      - Tool：action 即 schema: concepts/tool.md
+      - Hook：观察者: concepts/hooks.md
+      - human-in-the-loop: concepts/human.md
+      - MCP 适配: concepts/mcp.md
+  - API 参考:
+      - pyxis.step: api/step.md
+      - pyxis.flow: api/flow.md
+      - pyxis.tool: api/tool.md
+      - pyxis.client: api/client.md
+      - pyxis.providers: api/providers.md
+      - pyxis.trace: api/trace.md
+      - pyxis.hooks: api/hooks.md
+      - pyxis.human: api/human.md
+      - pyxis.mcp: api/mcp.md
+  - 附录:
+      - 对比其他框架: comparison.md
+      - 接入 Langfuse: langfuse.md
+      - 更新日志: changelog.md
+

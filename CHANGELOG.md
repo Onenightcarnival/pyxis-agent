@@ -7,6 +7,17 @@
 
 ### 新增
 
+- **在线文档站**（规格 014）。MkDocs Material + mkdocstrings[python]，单中文
+  （符合规约 006）。导航用 `navigation.tabs`——顶部横 tab（**首页 / 概念 /
+  API 参考 / 附录**）+ 左侧竖栏，横纵分明；首页讲 agent-for-machine 定位、
+  30 秒 hello world、两层编排、"故意不做"清单；概念指南 7 篇（哲学、Step、
+  Flow、Tool、Hook、human-in-the-loop、MCP），每篇带可跑 snippet；API 参考
+  由 `docs/_hooks/gen_api.py` 从源码 docstring 自动生成；CHANGELOG 由
+  `docs/_hooks/gen_specs.py` 挂入（链接重写过）。**specs/ 与 ROADMAP 不上站**
+  ——它们是团队内部资料，用户读的是站上的概念/API，需要源档案的人去仓库。
+  `.github/workflows/docs.yml`：push main → `mkdocs build --strict` →
+  `actions/deploy-pages` 发到 GitHub Pages。**验收底线**：`DISABLE_MKDOCS_2_WARNING=true
+  uv run --group docs mkdocs build --strict` 零警告。
 - **`HttpMCP` 对齐 Streamable HTTP 规范，兼容 FastMCP 写的 server**。
   原实现只认 `application/json` 响应体，遇到 FastMCP（`mcp.server.fastmcp`
   / 独立 `fastmcp` 包）默认的 SSE 格式响应会拿到 406/解析失败。升级后

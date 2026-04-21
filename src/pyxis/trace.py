@@ -1,4 +1,4 @@
-"""trace 原语：在作用域内捕获 Step 调用。
+"""trace：在作用域内捕获 Step 调用。
 
 一个 `Trace` 就是 `TraceRecord` 的集合。当前活跃的 trace 通过 `ContextVar`
 传播，因此在继承了 context 的 asyncio task 和普通线程里都能正常工作。

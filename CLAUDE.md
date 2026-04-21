@@ -147,6 +147,14 @@ apps/             monorepo 风格的示例应用（非库；打包时 exclude）
                   Chat / Inspect 两种前端渲染风格
   mcp-demo/       FastAPI + Vite+React+TS：native Tool + MCP server
                   混合注册的可视化（工具清单 + agent 每步 + source 徽章）
+docs/             MkDocs Material 文档站源（规格 014）
+  concepts/       哲学与每个原语的概念说明
+  _hooks/         构建期钩子：gen_api.py 把每个模块翻成 API 页；
+                  gen_specs.py 把 specs/*.md、CHANGELOG、ROADMAP 挂进站点
+  langfuse.md     接入 Langfuse 指南
+  comparison.md   与 LangGraph / DSPy 的对比
+mkdocs.yml        文档站配置
+.github/workflows/docs.yml  push main → mkdocs build --strict → GitHub Pages
 ```
 
 ## 开发流
@@ -164,6 +172,11 @@ apps/             monorepo 风格的示例应用（非库；打包时 exclude）
 - **apps/ 不是库**：`ruff` 与打包都 `exclude = ["apps"]`；apps/ 里的应用
   有自己的 `pyproject.toml` / `package.json`，依赖库通过本地 path
   link（`tool.uv.sources.pyxis-agent = { path = "../../..", editable = true }`）。
+- **文档站**：`uv run --group docs mkdocs serve` 本地预览；
+  `uv run --group docs mkdocs build --strict` 作为验收门槛。改过
+  源码 docstring 或 `specs/` 后最好本地跑一次 strict build。
+  动过 CLAUDE.md / README / CHANGELOG 里的相对链接时，留意 gen_specs.py
+  的重写规则是否需要更新（`docs/` 前缀、`apps/` / `examples/` 的 GitHub 跳转）。
 
 ## 迭代方法：SDD + TDD
 
@@ -197,5 +210,5 @@ apps/             monorepo 风格的示例应用（非库；打包时 exclude）
 
 接 Langfuse 的方式是**零侵入**：换个 import（`from langfuse.openai import OpenAI`）
 塞进 `instructor.from_openai(...)`，其他代码完全不动。细节见
-[docs/langfuse.md](docs/langfuse.md)。pyxis 本地 `trace()` 与 Langfuse
-可以同时开、互不干扰。
+[docs/langfuse.md](docs/langfuse.md)（在线版：文档站 → 附录 → 接入 Langfuse）。
+pyxis 本地 `trace()` 与 Langfuse 可以同时开、互不干扰。
