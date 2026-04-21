@@ -1,43 +1,27 @@
 # chat-demo
 
-多轮对话 agent，后端流式推 partial `ChatReply{thought, response}`，
-前端**一个开关**切换两种渲染风格：
+一个多轮对话 agent。后端用 `AsyncStep.astream(...)` 流式推 partial
+`ChatReply{thought, response}`。前端顶上一个 toggle，切两种渲染：
 
-- **Chat view**：标准 `{role, content}` 气泡流。`content` 取 schema 里的
-  `response` 字段。用户熟悉的聊天心智模型。
-- **Inspect view**：整个 Pydantic schema 展开，字段逐个"亮起"——
-  `thought` 先填完、`response` 再填完。schema-as-CoT 的可视化。
+- **Chat view**：常见的 `{role, content}` 气泡流，`content` 就是 schema
+  里的 `response` 字段。
+- **Inspect view**：把整个 schema 铺开，能看到 `thought` 先填完、
+  `response` 再填完。字段被 LLM 一个一个写进来的过程平时藏在 JSON 里，
+  这里直接画出来。
 
-同一份后端流，两种前端拼法。
+同一份后端流，两种前端拼法——后端吐的就是 Pydantic 实例，给人看哪些字段、
+怎么排版，应用层自己决定。
 
-## 为什么这个 demo 值得看
+有个诚实的 tradeoff：Chat view 的气泡出字速度永远不如原生 chat app。
+后端要把 `thought` 先流完，`response` 的 caret 才开始跳——schema-as-CoT
+多一步。聊天顺滑度优先的场景本来就不太该选 pyxis。
 
-它把 pyxis 一条核心原则落成了一个按钮：
+## 技术栈
 
-> **LLM 直接输出是给代码消费的结构化数据；给人看的东西由应用层从字段
-> 里拼出来。**
+- 后端：FastAPI + pyxis，单个 `POST /chat` 的 SSE 端点。
+- 前端：Vite + React + TS + Tailwind，`fetch` + `ReadableStream` 手解 SSE。
 
-Chat view 不是"pyxis 做不到丝滑"的道歉——它是应用层从结构化数据里
-**再渲染**出一层"像 ChatGPT 的体感"。Inspect view 才是 pyxis 的主场：
-schema 字段被 LLM 一个个填出来的过程，平时藏在 JSON 里，这里被直接
-画在屏幕上。
-
-这也是"和 Claude Desktop 对标丝滑度"被
-[ROADMAP 明确拒绝](https://github.com/Onenightcarnival/pyxis-agent/blob/main/ROADMAP.md#%E6%95%85%E6%84%8F%E4%B8%8D%E5%81%9A)
-的理由——token 到字段到屏幕比"LLM 直出文本"多一步，不可能追平；
-但**可审计 / 可断言 / 可入库**换来的东西，在 Inspect view 里看得一清二楚。
-
-## 技术形态
-
-- **后端**：FastAPI + pyxis，单个 `POST /chat` 的 SSE 端点，每帧一行
-  JSON（`partial` 与 `done` 两类），基于 `AsyncStep.astream(...)`。
-- **前端**：Vite + React + TypeScript + Tailwind，`fetch` + `ReadableStream`
-  手工解析 SSE。
-- **数据契约**在 app README 里有完整示例帧。
-
-## 跑起来 & 完整说明
-
-两个终端的启动命令、帧格式、目录结构、设计对照表都在
+启动命令、SSE 帧格式、目录结构都在
 [`apps/chat-demo/README.md`](https://github.com/Onenightcarnival/pyxis-agent/tree/main/apps/chat-demo)。
 
 源码：[`apps/chat-demo/`](https://github.com/Onenightcarnival/pyxis-agent/tree/main/apps/chat-demo)
