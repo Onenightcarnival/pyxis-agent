@@ -10,12 +10,12 @@
 
 ## 一句话
 
-pyxis 把 LLM 当成"带自然语言理解能力的结构化数据生成器"。每次 LLM 调用
-的直出是一个 Pydantic 实例，下一段 Python 代码直接消费；给人看的内容
-由应用层从字段里拼出来。
+- LLM = 带自然语言理解能力的**结构化数据生成器**
+- 每次调用直出一个 Pydantic 实例，下一段 Python 代码直接消费
+- 给人看的内容由应用层从字段里拼
 
-适合的场景：数据 pipeline 里的 LLM 节点、需要回归测试的业务 agent、
-多 agent 机器对机器协作。想要丝滑聊天 UI，用 Claude Desktop / ChatGPT 更顺手。
+**适合**：数据 pipeline 里的 LLM 节点 · 要回归测试的业务 agent · 多 agent 机器对机器协作。
+**不适合**：丝滑聊天 UI（用 Claude Desktop / ChatGPT 更顺手）。
 
 ## 安装
 
@@ -46,9 +46,10 @@ v = classify("今天简直完美")
 assert v.sentiment == "positive"
 ```
 
-两件事同时发生：函数 docstring 就是 system prompt，返回值就是 user
-message；`Verdict` 字段顺序（`sentiment` 在 `confidence` 前）就是 LLM
-的思维链。
+两件事同时发生：
+
+- **code as prompt** — 函数 docstring = system prompt，返回值 = user message
+- **schema as workflow** — `Verdict` 字段顺序（`sentiment` 在 `confidence` 前）= LLM 的思维链
 
 ## 继续读
 
@@ -84,6 +85,7 @@ uv run --env-file .env pytest tests/integration/     # 真实 LLM 烟雾测试
 uv run --group docs mkdocs build --strict            # 文档站验收
 ```
 
-迭代方法：SDD（`specs/` 里先写规格）+ TDD（先写失败测试）。
-版本变更历史见 `git log` 与 [GitHub Releases](https://github.com/Onenightcarnival/pyxis-agent/releases)；
-待办与"故意不做"见 [ROADMAP.md](ROADMAP.md)；设计依据见 [CLAUDE.md](CLAUDE.md)。
+- 迭代方法：**SDD**（`specs/` 里先写规格）+ **TDD**（先写失败测试）
+- 变更历史：`git log` + [GitHub Releases](https://github.com/Onenightcarnival/pyxis-agent/releases)
+- 待办与"故意不做"：[ROADMAP.md](ROADMAP.md)
+- 设计依据：[CLAUDE.md](CLAUDE.md)

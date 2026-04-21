@@ -1,8 +1,7 @@
 # pyxis 与其他 agent 框架的对比
 
-对象是 **LangGraph** 和 **DSPy**，这两个是当前 Python agent 生态里定位差异
-最明显的两家。本文给一张横向表，加几个典型维度的对比，帮你判断什么场景
-该选哪个。
+对标 **LangGraph** 与 **DSPy**——当前 Python agent 生态里定位差异最明显
+的两家。一张横向表 + 几个维度的细对比，帮你挑。
 
 ## TL;DR
 
@@ -49,8 +48,10 @@ def research(topic: str) -> Plan:
 result, t = research.run_traced("AI agents")
 ```
 
-**特点**：思维链在字段顺序里（`observation → reasoning → conclusion`），
-多步编排就是普通 Python 函数组合。
+**特点**
+
+- 思维链在字段顺序里（`observation → reasoning → conclusion`）
+- 多步编排就是普通 Python 函数组合
 
 ### LangGraph 的典型写法
 
@@ -81,8 +82,10 @@ graph = workflow.compile()
 result = graph.invoke({"topic": "AI agents"})
 ```
 
-**特点**：State 对象在节点之间传递，图被"编译"成一个可执行对象。
-结构化输出得自己用 Pydantic + parser 再拼一层。
+**特点**
+
+- State 对象在节点之间传递，图"编译"成可执行对象
+- 结构化输出得自己用 Pydantic + parser 再拼一层
 
 ### DSPy 的典型写法
 
@@ -114,81 +117,70 @@ class Research(dspy.Module):
 result = Research()(topic="AI agents")
 ```
 
-**特点**：`Signature` 很像 pyxis 的 Pydantic schema，但走自己的字段系统；
-多步编排在 `forward` 里。真正的卖点是 `teleprompter`（把 prompt 本身当成
-可训练参数），这在 pyxis 里完全不做。
+**特点**
+
+- `Signature` 类似 pyxis 的 Pydantic schema，但走自己的字段系统
+- 多步编排在 `forward` 里
+- 核心卖点是 `teleprompter`（prompt 当可训练参数）——pyxis 完全不做
 
 ## 几个维度的细对比
 
 ### 1. 编排层：DSL 还是 Python？
 
-- **LangGraph**：图 DSL。优点是能直接可视化状态机、适合复杂的条件分支
-  和回环；缺点是要理解"边 + 条件边 + 状态字段"的一整套语义。
-- **DSPy**：`Module.forward(...)` 就是 Python 函数，这一点和 pyxis 一样；
-  但 Signature 走自己的字段系统，不是纯 Pydantic。
-- **pyxis**：`@flow` 就是一个普通 Python 函数。循环用 `for`，分支用
-  `if`，并行用 `asyncio.gather`——没有第二层语义。
+- **LangGraph** — 图 DSL。能可视化状态机；要学"边 + 条件边 + 状态字段"一整套语义
+- **DSPy** — `Module.forward(...)` 是 Python 函数；但 `Signature` 走自己的字段系统
+- **pyxis** — `@flow` 是普通 Python 函数。`for` / `if` / `asyncio.gather`，没有第二层语义
 
 ### 2. 结构化输出
 
-- **LangGraph**：不是一等公民。需要 `with_structured_output(SchemaClass)`
-  或手动解析。
-- **DSPy**：`Signature` 的输出字段就是结构化的，类似 pyxis，但是 DSPy
-  自己的字段系统。
-- **pyxis**：Pydantic 是**唯一**的数据形状。输入是函数参数；输出是一个
-  Pydantic model。字段顺序直接被 LLM 当成思维链。
+- **LangGraph** — 不是一等公民，要 `with_structured_output(...)` 或手动解析
+- **DSPy** — `Signature` 输出字段是结构化的，但走自己的字段系统
+- **pyxis** — Pydantic 是**唯一**的数据形状，字段顺序 = 思维链
 
 ### 3. 工具调用
 
-- **LangGraph**：`ToolNode` + provider 的 function calling 协议。
-- **DSPy**：通过 `dspy.Tool` 或者直接用 function calling。
-- **pyxis**：工具是 `BaseModel + run()`；用 `Annotated[A | B, Field(discriminator="kind")]`
-  组成判别式联合作为 Step 输出 schema 的一个字段。LLM"选工具"就是
-  在填写 JSON；Python 用 `isinstance` + `.run()` 派发。不依赖 provider
-  的 function calling 协议。
+- **LangGraph** — `ToolNode` + provider 的 function calling 协议
+- **DSPy** — `dspy.Tool` 或 function calling
+- **pyxis** — 工具 = `BaseModel + run()`；`Annotated[A | B, Field(discriminator="kind")]` 做判别式联合；LLM 填 JSON 就是"选工具"；Python `isinstance` + `.run()` 派发。不依赖 provider 的 function calling
 
 ### 4. 可观测性
 
-- **LangGraph**：原生能跑 LangSmith，上线即送 trace 可视化。
-- **DSPy**：通过 callback 或 `dspy.inspect_history()`。
-- **pyxis**：生产直接接 [Langfuse](concepts/observability.md)（换个 import 即可）；
-  测试 / 本地 debug 用内置 `trace()` + `TraceRecord` + `FakeClient`；要接
-  Prometheus / OTel / Slack 告警就写 `StepHook`。框架本身不做 dashboard。
+- **LangGraph** — 原生跑 LangSmith，上线即送 trace 可视化
+- **DSPy** — callback 或 `dspy.inspect_history()`
+- **pyxis** — 生产接 [Langfuse](concepts/observability.md)（换 import）· 测试用 `trace()` + `FakeClient` · Prometheus / OTel / Slack 告警写 `StepHook`。框架不做 dashboard
 
 ### 5. 测试
 
-- **LangGraph**：mock LLM 得自己搭。状态机的 assertion 面比函数大。
-- **DSPy**：类似。
-- **pyxis**：`FakeClient([响应, ...])` + `fake.calls` 调用日志 +
-  `TraceRecord` 对错误路径完整可断言。单测零网络是设计目标。
+- **LangGraph / DSPy** — mock LLM 自己搭；状态机的 assertion 面比函数大
+- **pyxis** — `FakeClient([响应, ...])` + `fake.calls` + `TraceRecord` 全路径可断言。单测零网络是设计目标
 
 ### 6. 学习成本
 
-上手一个新框架要多久？粗略的"从零到写出第一个能跑的 agent"：
+从零到第一个能跑的 agent：
 
-- pyxis：读 README 的上手段（~5 分钟）+ Pydantic 已有知识 → **15 分钟**。
-- LangGraph：要读 `StateGraph` / 节点 / 边 / 条件边 / checkpointer →
-  **1–2 小时**。
-- DSPy：要读 Signature / Module / Teleprompter → **1–2 小时**。
+- **pyxis** — README 上手段 + Pydantic 知识 → ~15 分钟
+- **LangGraph** — 要学 `StateGraph` / 节点 / 边 / 条件边 / checkpointer → 1–2 小时
+- **DSPy** — 要学 Signature / Module / Teleprompter → 1–2 小时
 
 ## 什么时候选 pyxis？
 
-- 团队已经在用 Pydantic，不想多学一个字段系统。
-- 想一眼能看懂 agent 做了什么、每一步调用了什么、每个字段代表哪步推理。
-- 需要自己控制可观测性管道（push 到 OpenTelemetry/Prometheus/Slack
-  而不是上托管平台）。
-- 希望单测不碰网络。
-- 项目规模小到中等（几十个 Step、几个 flow），不需要可视化状态机。
+- 团队已经在用 Pydantic，不想再学一个字段系统
+- 想一眼看懂 agent 做了什么、每步调用什么、每个字段代表哪步推理
+- 要自己控制可观测性管道（push 到 OpenTelemetry / Prometheus / Slack，而不是上托管平台）
+- 希望单测不碰网络
+- 项目规模小到中等（几十个 Step、几个 flow），不需要可视化状态机
 
 ## 什么时候**不**选 pyxis？
 
-- 需要**图可视化**做 PM / 设计评审 → LangGraph。
-- 核心诉求是**自动优化 prompt**（teleprompter、MIPRO、BootstrapFewShot）
-  → DSPy。
-- 需要**长期托管的 trace UI** 开箱即用（不想自己搭）→ LangSmith 系。
-- 多 agent 协商、复杂的多图合并 → LangGraph 更成熟。
+- 要**图可视化**做 PM / 设计评审 → LangGraph
+- 核心要**自动优化 prompt**（teleprompter、MIPRO、BootstrapFewShot）→ DSPy
+- 要**开箱即用的托管 trace UI** → LangSmith
+- 多 agent 协商、复杂多图合并 → LangGraph 更成熟
 
 ## 总结
 
-三家定位不一样：LangGraph 赢在状态机表达力和生态完善度，DSPy 赢在 prompt
-自动调优，pyxis 赢在可读性和测试友好度。对口了就挑对应的。
+- **LangGraph** — 状态机表达力 + 生态完善度
+- **DSPy** — prompt 自动调优
+- **pyxis** — 可读性 + 测试友好度
+
+对口了就挑对应的。

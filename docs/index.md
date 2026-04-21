@@ -8,15 +8,12 @@
 
 ## 定位：agent-for-machine
 
-pyxis 把 LLM 当成结构化数据生成器。每次 LLM 调用的直接输出都是一个
-Pydantic 实例，下一段 Python 代码直接消费；给人看的内容由应用层从
-这些字段里拼出来。
+- LLM = 结构化数据生成器 → 直出 Pydantic 实例
+- 下一段 Python 代码直接消费，给人看的由应用层从字段里拼
+- **适合**：数据 pipeline 的 LLM 节点 · 要回归测试的业务 agent · 多 agent 机器对机器协作 · LLM 产出入库或聚合分析
+- **不适合**：丝滑 chat app（→ Anthropic SDK 原生 tool use）· prompt 自动调优（→ DSPy）· 多 agent 图编排（→ LangGraph）
 
-适合的场景：数据 pipeline 里的 LLM 节点、需要回归测试的业务 agent、
-多 agent 机器对机器协作、LLM 产出直接入库或做聚合分析。
-
-要做丝滑 chat app，用 Anthropic SDK 原生 tool use 更顺手；做 prompt
-自动调优用 DSPy；多 agent 图编排用 LangGraph。详见 [与其他框架对比](comparison.md)。
+详见 [与其他框架对比](comparison.md)。
 
 ---
 
@@ -53,22 +50,19 @@ assert v.sentiment == "positive"
 
 两件事同时发生：
 
-- **code as prompt** — 函数的 docstring 就是 system prompt，返回值就是 user message。
-- **schema as workflow** — `Verdict` 的字段顺序（`sentiment` 在 `confidence`
-  前面）就是 LLM 的思维链步骤。
+- **code as prompt** — 函数 docstring = system prompt；返回值 = user message
+- **schema as workflow** — `Verdict` 字段顺序（`sentiment` 在 `confidence` 前）= LLM 的思维链步骤
 
 ---
 
 ## 两层编排
 
-框架只分两层：
-
 | 范围 | 机制 | 职责 |
-|------|------|------|
+|---|---|---|
 | 隐式（单次 LLM 调用） | `instructor` + Pydantic 字段顺序 | 单次调用内部的思维链 |
 | 显式（多次 LLM 调用） | 纯 Python 代码 | 调用之间的组合、分支、循环 |
 
-显式那层直接用 Python 的 `if`、`for`、函数组合，不发明 DSL：
+显式那层直接用 `if` / `for` / 函数组合，不发明 DSL：
 
 ```python
 from pyxis import flow
@@ -81,7 +75,7 @@ def triage(text: str) -> str:
     return auto_reply(v.sentiment, text) # 另一个 @step
 ```
 
-没有 DAG、没有 YAML、没有节点编辑器。
+没有 DAG，没有 YAML，没有节点编辑器。
 
 ---
 
@@ -99,8 +93,6 @@ def triage(text: str) -> str:
 ---
 
 ## 下一步
-
-按你当下想做的事挑一条路进去：
 
 | 想做的事 | 去 |
 |---|---|
