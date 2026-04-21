@@ -9,8 +9,10 @@
   stdio 用持久子进程 + `id → response` 关联 + 锁。
 - **`Tool.run()` 契约保持同步**——调用方（agent loop）完全不知道工具从哪来。
 
-故意不做：arun / SSE / resources / prompts / sampling / 全局 registry /
-自动断线重连 / 并发调用 / tool schema 动态刷新 / 跨 server 自动去重。
+故意不做：`arun` / 老 SSE 传输（`GET /sse` 长连接那种，**不是** Streamable
+HTTP 的 SSE 响应体——后者已完整支持）/ resources / prompts / sampling /
+全局 registry / 自动断线重连 / 并发调用 / tool schema 动态刷新 / 跨
+server 自动去重。
 """
 
 from __future__ import annotations

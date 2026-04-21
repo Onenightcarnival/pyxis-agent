@@ -35,13 +35,18 @@
   进程 + `id→response` 关联表，传输复杂度全部吸收在 adapter 里，
   agent loop 里仍是一行 `d.action.run()`。`trace()` 自动生效（零集成）。
   故意不做（见 [specs/013-mcp.md](specs/013-mcp.md)）：不扩 `arun` /
-  不做 SSE / 不做 resources / prompts / sampling / 不做全局 registry /
+  不做老 SSE 传输（`GET /sse` 长连接那种，与 Streamable HTTP 的 SSE 响应
+  体不是一回事——后者已完整支持）/ 不做 resources / prompts / sampling /
+  不做全局 registry /
   不做断线重连 / 不做 tool schema 动态刷新 / 不做 `ToolSet` 抽象
   protocol（只有 MCP 一家实现时它就是空抽象）。
-- **`examples/mcp_tool_use.py` + `examples/_mcp_demo_server.py`**：零外
-  部依赖的示例——后者是一个 10 行的 stdio MCP server（`word_count` /
-  `reverse`），前者把它和 `Finish` native 工具拼成混合联合跑 agent loop。
-  真场景只需把 `StdioMCP(command=..., args=[...])` 指向任意 MCP server。
+- **`examples/mcp_tool_use.py` + `examples/_mcp_demo_server.py`**：贴近
+  实际工作流的示例——后者是 20 行用 FastMCP（`mcp.server.fastmcp`）
+  写的 stdio MCP server（`@mcp.tool()` 装饰 `word_count` / `reverse`），
+  前者把它作为子进程启动 + 混合 `Finish` native 工具跑 agent loop。真
+  场景只需把 `StdioMCP(command=..., args=[...])` 指向你自己写的 FastMCP
+  server（或别人发布的），或换成 `HttpMCP(url=...)` 接远端 Streamable
+  HTTP MCP server。
 - **`apps/mcp-demo/` —— 带前端的 MCP 可视化 demo**。
   - 后端：FastAPI，启动时 `async with mcp_toolset(...)` 连上本地 demo
     MCP server，POST `/run` 流式推帧：先一帧 `inventory`（工具清单 +
@@ -54,12 +59,12 @@
     呼应"agent loop 对来源无感"。
   - 详见 [apps/mcp-demo/README.md](apps/mcp-demo/README.md)。
 - **`apps/mcp-demo/` 加 Streamable HTTP MCP server**。现在 demo 同时连
-  两条 MCP 传输：`mcp:stdio-demo`（子进程）+ `mcp:http-demo`（独立
-  uvicorn 进程，`mcp_http_server.py`，端口 3003，暴露 `base64_encode`
-  / `slugify` / `json_pretty`）。lifespan 里 Popen HTTP server →
-  `await _wait_for_http_mcp` → `async with mcp_toolset(stdio),
-  mcp_toolset(http)` 嵌套；agent loop 仍是一行 `d.action.run()`，
-  直接验证 `HttpMCP` 与 `StdioMCP` 在调用面完全对称。实测三步链
+  两条 MCP 传输：`mcp:stdio-demo`（FastMCP 子进程）+ `mcp:http-demo`
+  （FastMCP 独立进程，端口 3003，暴露 `base64_encode` / `slugify` /
+  `json_pretty`）。lifespan 里 `Popen` HTTP server → `_wait_for_port` 等
+  TCP 就绪 → `async with mcp_toolset(stdio), mcp_toolset(http)` 嵌套进入；
+  agent loop 仍是一行 `d.action.run()`，直接验证 `HttpMCP` 与 `StdioMCP`
+  在调用面完全对称。实测三步链
   `reverse[stdio-demo] → base64_encode[http-demo] → finish[native]`
   跑通——三个来源、三种传输、一条 loop。
 - **CLAUDE.md 记录协作模式**：明确 Claude（我）是这个项目的"AI 产品

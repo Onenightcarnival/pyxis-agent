@@ -42,9 +42,14 @@
   [规格 012](specs/012-human-in-the-loop.md)；是否再加 helper 看需求。）
 - **CLI** —— `pyxis run path/to/flow.py`，附带 env-file 支持、dry-run、
   trace-as-JSON 输出。
-- **更多 `apps/` 示例应用**——已有 `apps/chat-demo/`（带前端的多轮聊天，
-  含 Chat / Inspect 双视图切换）；未来候选：`apps/pr-review/`（代码审
-  agent）、`apps/research-assistant/`（多工具调研助手）。
+- **更多 `apps/` 示例应用**——已有：
+  - `apps/chat-demo/`：带前端的多轮聊天，Chat / Inspect 双视图切换。
+  - `apps/mcp-demo/`：native Tool + FastMCP 写的 stdio & Streamable HTTP
+    两个 MCP server 混合注册的可视化（工具清单按 source 分组 + agent
+    每一步的 thought / action / observation 带来源徽章）。
+
+  未来候选：`apps/pr-review/`（代码审 agent）、
+  `apps/research-assistant/`（多工具调研助手）。
 
 ## 故意不做
 

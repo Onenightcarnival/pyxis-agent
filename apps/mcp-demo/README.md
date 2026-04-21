@@ -28,8 +28,9 @@ apps/mcp-demo/
 ├── backend/
 │   ├── pyproject.toml
 │   ├── .env.example
-│   ├── mcp_server.py       零依赖的 stdio MCP server（子进程）
-│   ├── mcp_http_server.py  FastAPI 版 HTTP MCP server（独立 uvicorn，:3003）
+│   ├── mcp_server.py       **FastMCP** 写的 stdio MCP server（子进程）
+│   ├── mcp_http_server.py  **FastMCP** 写的 Streamable HTTP MCP server
+│   │                       （独立进程，:3003；FastMCP 自管 uvicorn）
 │   └── app.py              FastAPI，启动时 Popen http server +
 │                           async with 两个 mcp_toolset；POST /run 流式推帧
 └── frontend/               Vite + React + TypeScript + Tailwind
@@ -98,28 +99,38 @@ pnpm dev
 `finish[native]`。三种传输、一条 agent loop，前端看到同一种卡片、只是
 badge 换颜色。
 
-## 换成真 MCP server
+## 用你自己的 MCP server 替换
 
-`backend/app.py` 里有两个声明：
+本 demo 的两个 MCP server 就是**你生产里会写的形态**——20 行 `FastMCP` +
+`@mcp.tool()`，见 [mcp_server.py](backend/mcp_server.py) 与
+[mcp_http_server.py](backend/mcp_http_server.py)。要换掉：
+
+**选项 A：改 MCP server 源文件**。直接改 `@mcp.tool()` 装饰的函数即可；
+`app.py` 不用动。
+
+**选项 B：接外部 / 第三方 MCP server**。改 `backend/app.py` 里两个
+`MCPServer` 声明的 `transport`：
 
 ```python
-stdio_server = MCPServer(
-    name="stdio-demo",
-    transport=StdioMCP(command=sys.executable, args=[str(MCP_STDIO_SCRIPT)]),
-)
+# 别人 / 上游用 FastMCP 部署的远端 server
 http_server = MCPServer(
-    name="http-demo",
-    transport=HttpMCP(url=HTTP_MCP_URL),
+    name="team-search",
+    transport=HttpMCP(
+        url="https://internal.example.com/mcp",
+        headers={"Authorization": "Bearer ..."},
+    ),
+)
+
+# 把别人发布到 PyPI 的 MCP server 跑成子进程
+stdio_server = MCPServer(
+    name="filesystem",
+    transport=StdioMCP(command="uvx", args=["mcp-server-filesystem", "/tmp"]),
 )
 ```
 
-把 `transport` 指到真 server 的启动命令 / URL 即可：
-
-- stdio：`StdioMCP(command="uvx", args=["mcp-server-filesystem", "/tmp"])`
-- HTTP：`HttpMCP(url="https://your.mcp.example.com/mcp", headers={"Authorization": "..."})`
-
-前端代码**一行都不用改**。pyxis 的 MCP adapter 把传输差异吸收在内部，
-应用层只管拿到 `list[type[Tool]]`。
+前端代码**一行都不用改**。`HttpMCP` 已对齐 MCP 2024-11-05 Streamable
+HTTP 规范（SSE 响应体 / `Mcp-Session-Id` 会话追踪 / `notifications/
+initialized`），可以直接对接 FastMCP 写的任意 server。
 
 ## 设计对照
 
