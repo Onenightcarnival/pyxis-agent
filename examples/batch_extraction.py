@@ -1,23 +1,13 @@
-"""批量结构化抽取：pyxis 的 sweet spot。
+"""批量把非结构化文本抽成 Pydantic 实例，出一张可以入库 / group by 的表。
 
-### 为什么把这个叫"sweet spot"
+- 一个 `@step`：schema 字段顺序 summary → sentiment → topic → severity，
+  先还原意思再下标签，避免跳到结论。
+- 一个 `@flow` 裹 for 循环，try/except 兜单条失败，整批不中断。
+- 一个 `trace()` 统计成功率、tokens、错例；跑完 `to_jsonl(...)` 落盘就是
+  一份 eval log。
 
-pyxis 的定位是 **agent-for-machine**：LLM 直接输出的是结构化数据，给下一段
-Python 消费，不是给人看。批量抽取就是这个定位最纯的体现——
-
-- 输入：一批非结构化文本（日志、工单、评论、邮件、论文摘要……）。
-- 中间：LLM 把每条翻成同一个 Pydantic schema 的实例。
-- 输出：一张**可以 group by / agg / 入库**的表，不是一段给人读的自然语言。
-
-这类管线在 ChatGPT / Claude Desktop 风格的聊天 app 里做起来反而很别扭
-（要从 markdown 里解析字段、文本可能漂移），在 pyxis 里几乎是 10 行：一个
-`@step` 定结构，一个 `for` 跑完，一个 `Trace` 兜底聚合成本与失败。
-
-### 把 extraction 当 pipeline 的两件配套设施
-
-- **Trace 是 eval log**：跑完直接 `to_jsonl(...)` 就能回放、抽检、对比版本。
-- **失败可观察**：LLM 抽不到结构时 step 会抛、trace 里 `error` 字段非空；
-  本例把 try/except 包在外面，失败也进最终统计。
+这种任务里 LLM 输出直接进 Counter / DataFrame / DB，不再有"解析自然
+语言"这一步——字段顺序即思维链。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/batch_extraction.py

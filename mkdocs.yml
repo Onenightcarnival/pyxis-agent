@@ -119,11 +119,15 @@ nav:
       - Plan-then-execute: cookbook/plan_then_execute.md
       - RAG 最小版: cookbook/rag_minimal.md
       - 批量结构化抽取: cookbook/batch_extraction.md
+      - Router / 意图分派: cookbook/router_dispatch.md
+      - 长期记忆 KV: cookbook/memory_kv.md
+      - 两个 agent 协作: cookbook/multi_agent.md
       - Reflection / critic-refiner: cookbook/reflect_and_revise.md
       - ReAct agent + 工具调用: cookbook/agent_tool_use.md
       - Agentic harness: cookbook/coding_harness.md
       - MCP 混合注册: cookbook/mcp_tool_use.md
       - Human-in-the-loop: cookbook/human_review.md
+      - Guardrails：输入/输出校验: cookbook/guardrails.md
       - 接入 Langfuse: cookbook/with_langfuse.md
       - 用 Trace 做 evals: cookbook/evals_with_trace.md
   - Demos:

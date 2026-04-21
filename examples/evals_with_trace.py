@@ -1,24 +1,18 @@
-"""用 Trace 做 evals——没有新原语，只是把 Trace 当 eval log 用。
+"""跑一个小数据集做 eval：准确率、token 成本、p50/p95 延迟、错例清单。
 
-行业里 "evals"（LLM evaluation）常被做成一个独立框架：dataset 对象、runner
-对象、scorer 对象、leaderboard……pyxis 里**不需要这一套**。evals 就是：
+组合是一个 Python list（输入 + 期望）+ 一个 `@step` 出结构化结果 +
+一个 `for` + 一个 `trace()`。聚合全是普通 Python：`statistics.mean`、
+`Counter`、排序取分位。跑完 `Trace.to_jsonl(path)` 存盘，得到一份
+原始调用 log，可以回放、diff、抽检。
 
-- 一个 Python dataset（list of 输入 + 期望）。
-- 一个 `@step`，产结构化输出。
-- 一个 `for` 循环跑完——失败不中断。
-- 一个 `trace()` 捕获每次调用的 prompt / 输出 / usage / 延迟。
-- 一些纯 Python 聚合：准确率、token 成本、p50/p95 延迟、错例清单。
-- `Trace.to_jsonl(...)` 把原始 log 存盘——回放、diff、人审抽检都走它。
-
-回归：**eval 不是框架，是 Python + trace 数据**。你要 A/B 不同模型？换个
-`set_default_client(...)` 跑两遍就好。你要比两次 commit 的质量漂移？存两份
-JSONL diff 即可。
+要 A/B 两个模型？换 `set_default_client(...)` 跑两遍，diff 两份 JSONL。
+要比两次 commit 的质量漂移？存两份 JSONL 对照即可。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/evals_with_trace.py
 
-    # 跑完会在 runs/ 下生成 eval log：
-    #   runs/eval_latest.jsonl   ← 原始调用，可回放 / 审计 / diff
+    # 跑完会在 runs/ 下生成原始调用 log：
+    #   runs/eval_latest.jsonl
 """
 
 from __future__ import annotations

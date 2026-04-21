@@ -1,19 +1,13 @@
-"""RAG 的最小版本——pyxis 视角下没有"RAG 抽象"。
+"""RAG 最小版：检索 + 作答各一份代码。
 
-行业里 RAG（retrieval-augmented generation）往往被包成一个专门的 pipeline
-对象，吃 vector store、retriever、reranker 一堆组件。但拆开看骨架就三步：
+- 检索：一个普通 Python 函数 `_retrieve`，关键词重叠度排序。换 vector DB
+  就把函数体换成 `qdrant.search(...)`。
+- 作答：一个 `@step`，schema 字段顺序先 citations 再 reasoning 再 answer，
+  把"先编再找"的幻觉压住。
+- 编排：一个 `@flow` 把前两者串起来。
 
-1. **Retrieve**：拿 query 去某处取回相关片段——**这是普通 Python 函数**。
-2. **Augment**：把取回的片段拼进 prompt——**这是字符串拼接**。
-3. **Generate**：让 LLM 基于片段回答——**这是一个 `@step`**。
-
-所以在 pyxis 里：一个 `@step`，加一个 Python 函数做检索。就是这样。没有
-`RAGPipeline` 类、没有 `Retriever` 接口、没有隐藏的魔法。想换成真 vector
-DB？把 `_retrieve` 的实现换成 `qdrant_client.search(...)` 就行，step 不动。
-想让 LLM 自己决定要不要检索？把 `_retrieve` 包成 `Tool`，塞进判别式联合，
-和 `examples/agent_tool_use.py` 一个样子——依然没有新原语。
-
-本示例用最原始的关键词匹配做检索，这样没有额外依赖，聚焦讲结构。
+想让 LLM 自己决定要不要检索，把 `_retrieve` 包成 `Tool` 塞进判别式联合
+即可（参考 `examples/agent_tool_use.py`）。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/rag_minimal.py

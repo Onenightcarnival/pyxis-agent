@@ -37,17 +37,32 @@ RECIPES: list[tuple[str, str, str]] = [
     (
         "rag_minimal",
         "RAG 最小版",
-        "RAG 不是抽象——两个 step 加一个 Python 函数就够了。",
+        "检索一个函数 + 作答一个 step，整个 RAG 骨架就 30 行。",
     ),
     (
         "batch_extraction",
         "批量结构化抽取",
-        "agent-for-machine 的主场：批量抽 Pydantic + Trace 聚合成本与失败。",
+        "非结构化文本批量抽成 Pydantic + Trace 聚合成本与失败。",
+    ),
+    (
+        "router_dispatch",
+        "Router / 意图分派",
+        "一个 step 出 `Literal` 标签，Python `match` 分派到子 flow。",
+    ),
+    (
+        "memory_kv",
+        "长期记忆：抽事实 + 查记忆",
+        "一个 dict 当 KV，一个 step 抽事实、一个 step 作答。",
+    ),
+    (
+        "multi_agent",
+        "两个 agent 协作",
+        "Researcher flow 调 Editor flow——函数调函数，没有 graph。",
     ),
     (
         "reflect_and_revise",
         "Reflection / critic-refiner",
-        "draft → critique → revise 的 while 循环；schema 字段顺序防先打分后自圆其说。",
+        "draft → critique → revise 的 while 循环；字段顺序防先打分后编理由。",
     ),
     # --- 工具调用家族 ---
     (
@@ -58,18 +73,23 @@ RECIPES: list[tuple[str, str, str]] = [
     (
         "coding_harness",
         "Agentic harness / scaffolding",
-        "read / write / ls 三工具 + while 循环 + 自停止——harness 不是新原语。",
+        "读 / 写 / 列 三工具 + while 循环 + 自停止。",
     ),
     (
         "mcp_tool_use",
         "MCP：混合 native 工具与远端 server",
         "FastMCP server 的工具与本地 Tool 拼进同一个判别式联合。",
     ),
-    # --- 工程化：人机协作 + 观测 + 评测 ---
+    # --- 工程化：人机协作 + 观测 + 评测 + 合规 ---
     (
         "human_review",
         "Human-in-the-loop",
         "生成器 flow + `ask_human` 挂起等人回应。",
+    ),
+    (
+        "guardrails",
+        "输入 gate + 输出 validator",
+        "Python 正则前置 + Pydantic validator 后置 + StepHook 记账。",
     ),
     (
         "with_langfuse",
@@ -79,7 +99,7 @@ RECIPES: list[tuple[str, str, str]] = [
     (
         "evals_with_trace",
         "用 Trace 做 evals",
-        "eval 不是框架，是 Python dataset + Trace.to_jsonl()。",
+        "dataset + for 循环 + Trace.to_jsonl()，聚合指标是普通 Python。",
     ),
 ]
 

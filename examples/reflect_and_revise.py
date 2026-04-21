@@ -1,26 +1,19 @@
-"""Reflection / self-correction / critic-refiner——还是同一个模式的不同名字。
+"""draft → critique → revise 循环：写一版，挑问题，改，直到达标或超次数。
 
-行业里 "reflection"、"self-correction"、"critic-refiner"、"LLM-as-a-judge loop"
-讲的都是同一件事：让模型产一版 → 让（同一个或另一个）模型打分挑刺 →
-让模型根据反馈改 → 重复，直到达标或超次数。
+行业里叫 reflection、self-correction、critic-refiner、LLM-as-a-judge loop，
+底层都是这三步 + 一个 while。
 
-**pyxis 视角下没有新原语**，就三件老东西拼起来：
+- 三个 `@step`：`draft` / `critique` / `revise`，各自 schema 承担一段
+  隐式思维链。critique 的字段顺序是 issues → severity → score，顺序
+  反过来会变成"先打分再编理由"。
+- 一个 `@flow` 里的 while 循环做轮次控制，通过条件放宽到"score≥阈值
+  且 severity 不是 high"，严格条件在弱模型上几乎不收敛。
+- 一个 `trace()` 把每轮分数、字数、token 全记下来——跑完看轨迹决定
+  要不要加轮次 / 换模型。
 
-- 三个 `@step`：`draft` / `critique` / `revise`，各自 schema 承担隐式 CoT。
-- 一个 `while score < 阈值` 的 Python 循环——不是 graph，也不是 DSL。
-- 一个 `Trace` 就自动把"第几版拿了几分 / 花了多少 token"记录下来。
-
-关键是 **critique 的 schema 字段顺序**：先列 issues，再标 severity，最后才
-给 score。顺序倒过来（先 score 再 justify）就变成"先拍脑袋再自圆其说"。
-这是 schema-as-CoT 在质量评审场景的直接应用。
-
-### 坦白一件事
-
-reflection **不保证单调收敛**——跑完下面 demo 你会看到分数来回跳。这不是
-pyxis 的缺陷，是 LLM-as-judge 这个模式本身的特性；弱模型尤其如此（本 demo
-跑在 gpt-5.4-nano 上，够讲结构但压缩能力有限）。pyxis 做的只是**不替你
-隐藏这个真相**——trace 里每一版的分数都看得见，要不要加轮次、换模型、
-换任务表述，由你根据真相决定。生产用更强模型通常能稳住单调下降。
+这份示例跑在 gpt-5.4-nano 上，分数不会单调下降，这是 LLM-as-judge 本身
+的特性；换更强的模型通常稳得住。pyxis 只是不帮你隐藏这件事——trace
+里每一版都看得见。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/reflect_and_revise.py

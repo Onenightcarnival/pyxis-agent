@@ -1,28 +1,15 @@
-"""Human-in-the-loop 示例：LLM 产计划 → 人审 → 执行或驳回。
+"""Human-in-the-loop：LLM 出计划 → 人拍板 → 执行或驳回。
 
-两件事：
-1. `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起等人拍板。
-2. `run_flow(gen, on_ask=...)` 驱动：把问题丢给回调，把答案 send 回生成器。
+- `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起等人回应。
+- `run_flow(gen, on_ask=...)` 负责驱动：把问题丢给回调，把答案 send
+  回生成器。
 
-顺带演示一条原则 —— **展示层属于上层开发者，框架不替你做**。
+渲染给人看的部分由应用层 `_render_plan` 拼字段做，换 Web UI / Slack bot /
+微信机器人只改这个函数，schema / step / flow 不动。
 
-Pydantic schema 是给 LLM 推理的结构化骨架（schema-as-CoT）；给人看的
-时候，拿字段自己拼自然语言（见下方 `_render_plan`）。换成 Web UI、
-Slack bot、微信机器人，**只需换这个渲染函数**，schema / step / flow 全
-不用动。统一成"JSON dump"给用户看是谁都不爽的偷懒。
-
-## 诚实提示：关于 HITL 的体感
-
-pyxis 是 agent-for-machine 阵营：LLM 直接产出的是结构化 Plan（给代码
-消费），"给人看"的部分由 `_render_plan` 事后拼出来。所以在 HITL 场景里：
-
-- 体感**不会**像原生 chat app 那样丝滑——必须先把整个 Plan schema 填完
-  再渲染给人看（相对 claude desktop 那种"token 流直接就是文本"的体感）。
-- 换来的是可测试、可回放、可断言的 Plan 对象：审核历史入库、批量回归
-  都变得朴素而直接。
-
-如果你要的是极致对话丝滑，这种 use case 用 Anthropic SDK 原生 tool use
-更合适。如果你要的是"审核流程可复盘"，pyxis 的取舍划算。
+体感说明：必须先把 Plan schema 全填完再渲染给人，不会像 token 流 chat
+那样字蹦出来；换来的是可断言、可回放的 Plan 对象——审核历史入库、批量
+回归都简单。要极致对话流畅度走 Anthropic SDK 原生 tool use 更直。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/human_review.py

@@ -1,25 +1,16 @@
-"""Agentic harness——行业里"harness / scaffolding"在 pyxis 视角下的样子。
+"""给 agent 一组文件操作工具 + 一个 while 循环，让它多轮自主完成任务。
 
-"Harness" 这个词在行业里通常指：给 LLM 一堆工具（读/写文件、跑命令、查
-文档……）、一个主循环、一个停止条件，让它能多轮自主完成任务。像 Claude
-Code、OpenHands、SWE-agent 跑的就是这种 harness。
+结构和 `examples/agent_tool_use.py` 同源，只是工具从算数换成了 ls /
+read / write / finish 四个。换任务只改 Tool 定义和 decide 的 prompt。
 
-**pyxis 视角下这不是一个新原语**，它就是老几样的组合：
+- `LsFiles / ReadFile / WriteFile / Finish` 是 `Tool` 子类，判别式联合
+  作"工具表"。
+- `@step decide` 输出 `Decision(thought, action)`，每轮出一次调用。
+- `@flow harness` 就是 while 循环，带 max_steps 防失控；遇到 `Finish`
+  就停。
 
-- 一组 `Tool` 子类 → 判别式联合当"工具表"。
-- 一个 `@step` 输出 `Decision(thought, action)` → 每一轮的下一步。
-- 一个普通 Python `while` 循环 → 主驱动，带 max_steps 防失控。
-- 一个 `Finish` 工具 → agent 自主停止条件。
-
-结构和 `examples/agent_tool_use.py` 一模一样，只是工具换成了文件操作。
-这就是关键——换任务只改 Tool 定义和 system prompt，**框架不需要长出
-"harness 模块"**。
-
-### 为什么用"内存虚拟 FS"而不是真磁盘
-
-真让 LLM 动磁盘是应用层的事情（要沙箱、要权限、要审计）。这里用一个
-dict 当 FS 聚焦讲**多轮 + 工具 + 自停止**的骨架；想换成真磁盘，把
-`_FS` 换成 `pathlib.Path` 调用就行，agent loop 不动。
+这里的"文件系统"是一个内存 dict，聚焦讲多轮 + 工具 + 自停止这条主线；
+换成真磁盘只要把 `_FS` 的读写换成 `pathlib.Path`，agent loop 不用动。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/coding_harness.py
