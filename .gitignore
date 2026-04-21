@@ -188,6 +188,9 @@ cython_debug/
 node_modules/
 apps/*/frontend/dist/
 
+# examples/evals_with_trace.py 跑完落盘的 eval log
+examples/runs/
+
 # Vite / TSC 缓存
 *.tsbuildinfo
 .vite/

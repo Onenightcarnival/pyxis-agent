@@ -17,6 +17,7 @@ GH_BLOB = "https://github.com/Onenightcarnival/pyxis-agent/blob/main"
 # 手工编排顺序 + 中文标题 + 一句话说明（RECIPES 的顺序 = 侧边栏顺序）。
 # 以底部装饰条 cookbook/index.md 里的表格顺序也跟这个列表走。
 RECIPES: list[tuple[str, str, str]] = [
+    # --- 入门：原语逐个登场 ---
     (
         "research",
         "端到端：分析 + 规划",
@@ -32,16 +33,39 @@ RECIPES: list[tuple[str, str, str]] = [
         "Plan-then-execute",
         "先让 LLM 出计划，再让另一个 Step 逐步执行。",
     ),
+    # --- 热词翻译：行业概念落到 pyxis 原语 ---
+    (
+        "rag_minimal",
+        "RAG 最小版",
+        "RAG 不是抽象——两个 step 加一个 Python 函数就够了。",
+    ),
+    (
+        "batch_extraction",
+        "批量结构化抽取",
+        "agent-for-machine 的主场：批量抽 Pydantic + Trace 聚合成本与失败。",
+    ),
+    (
+        "reflect_and_revise",
+        "Reflection / critic-refiner",
+        "draft → critique → revise 的 while 循环；schema 字段顺序防先打分后自圆其说。",
+    ),
+    # --- 工具调用家族 ---
     (
         "agent_tool_use",
         "ReAct 风格 agent + 工具调用",
         "显式 for 循环的 agent loop；判别式联合当工具表。",
     ),
     (
+        "coding_harness",
+        "Agentic harness / scaffolding",
+        "read / write / ls 三工具 + while 循环 + 自停止——harness 不是新原语。",
+    ),
+    (
         "mcp_tool_use",
         "MCP：混合 native 工具与远端 server",
         "FastMCP server 的工具与本地 Tool 拼进同一个判别式联合。",
     ),
+    # --- 工程化：人机协作 + 观测 + 评测 ---
     (
         "human_review",
         "Human-in-the-loop",
@@ -51,6 +75,11 @@ RECIPES: list[tuple[str, str, str]] = [
         "with_langfuse",
         "接入 Langfuse 可观测性",
         "零侵入——换一个 `OpenAI` 的 import 就启用。",
+    ),
+    (
+        "evals_with_trace",
+        "用 Trace 做 evals",
+        "eval 不是框架，是 Python dataset + Trace.to_jsonl()。",
     ),
 ]
 

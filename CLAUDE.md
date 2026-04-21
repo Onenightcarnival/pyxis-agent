@@ -142,7 +142,12 @@ src/pyxis/        库代码
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
 specs/            SDD 规格 —— 每个迭代一份 markdown
-examples/         跑得起来的单文件 demo（默认接 OpenRouter）
+examples/         跑得起来的单文件 demo（默认接 OpenRouter）——三类：
+                  ① 入门（research / streaming_demo / plan_then_execute）
+                  ② 热词翻译（rag_minimal / batch_extraction /
+                    reflect_and_revise / coding_harness / evals_with_trace）
+                  ③ 工具 + 工程化（agent_tool_use / mcp_tool_use /
+                    human_review / with_langfuse）
 apps/             monorepo 风格的示例应用（非库；打包时 exclude）
   chat-demo/      FastAPI + Vite+React+TS：一个开关切换
                   Chat / Inspect 两种前端渲染风格
