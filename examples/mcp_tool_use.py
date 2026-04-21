@@ -53,7 +53,7 @@ class Finish(Tool):
 
 
 @flow
-async def agent(question: str, max_steps: int = 6) -> str:
+async def agent(question: str, max_steps: int = 10) -> str:
     # 声明 MCP server：这里指向同目录的 demo server；换成任何 stdio MCP 都行
     server = MCPServer(
         name="demo",
@@ -73,21 +73,30 @@ async def agent(question: str, max_steps: int = 6) -> str:
             thought: str = Field(description="先推理接下来要做什么")
             action: Action = Field(description="这一步要调用的工具")  # type: ignore[valid-type]
 
-        @step(output=Decision, model=MODEL)
+        @step(output=Decision, model=MODEL, max_retries=2)
         async def decide(question: str, scratch: str) -> str:
-            """你是一个会推理的 agent。只能用已提供的工具解决问题；
-            拿到答案后用 `finish` 停止。"""
+            """你是一个会推理的 agent。规则：
+
+            1. **先仔细读"草稿板"。** 草稿板里已经出现过的工具调用和结果，是
+               过去的事实。**不要重复调用**——要基于它推进下一步。
+            2. 每一轮返回一个 Decision：`thought` 写你基于草稿板的**新推理**
+               （不要复述任务），`action` 是接下来要做的**一次**工具调用。
+            3. `action` 必须是叶子工具（例如 `{"kind": "reverse", "text": "..."}`），
+               不要嵌套 Decision。
+            4. 当你已经能从草稿板上的结果回答问题时，立刻用
+               `{"kind": "finish", "answer": "..."}` 停止。"""
             return f"问题：{question}\n\n草稿板（到目前为止）：\n{scratch or '（空）'}"
 
         scratch: list[str] = []
-        for _ in range(max_steps):
+        for i in range(max_steps):
             d = await decide(question, "\n".join(scratch))
-            scratch.append(f"thought: {d.thought}")
             obs = d.action.run()  # ← 唯一的调用点；不 isinstance 分派 native / MCP
+            print(f"[step {i}] {d.action.kind}({d.action.model_dump_json()}) -> {obs}")
+            scratch.append(f"thought: {d.thought}")
             scratch.append(f"{d.action.kind}({d.action.model_dump_json()}) -> {obs}")
             if isinstance(d.action, Finish):
                 return obs
-        raise RuntimeError("达到 max_steps 仍未结束")
+        raise RuntimeError(f"达到 max_steps={max_steps} 仍未结束\n草稿板：\n" + "\n".join(scratch))
 
 
 def _configure() -> None:

@@ -80,16 +80,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         set_default_client(openrouter_client())
     server = MCPServer(
         name="demo",
-        transport=StdioMCP(
-            command=sys.executable, args=[str(MCP_SERVER_SCRIPT)]
-        ),
+        transport=StdioMCP(command=sys.executable, args=[str(MCP_SERVER_SCRIPT)]),
     )
     async with mcp_toolset(server) as mcp_tools:
         app.state.mcp_server_name = server.name
         app.state.mcp_tools = mcp_tools
-        app.state.mcp_names = {
-            t.model_fields["kind"].default for t in mcp_tools
-        }
+        app.state.mcp_names = {t.model_fields["kind"].default for t in mcp_tools}
         yield
 
 
@@ -160,22 +156,29 @@ async def _stream_run(req: RunRequest) -> AsyncIterator[bytes]:
         thought: str = Field(description="先推理接下来要做什么")
         action: Action = Field(description="这一步要调用的工具")  # type: ignore[valid-type]
 
-    @step(output=Decision, model=MODEL)
-    def decide(question: str, scratch: str) -> str:
-        """你是一个会推理的中文 agent。只能用已提供的工具解决问题；
-        拿到答案后用 `finish` 停止。"""
+    @step(output=Decision, model=MODEL, max_retries=2)
+    async def decide(question: str, scratch: str) -> str:
+        """你是一个会推理的中文 agent。**严格**按下列规则产出 Decision：
+
+        1. **先读"草稿板"**。草稿板里已经调用过的工具和它们的结果是**事实**，
+           不要重复调用相同参数——要基于它推进下一步。
+        2. `thought`：写你**基于草稿板**的新推理。不要复述任务。
+        3. `action`：**叶子工具**调用，例如 `{"kind":"reverse","text":"..."}`；
+           绝不嵌套 Decision。
+        4. **何时调 finish**：当且仅当草稿板上已经**有足够的观测结果**让你
+           能写出具体答案时。`finish.answer` **必须非空**，且要明确引用草稿板
+           上的观测值（例如"反转后='xxx'，单词数=3"）。
+        5. 如果草稿板为空或还没跑过需要的工具，**不要**调 finish——先跑工具。"""
         return f"问题：{question}\n\n草稿板：\n{scratch or '（空）'}"
 
     scratch: list[str] = []
     try:
         for i in range(req.max_steps):
-            d = decide(req.question, "\n".join(scratch))
+            d = await decide(req.question, "\n".join(scratch))
             action_kind = d.action.kind
             # 同步调用 run()——tools 的 I/O 策略（HTTP / 子进程）被 adapter 吸收；
             # 这里加 run_in_executor 是防止 MCP 调用时阻塞 event loop。
-            obs = await asyncio.get_running_loop().run_in_executor(
-                None, d.action.run
-            )
+            obs = await asyncio.get_running_loop().run_in_executor(None, d.action.run)
             source = _source_of(action_kind, mcp_server_name, mcp_names)
             yield _sse(
                 {
@@ -196,9 +199,7 @@ async def _stream_run(req: RunRequest) -> AsyncIterator[bytes]:
             if isinstance(d.action, Finish):
                 yield _sse({"kind": "done", "answer": obs})
                 return
-        yield _sse(
-            {"kind": "error", "message": f"达到 max_steps={req.max_steps} 仍未结束"}
-        )
+        yield _sse({"kind": "error", "message": f"达到 max_steps={req.max_steps} 仍未结束"})
     except Exception as exc:  # noqa: BLE001
         yield _sse({"kind": "error", "message": f"{type(exc).__name__}: {exc}"})
 
@@ -210,9 +211,7 @@ async def run(req: RunRequest) -> StreamingResponse:
         "Connection": "keep-alive",
         "X-Accel-Buffering": "no",
     }
-    return StreamingResponse(
-        _stream_run(req), media_type="text/event-stream", headers=headers
-    )
+    return StreamingResponse(_stream_run(req), media_type="text/event-stream", headers=headers)
 
 
 @app.get("/inventory")
