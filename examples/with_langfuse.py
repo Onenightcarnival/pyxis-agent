@@ -13,7 +13,7 @@
 prompt / response / token / Pydantic schema。同时 pyxis 本地 trace 也在
 跑，打印到 stdout —— 两层可观测性各司其职。
 
-详见 [docs/langfuse.md](../docs/langfuse.md)。
+详见 [docs/concepts/observability.md](../docs/concepts/observability.md)。
 """
 
 from __future__ import annotations

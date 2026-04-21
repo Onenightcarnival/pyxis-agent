@@ -21,7 +21,6 @@ def _targets() -> list[Path]:
     paths: list[Path] = [
         PROJECT_ROOT / "README.md",
         PROJECT_ROOT / "CLAUDE.md",
-        PROJECT_ROOT / "CHANGELOG.md",
         PROJECT_ROOT / "ROADMAP.md",
     ]
     paths.extend(sorted((PROJECT_ROOT / "specs").glob("*.md")))

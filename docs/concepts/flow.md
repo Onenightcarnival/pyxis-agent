@@ -1,7 +1,7 @@
 # Flow：显式编排
 
-`@flow` 在**多次 LLM 调用之间**加一层很薄的壳。它**不是**图引擎、不是 DAG、
-不是 pipeline DSL——就是一个"带 trace 能力的普通 Python 函数"。
+`@flow` 在多次 LLM 调用之间加一层很薄的壳。一个 `@flow` 函数就是一个普通
+Python 函数，只是带了 `.run_traced()` 方法方便本地 debug。
 
 ## 最小例子
 
@@ -26,32 +26,30 @@ def triage(text: str) -> Reply:
     return reply(v.sentiment, text)
 ```
 
-`triage` 长得像普通 Python 函数——因为它就是。`if`、`for`、`try/except`、嵌套
-函数调用、早 return——Python 怎么写，`@flow` 就怎么写。
-
-## 那它到底给了我什么？
-
-**一个 `.run_traced()` 方法。**
+`@flow` 唯一做的事是给函数挂一个 `.run_traced()` 方法，方便本地 debug 时
+一口气拿到中间结果：
 
 ```python
 result, trace = triage.run_traced("今天糟透了")
 print(trace.to_jsonl())
-# 每条记录都是一次 @step 调用：messages + output + usage + error
 ```
 
 - `result` 是函数的正常返回值
 - `trace` 是一个 `Trace`，包含本次执行里所有 `@step` 的 `TraceRecord`
 - `trace.total_usage()` 给 token 总量，`trace.errors()` 给失败记录
 
-没有 `run_traced()` 也能直接调用，就是拿不到 trace 对象：
+没有 `run_traced()` 也能直接调用：
 
 ```python
 result = triage("今天糟透了")   # 等价于 triage.run_traced(...)[0]
 ```
 
-## 显式 > 隐式
+生产场景的可观测性一般不用这个——直接接 [Langfuse](observability.md) 就行。
+`run_traced` 主要是单测断言和本地 debug 的小帮手。
 
-pyxis **故意不做** agent loop 封装。如果你要做 ReAct 风格的循环：
+## 写一个 agent loop
+
+要做 ReAct 风格的循环，自己 `for` 一下就行：
 
 ```python
 @flow
@@ -66,16 +64,7 @@ def react(question: str) -> Answer:
     raise RuntimeError("超出最大步数")
 ```
 
-这段代码**没有任何框架神秘感**。for 循环就是 for 循环；判别式联合用 `isinstance`
-分派；超限就抛异常。调试：打断点、看堆栈。
-
-如果框架把这段 loop 藏起来，代价是：
-
-- 调试要翻框架源码
-- 改 loop 行为要配置或子类继承
-- 静态类型检查失效
-
-所以我们不藏。**能写成 Python 函数，就写成 Python 函数。**
+判别式联合用 `isinstance` 分派，超限抛异常，调试打断点看堆栈。
 
 ## 异步
 
@@ -88,14 +77,17 @@ async def triage(text: str) -> Reply:
 result, trace = await triage.run_atraced("...")
 ```
 
-`@flow` 看函数签名分派同步 / 异步；对应的 trace API 也分 `run_traced` /
-`run_atraced`。`trace()` 基于 `ContextVar`，跨 asyncio task 自动传播——
-`asyncio.gather` 里跑多个 step，trace 会完整记录。
+`@flow` 根据函数签名分派同步 / 异步，trace API 也分 `run_traced` /
+`run_atraced`。底层 `trace()` 基于 `ContextVar`，跨 asyncio task 自动传播——
+`asyncio.gather` 里并发跑多个 step 也能被完整记录。
 
-## 什么时候**不**用 Flow
+## 什么时候不用 Flow
 
-- 只调一次 LLM——用 `@step` 就够了，不需要额外一层
-- 要让 loop 可被外部驱动 / 中断——用 `@flow` 生成器版 + `run_flow` 驱动器
-  （见 [human-in-the-loop](human.md)）
+- 只调一次 LLM——`@step` 就够了。
+- loop 要能被外部驱动或中断——用生成器版 `@flow` + `run_flow` 驱动器
+  （见 [human-in-the-loop](human.md)）。
 
-完整签名看 [API 参考 → pyxis.flow](../api/flow.md) 和 [pyxis.trace](../api/trace.md)。
+可跑示例：
+[examples/research.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/research.py)、
+[examples/agent_tool_use.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/agent_tool_use.py)。
+完整签名见 [API 参考 → pyxis.flow](../api/flow.md)。

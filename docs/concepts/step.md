@@ -1,6 +1,6 @@
 # Step：code-as-prompt
 
-`@step` 是 pyxis 最小的构件。它把一个 Python 函数变成一次类型化的 LLM 调用。
+`@step` 是 pyxis 最小的构件。它把一个 Python 函数包装成一次类型化的 LLM 调用。
 
 ## 最小例子
 
@@ -29,14 +29,14 @@ print(s.one_liner)
 1. `summarize` 的 docstring → **system prompt**
 2. `summarize(article)` 的返回值 → **user message**
 
-函数**就是** prompt。没有模板字符串，没有 `format()`、没有 `.jinja2`。
+函数本身就是 prompt，没有额外的模板层。
 
 ## 字段顺序就是思维链
 
-`Summary` 先 `key_points` 再 `one_liner`。instructor 会让 LLM 按声明顺序填字段——
-LLM 先发散（抽点）再收敛（一句话）。
+`Summary` 先 `key_points` 再 `one_liner`。instructor 会让 LLM 按声明顺序
+填字段——LLM 先发散（抽点）再收敛（一句话）。
 
-换一下顺序：
+把顺序颠倒一下：
 
 ```python
 class SummaryReversed(BaseModel):
@@ -44,12 +44,12 @@ class SummaryReversed(BaseModel):
     key_points: list[str]   # 再补关键点
 ```
 
-行为会变差：LLM 先塞个模糊的一句话，然后用关键点"自圆其说"。**schema 就是
-workflow**——改字段顺序=改思维链。
+行为会变差：LLM 先塞一个模糊的一句话，再用关键点"自圆其说"。改字段顺序
+等于改思维链。
 
 ## 同步 vs 异步
 
-`@step` 会看函数是 `def` 还是 `async def` 自动分派：
+`@step` 根据函数是 `def` 还是 `async def` 自动分派：
 
 ```python
 @step(output=Summary)
@@ -60,17 +60,17 @@ async def summarize_async(article: str) -> str:
 s = await summarize_async("...")
 ```
 
-同步得到 `Step[T]`，异步得到 `AsyncStep[T]`。接口一致，拿了就能用。
+同步得到 `Step[T]`，异步得到 `AsyncStep[T]`，接口一致。
 
-## 流式输出：看字段被逐个填出来
+## 流式输出：看字段被一个个填出来
 
 ```python
 for partial in summarize.stream(article):
     print(partial)   # Summary 实例，字段会从 None 逐步填满
 ```
 
-底层走 instructor 的 `create_partial`。一次流消费完会写一条完整的 `TraceRecord`。
-"字段被逐个填完"这个过程对用户可见——拿来做实时 UI 很合适。
+底层走 instructor 的 `create_partial`。一次流消费完以后会写一条完整的
+`TraceRecord`。典型用法是做实时 UI 或调试 schema 顺序。
 
 异步版：
 
@@ -88,8 +88,8 @@ def summarize(article: str) -> str:
     return article
 ```
 
-`max_retries` 交给 instructor 负责——针对**结构化输出校验**失败的重试。不是
-网络错误重试（那个交给 HTTP 客户端）。
+`max_retries` 交给 instructor，用于**结构化输出校验**失败时重试。网络错误
+重试交给底层 HTTP 客户端，不在这里管。
 
 ## 换模型、换客户端
 
@@ -102,12 +102,12 @@ def summarize(article: str) -> str:
     return article
 ```
 
-不传 `client` 就用 `get_default_client()` 返回的那个——`set_default_client`
-在启动时设一次，后面每个 `@step` 都自动走它，不用重复传。
+不传 `client` 就用 `get_default_client()` 返回的那个。`set_default_client`
+在进程启动时设一次，之后所有 `@step` 自动走它。
 
 ## 测试：FakeClient
 
-单元测试不该打真 LLM。`FakeClient` 按队列顺序吐预置的 Pydantic 实例：
+`FakeClient` 按队列顺序吐预置的 Pydantic 实例，单测就不用打真 LLM：
 
 ```python
 from pyxis import FakeClient
@@ -120,15 +120,18 @@ def summarize(article: str) -> str:
     return article
 
 assert summarize("任意文本").one_liner == "a one-liner"
-assert len(client.calls) == 1   # 断言被调了一次
+assert len(client.calls) == 1
 ```
 
-需要断言 prompt 内容时，从 `client.calls[i].messages` 里取。
+要断言 prompt 内容，从 `client.calls[i].messages` 里取。
 
-## 什么时候 **不** 用 Step
+## 什么时候不用 Step
 
-- 不走 LLM 的工具调用——那是 `Tool`（或者干脆写普通函数）
-- 多次 LLM 调用的编排——那是 `@flow`
-- 需要中途等人类回应——那是 `ask_human` + `@flow` 生成器
+- 不走 LLM 的普通动作——用 `Tool`，或者就写一个普通 Python 函数。
+- 多次 LLM 调用的编排——用 `@flow`。
+- 中途要等人类回应——`ask_human` + 生成器版 `@flow`。
 
-完整签名看 [API 参考 → pyxis.step](../api/step.md)。
+可跑示例：
+[examples/research.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/research.py)、
+[examples/streaming_demo.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/streaming_demo.py)。
+完整签名与字段见 [API 参考 → pyxis.step](../api/step.md)。

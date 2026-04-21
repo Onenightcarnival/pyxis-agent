@@ -29,7 +29,7 @@
 - **Trace 持久化** —— ~~JSONL sink 到文件~~（已于
   [规格 008](specs/008-providers-and-jsonl.md) 实现基础版 `Trace.to_jsonl`）；
   对接 **Langfuse** 已由其自己的 `from langfuse.openai import OpenAI`
-  实现零侵入接入（见 [docs/langfuse.md](docs/langfuse.md)）；
+  实现零侵入接入（见 [docs/concepts/observability.md](docs/concepts/observability.md)）；
   对接 log collector / OpenTelemetry 后端在框架层仍不做——走 Langfuse
   或用户自己写 `StepHook` 就够了。
 - **并行 step 工具** —— `@flow` 的 fan-out/gather 工效糖，超越裸
@@ -75,5 +75,5 @@
 5. `uv run ruff format && uv run ruff check && uv run pytest`。
 6. 动到 Client / Step / Flow 或 provider 连线，就跑
    `uv run --env-file .env pytest tests/integration/`。
-7. 更新 `CLAUDE.md` 与 `CHANGELOG.md`（公共面变了才要）。
+7. 更新 `CLAUDE.md` 与文档站（公共面变了才要）。
 8. 一次迭代一次 commit，正文引用规格编号。

@@ -78,7 +78,7 @@ plugins:
   - gen-files:
       scripts:
         - docs/_hooks/gen_api.py
-        - docs/_hooks/gen_specs.py
+        - docs/_hooks/gen_cookbook.py
   - literate-nav:
       nav_file: SUMMARY.md
   - mkdocstrings:
@@ -99,16 +99,28 @@ plugins:
             filters: ["!^_"]
 
 nav:
-  - 首页: index.md
+  - 首页:
+      - 首页: index.md
+      - 对比其他框架: comparison.md
   - 概念:
       - concepts/index.md
       - 哲学与定位: concepts/philosophy.md
       - Step：code-as-prompt: concepts/step.md
       - Flow：显式编排: concepts/flow.md
       - Tool：action 即 schema: concepts/tool.md
-      - Hook：观察者: concepts/hooks.md
       - human-in-the-loop: concepts/human.md
       - MCP 适配: concepts/mcp.md
+      - 可观测性: concepts/observability.md
+      - Hook：观察者（进阶）: concepts/hooks.md
+  - Cookbook:
+      - cookbook/index.md
+      - 端到端：分析 + 规划: cookbook/research.md
+      - 流式输出: cookbook/streaming_demo.md
+      - Plan-then-execute: cookbook/plan_then_execute.md
+      - ReAct agent + 工具调用: cookbook/agent_tool_use.md
+      - MCP 混合注册: cookbook/mcp_tool_use.md
+      - Human-in-the-loop: cookbook/human_review.md
+      - 接入 Langfuse: cookbook/with_langfuse.md
   - API 参考:
       - pyxis.step: api/step.md
       - pyxis.flow: api/flow.md
@@ -119,8 +131,4 @@ nav:
       - pyxis.hooks: api/hooks.md
       - pyxis.human: api/human.md
       - pyxis.mcp: api/mcp.md
-  - 附录:
-      - 对比其他框架: comparison.md
-      - 接入 Langfuse: langfuse.md
-      - 更新日志: changelog.md
 

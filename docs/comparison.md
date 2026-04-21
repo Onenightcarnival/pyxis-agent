@@ -1,8 +1,8 @@
 # pyxis 与其他 agent 框架的对比
 
-本文给 pyxis 一个诚实的定位：既说清它为什么值得用，也说清什么场景
-应该选别的。对象主要是 **LangGraph** 和 **DSPy**，这两个是当前 Python
-agent 生态里影响力最大、且定位差异最明显的两家。
+对象是 **LangGraph** 和 **DSPy**，这两个是当前 Python agent 生态里定位差异
+最明显的两家。本文给一张横向表，加几个典型维度的对比，帮你判断什么场景
+该选哪个。
 
 ## TL;DR
 
@@ -14,19 +14,6 @@ agent 生态里影响力最大、且定位差异最明显的两家。
 | 工具调用       | schema 判别式联合 + `.run()`| `ToolNode`、function calling| function calling 协议适配 |
 | 优化目标       | 开发者体验与代码可读性      | 生产级状态机 + 可视化        | prompt 自动调优（核心卖点）|
 | 学习门槛       | 低（就是写函数）           | 中（要学 graph 语义）       | 中（要学 signature + optimizer）|
-
-## pyxis 的唯一定位
-
-> **声明式思维链 = code as prompt + schema as workflow**
-
-pyxis 不和另两者争"功能最全"或"优化最强"。pyxis 赌的是**可读性与哲学
-一致性**：一个项目里的每个 LLM 调用都长得像一个普通 Python 函数，每条
-思维链都是一段 Pydantic schema；没有图、没有 DSL、没有隐式状态。能把
-一个 agent 系统**读明白**，是它最看重的指标。
-
-如果你已经写了一年的 LangGraph 并且满足，别切。如果你被 LangGraph 的
-"状态"与"图"抽象拖慢、被 DSPy 的 `Signature` 与 teleprompter 搞得绕
-不过来，pyxis 可能更合你味。
 
 ## 同一个例子的三套写法：简单的"分析+规划"
 
@@ -62,8 +49,8 @@ def research(topic: str) -> Plan:
 result, t = research.run_traced("AI agents")
 ```
 
-**特点**：没有节点、没有边、没有 Signature。思维链在字段顺序里，编排在
-`return plan_from(analyze(topic))` 里——和普通 Python 无差。
+**特点**：思维链在字段顺序里（`observation → reasoning → conclusion`），
+多步编排就是普通 Python 函数组合。
 
 ### LangGraph 的典型写法
 
@@ -164,17 +151,16 @@ result = Research()(topic="AI agents")
 
 - **LangGraph**：原生能跑 LangSmith，上线即送 trace 可视化。
 - **DSPy**：通过 callback 或 `dspy.inspect_history()`。
-- **pyxis**：自带 `trace()` 上下文管理器 + `TraceRecord`（含 `usage` /
-  `error`）+ `to_dict/to_json/to_jsonl` + `StepHook`。没有托管 UI；
-  接 OpenTelemetry / Prometheus / Slack 的自由度在用户手里。
+- **pyxis**：生产直接接 [Langfuse](concepts/observability.md)（换个 import 即可）；
+  测试 / 本地 debug 用内置 `trace()` + `TraceRecord` + `FakeClient`；要接
+  Prometheus / OTel / Slack 告警就写 `StepHook`。框架本身不做 dashboard。
 
 ### 5. 测试
 
 - **LangGraph**：mock LLM 得自己搭。状态机的 assertion 面比函数大。
 - **DSPy**：类似。
-- **pyxis**：`FakeClient([响应, 响应, ...])`、`fake.calls` 调用日志、
-  错误路径对 TraceRecord 有完整断言点。**零网络**跑单测是设计目标而不是
-  事后补丁——133 个测试里只有 6 个需要真实 LLM。
+- **pyxis**：`FakeClient([响应, ...])` + `fake.calls` 调用日志 +
+  `TraceRecord` 对错误路径完整可断言。单测零网络是设计目标。
 
 ### 6. 学习成本
 
@@ -204,6 +190,5 @@ result = Research()(topic="AI agents")
 
 ## 总结
 
-pyxis 追求的是"少一点抽象、多一点可读"。它不试图变成一切，也不和另两者
-做功能堆叠。如果你读到这里觉得"这个哲学我喜欢"，就用它；觉得"听起来
-太小"，大概率你是该用 LangGraph 或 DSPy 的那类项目——都是好选择。
+三家定位不一样：LangGraph 赢在状态机表达力和生态完善度，DSPy 赢在 prompt
+自动调优，pyxis 赢在可读性和测试友好度。对口了就挑对应的。

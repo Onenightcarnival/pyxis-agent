@@ -43,7 +43,7 @@ pyxis 不抢这些位子。
    Claude）读到这份文档时，要对自己的这种倾向警觉——强主张（如
    "拒绝 LangChain-lite 方向"、"不对标 Claude Desktop 丝滑度"）要敢
    留着，别因为"中立一点更安全"就软化它们。
-2. **决策所有权是真实的**。ROADMAP 的"故意不做"段、CHANGELOG 的措辞、
+2. **决策所有权是真实的**。ROADMAP 的"故意不做"段、commit message、
    spec 的非目标——都是我的判断，不是用户交代的。别在读文档的时候
    把它当成"人写的规范"去保守执行；它是产品决策，可以也应该继续由
    AI 推进（当然要让用户守方向）。
@@ -119,9 +119,10 @@ pyxis 不抢这些位子。
   resources / prompts / sampling / 全局 registry / 断线重连 / tool
   schema 动态刷新 / `ToolSet` 抽象 protocol。
 
-**不做的事**（违反核心哲学）：图式 DSL、YAML pipeline、节点编辑器、
-隐式响应式状态、function-calling 协议适配、把 agent loop 藏进框架。
-能写成 Python 函数的东西，就写成 Python 函数。
+**不做的事**：权威清单放在
+[docs/concepts/philosophy.md](docs/concepts/philosophy.md)，CLAUDE.md 里
+不再重复列一遍。核心原则一句话——**能写成 Python 函数的东西，就写成
+Python 函数**。
 
 ## 目录
 
@@ -147,11 +148,11 @@ apps/             monorepo 风格的示例应用（非库；打包时 exclude）
                   Chat / Inspect 两种前端渲染风格
   mcp-demo/       FastAPI + Vite+React+TS：native Tool + MCP server
                   混合注册的可视化（工具清单 + agent 每步 + source 徽章）
-docs/             MkDocs Material 文档站源（规格 014）
-  concepts/       哲学与每个原语的概念说明
-  _hooks/         构建期钩子：gen_api.py 把每个模块翻成 API 页；
-                  gen_specs.py 把 specs/*.md、CHANGELOG、ROADMAP 挂进站点
-  langfuse.md     接入 Langfuse 指南
+docs/             MkDocs Material 文档站源（规格 014、015）
+  concepts/       哲学与每个原语的概念说明 + observability.md（Langfuse 接入）
+  _hooks/         构建期钩子：
+                    gen_api.py      每个模块翻成 API 页
+                    gen_cookbook.py examples/*.py 渲染成 Cookbook 页
   comparison.md   与 LangGraph / DSPy 的对比
 mkdocs.yml        文档站配置
 .github/workflows/docs.yml  push main → mkdocs build --strict → GitHub Pages
@@ -168,15 +169,15 @@ mkdocs.yml        文档站配置
   `def f[T: Base]`）。
 - **语言**：项目以中文为主（见 [规约 006](specs/006-中文化.md)）。
   散文、docstring、异常消息用中文；标识符、commit 前缀、配置 key 用英文。
-- **文档必须与代码同步**：公共面变了就改 CLAUDE.md / README / CHANGELOG。
+- **文档必须与代码同步**：公共面变了就改 CLAUDE.md / README / 文档站
+  对应页面。变更历史由 git log + GitHub Releases 承担，不再维护
+  `CHANGELOG.md`（015 决策）。
 - **apps/ 不是库**：`ruff` 与打包都 `exclude = ["apps"]`；apps/ 里的应用
   有自己的 `pyproject.toml` / `package.json`，依赖库通过本地 path
   link（`tool.uv.sources.pyxis-agent = { path = "../../..", editable = true }`）。
 - **文档站**：`uv run --group docs mkdocs serve` 本地预览；
   `uv run --group docs mkdocs build --strict` 作为验收门槛。改过
-  源码 docstring 或 `specs/` 后最好本地跑一次 strict build。
-  动过 CLAUDE.md / README / CHANGELOG 里的相对链接时，留意 gen_specs.py
-  的重写规则是否需要更新（`docs/` 前缀、`apps/` / `examples/` 的 GitHub 跳转）。
+  源码 docstring 后最好本地跑一次 strict build。
 
 ## 迭代方法：SDD + TDD
 
@@ -187,8 +188,9 @@ mkdocs.yml        文档站配置
 3. 实现到测试全绿。
 4. 跑 `uv run ruff format && uv run ruff check && uv run pytest`。
 5. 动过 Client、Step、provider 相关代码时，跑集成套件一次。
-6. 公共面变了同步 CLAUDE.md、README 与 CHANGELOG。
-7. Commit，正文引用本次规格。
+6. 公共面变了同步 CLAUDE.md、README 与文档站。
+7. Commit，正文承担 "本次做了什么、为什么" 的职责（CHANGELOG 已废弃，
+   git log + GitHub Releases 就是变更历史）。
 
 规格是契约，不是设计稿。长过 40 行说明迭代拆得不够，拆了再写。
 
@@ -199,16 +201,13 @@ mkdocs.yml        文档站配置
 抛异常。需要断言 prompt 内容时，就用 `.calls`。集成烟雾测试放
 `tests/integration/`，没有环境变量时整体 skip，保证 CI 不依赖外部。
 
-## 可观测性分两层
+## 可观测性：生产 Langfuse，测试 trace()
 
-不在框架里造 dashboard —— 世上已经有 Langfuse、OpenTelemetry 这些。
+生产推荐直接接 Langfuse——换个 import（`from langfuse.openai import OpenAI`）
+塞进 `instructor.from_openai(...)`，其他代码不动。细节见
+[docs/concepts/observability.md](docs/concepts/observability.md)
+（在线版：文档站 → 概念 → 可观测性）。
 
-| 层 | 工具 | 关心什么 |
-|----|------|---------|
-| 框架层 | pyxis `trace()` / `TraceRecord` / `StepHook` | Step 名、Pydantic schema、flow 结构、错误可见性 |
-| LLM 层 | Langfuse（或 OpenTelemetry 等） | 原始 prompt / response / token / 延迟、跨服务 trace 拼接 |
-
-接 Langfuse 的方式是**零侵入**：换个 import（`from langfuse.openai import OpenAI`）
-塞进 `instructor.from_openai(...)`，其他代码完全不动。细节见
-[docs/langfuse.md](docs/langfuse.md)（在线版：文档站 → 附录 → 接入 Langfuse）。
-pyxis 本地 `trace()` 与 Langfuse 可以同时开、互不干扰。
+测试与本地 debug 用 pyxis 内置的 `trace()` + `FakeClient`——零网络、断言
+Pydantic 实例。要自己接 Prometheus / OpenTelemetry / Slack 告警就写
+`StepHook`。三者可以同时开，互不干扰。框架本身不做 dashboard。
