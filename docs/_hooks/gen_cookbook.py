@@ -58,7 +58,7 @@ _DOCSTRING_RE = re.compile(r'^"""(.*?)"""\s*\n', re.DOTALL)
 
 
 def _split_docstring(source: str) -> tuple[str, str]:
-    '''提取文件顶部的三引号 docstring 做 intro，返回 (intro, 剩余代码)。'''
+    """提取文件顶部的三引号 docstring 做 intro，返回 (intro, 剩余代码)。"""
     m = _DOCSTRING_RE.match(source)
     if not m:
         return "", source
