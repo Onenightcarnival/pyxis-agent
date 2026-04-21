@@ -121,6 +121,10 @@ nav:
       - MCP 混合注册: cookbook/mcp_tool_use.md
       - Human-in-the-loop: cookbook/human_review.md
       - 接入 Langfuse: cookbook/with_langfuse.md
+  - Demos:
+      - demos/index.md
+      - chat-demo：schema-as-CoT 可视化: demos/chat-demo.md
+      - mcp-demo：native + MCP 混合: demos/mcp-demo.md
   - API 参考:
       - pyxis.step: api/step.md
       - pyxis.flow: api/flow.md

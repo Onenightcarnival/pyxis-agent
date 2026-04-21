@@ -148,8 +148,9 @@ apps/             monorepo 风格的示例应用（非库；打包时 exclude）
                   Chat / Inspect 两种前端渲染风格
   mcp-demo/       FastAPI + Vite+React+TS：native Tool + MCP server
                   混合注册的可视化（工具清单 + agent 每步 + source 徽章）
-docs/             MkDocs Material 文档站源（规格 014、015）
+docs/             MkDocs Material 文档站源（规格 014、015、016）
   concepts/       哲学与每个原语的概念说明 + observability.md（Langfuse 接入）
+  demos/          apps/ 两个示例应用的文档站路由页（规格 016）
   _hooks/         构建期钩子：
                     gen_api.py      每个模块翻成 API 页
                     gen_cookbook.py examples/*.py 渲染成 Cookbook 页

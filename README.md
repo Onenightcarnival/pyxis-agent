@@ -55,10 +55,24 @@ message；`Verdict` 字段顺序（`sentiment` 在 `confidence` 前）就是 LLM
 - [文档站首页](https://onenightcarnival.github.io/pyxis-agent/)——核心概念、
   可观测性、MCP 接入
 - [哲学与定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——
-  包含完整的"故意不做"清单
-- [examples/](examples/)——每个核心能力一个可跑脚本
-- [apps/chat-demo/](apps/chat-demo/) 与 [apps/mcp-demo/](apps/mcp-demo/)——
-  带前端的可视化示例
+  完整的"故意不做"清单
+- [Cookbook](https://onenightcarnival.github.io/pyxis-agent/cookbook/)——
+  `examples/` 里每个脚本对应一种使用姿势
+- [Demos](https://onenightcarnival.github.io/pyxis-agent/demos/)——
+  `apps/` 里两个带前端的可视化应用
+
+## 仓库结构 ↔ 文档站
+
+| 目录            | 是什么                                         | 在文档站的位置                    |
+|-----------------|------------------------------------------------|-----------------------------------|
+| `src/pyxis/`    | 库本体                                         | [**API 参考**](https://onenightcarnival.github.io/pyxis-agent/api/step/) 自动从 docstring 生成 |
+| `examples/`     | 单文件可跑脚本——每个核心能力一个               | [**Cookbook**](https://onenightcarnival.github.io/pyxis-agent/cookbook/) 自动渲染 |
+| `apps/`         | 带前端的示例应用（`chat-demo`、`mcp-demo`）     | [**Demos**](https://onenightcarnival.github.io/pyxis-agent/demos/) |
+| `docs/`         | 文档站源（MkDocs Material）                    | 文档站本体 |
+| `tests/`        | pytest（单元零网络 + `integration/` 烟雾测试） | 不上站 |
+| `specs/`        | SDD 规格——每次迭代一份 markdown                | **不上站**（内部开发档案） |
+| `CLAUDE.md`     | AI PM 设计笔记（协作模式、决策依据）           | **不上站** |
+| `ROADMAP.md`    | "已做 / 近期候选 / 故意不做"                   | **不上站** |
 
 ## 开发
 

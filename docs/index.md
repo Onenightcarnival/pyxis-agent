@@ -98,8 +98,14 @@ def triage(text: str) -> str:
 
 ---
 
-## 从哪里开始看
+## 下一步
 
-- 想读哲学 + 完整的"故意不做"清单：[哲学与定位](concepts/philosophy.md)
-- 想写代码：[概念指南](concepts/index.md) → 从 Step 开始
-- 想查 API：[API 参考](api/step.md)
+按你当下想做的事挑一条路进去：
+
+| 想做的事 | 去 |
+|---|---|
+| **先看得见**——浏览器里看 schema 逐字段被填出来、native + MCP 工具混合调度 | [Demos](demos/index.md) |
+| **照着抄**——一个可跑脚本对应一种姿势（研究、流式、ReAct、human-in-the-loop、Langfuse 接入 …） | [Cookbook](cookbook/index.md) |
+| **读进去**——`@step` / `@flow` / `Tool` / `mcp_toolset` 各是什么、为什么长这样 | [概念](concepts/index.md) |
+| **挑毛病**——完整的"故意不做"清单、为什么不发明 DSL / 不对标 ChatGPT 丝滑度 | [哲学与定位](concepts/philosophy.md) |
+| **查签名**——每个公共符号的类型和 docstring | [API 参考](api/step.md) |

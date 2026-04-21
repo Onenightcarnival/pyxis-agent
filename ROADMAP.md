@@ -48,7 +48,8 @@
     两个 MCP server 混合注册的可视化（工具清单按 source 分组 + agent
     每一步的 thought / action / observation 带来源徽章）。
 
-  未来候选：`apps/pr-review/`（代码审 agent）、
+  两者都已通过 [规格 016](specs/016-文档与仓库的映射一致性.md) 挂进文档站
+  **Demos** 一级 tab。未来候选：`apps/pr-review/`（代码审 agent）、
   `apps/research-assistant/`（多工具调研助手）。
 
 ## 故意不做
