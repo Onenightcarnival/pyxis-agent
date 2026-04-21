@@ -108,7 +108,19 @@ class _JsonRpcError(RuntimeError):
 
 
 class _HttpConn:
-    """无状态 HTTP JSON-RPC：每次 `request()` 一次 POST。"""
+    """Streamable HTTP 传输（符合 MCP 2024-11-05+ 规范）。
+
+    每次 `request()` 一次 POST。协议细节：
+    - 请求头带 `Accept: application/json, text/event-stream`——server 可以
+      任选其一回。这对 FastMCP 这类**默认用 SSE 格式回响应体**的 server
+      是必须的（不带会收到 406）。
+    - 响应按 Content-Type 分支解析：`application/json` 直接 `.json()`，
+      `text/event-stream` 按 SSE 块解析，抓 `event: message` 的 data 字段。
+    - 如果 server 在响应头里给了 `Mcp-Session-Id`，记下来；后续请求要在
+      `Mcp-Session-Id` 请求头里回写。
+    - 通知类请求（method 以 `notifications/` 开头、无 id）对应 HTTP 202，
+      无响应体；正常返回 None。
+    """
 
     def __init__(self, mcp: HttpMCP, *, timeout_s: float, http_transport: Any = None):
         kwargs: dict[str, Any] = {
@@ -120,21 +132,70 @@ class _HttpConn:
         self._client = httpx.Client(**kwargs)
         self._url = mcp.url
         self._ids = itertools.count(1)
+        self._session_id: str | None = None
 
     def request(self, method: str, params: dict[str, Any] | None = None) -> Any:
         rid = next(self._ids)
-        payload = {"jsonrpc": "2.0", "id": rid, "method": method}
+        payload: dict[str, Any] = {"jsonrpc": "2.0", "id": rid, "method": method}
         if params is not None:
             payload["params"] = params
-        resp = self._client.post(self._url, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
+        data = self._post(payload, rid=rid)
+        if data is None:
+            raise RuntimeError(f"{method} 期望响应但 server 未返回（method 可能不是 request）")
         if "error" in data:
             raise _JsonRpcError(f"{method} 失败：{data['error']}")
-        return data["result"]
+        return data.get("result")
+
+    def notify(self, method: str, params: dict[str, Any] | None = None) -> None:
+        """发一条 JSON-RPC notification（无 id、server 返回 HTTP 202 空响应）。"""
+        payload: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
+        if params is not None:
+            payload["params"] = params
+        self._post(payload, rid=None)
+
+    def _post(self, payload: dict[str, Any], *, rid: int | None) -> dict[str, Any] | None:
+        headers = {"Accept": "application/json, text/event-stream"}
+        if self._session_id is not None:
+            headers["Mcp-Session-Id"] = self._session_id
+        resp = self._client.post(self._url, json=payload, headers=headers)
+        resp.raise_for_status()
+        # server 可能在任一响应里分配 session id
+        new_sid = resp.headers.get("mcp-session-id") or resp.headers.get("Mcp-Session-Id")
+        if new_sid and not self._session_id:
+            self._session_id = new_sid
+        # notification：无响应体，直接返回 None
+        if rid is None or resp.status_code == 202 or not resp.content:
+            return None
+        ctype = resp.headers.get("content-type", "").lower()
+        if "text/event-stream" in ctype:
+            return _parse_sse_jsonrpc(resp.text, rid)
+        return resp.json()
 
     def close(self) -> None:
         self._client.close()
+
+
+def _parse_sse_jsonrpc(body: str, rid: int) -> dict[str, Any]:
+    """从 SSE 响应体里抠出 id 匹配的 JSON-RPC 响应。
+
+    SSE 协议：用空行分隔事件，每个事件里 `data:` 行承载 payload；多个 data
+    行要拼接。忽略 `ping` / 无 data 的事件；返回第一个 id 匹配的 message。
+    """
+    for block in body.replace("\r\n", "\n").split("\n\n"):
+        data_parts: list[str] = []
+        for line in block.split("\n"):
+            if line.startswith("data:"):
+                data_parts.append(line[5:].lstrip(" "))
+        if not data_parts:
+            continue
+        raw = "\n".join(data_parts)
+        try:
+            msg = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if msg.get("id") == rid:
+            return msg
+    raise RuntimeError(f"SSE 响应里没找到 id={rid} 对应的 JSON-RPC 响应：{body[:200]}")
 
 
 class _StdioConn:
@@ -275,6 +336,11 @@ async def mcp_toolset(
                 "clientInfo": {"name": "pyxis-agent", "version": "1.1.0"},
             },
         )
+        # 完成 initialize 后，spec 要求 client 发一条 `notifications/initialized`
+        # 通知；FastMCP 等严格实现没收到这条就会拒 tools/list。_StdioConn 对
+        # notification 无要求（server 一般不挑剔），_HttpConn 必须显式通知。
+        if isinstance(conn, _HttpConn):
+            conn.notify("notifications/initialized")
         listing = conn.request("tools/list")
         tool_specs: list[dict[str, Any]] = listing.get("tools", [])
 

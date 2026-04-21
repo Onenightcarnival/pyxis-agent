@@ -7,6 +7,8 @@ dependencies = [
     "pyxis-agent",
     "fastapi>=0.110",
     "uvicorn[standard]>=0.30",
+    # demo 里自己的两个 MCP server 用 FastMCP 写（mcp SDK 官方实现）
+    "mcp>=1.0",
 ]
 
 [tool.uv.sources]

@@ -1,20 +1,24 @@
-"""MCP 适配层示例：把远端 MCP 工具和 native pyxis 工具**拼进同一个判别式联合**。
+"""MCP 适配层示例：把 FastMCP 写的 server 和 native pyxis 工具
+**拼进同一个判别式联合**。**贴近真实工作流**：
 
-关键点：
-- `MCPServer` 是声明式数据（Pydantic）；`mcp_toolset(server)` 是异步
-  上下文管理器，入口连接 + `tools/list` + 翻译，退出时清理子进程。
-- 返回的 `list[type[Tool]]` 就是普通 `Tool` 子类，可以和 `Calculate` /
-  `Finish` 这些 native 工具**直接拼进一个 `Annotated[... | ..., Field(
-  discriminator="kind")]`**。
-- agent loop 里只调 `d.action.run()` 一行——它根本不知道工具从哪来。
+- 自己用 `mcp.server.fastmcp.FastMCP`（即 FastMCP）写 MCP server
+  （见本目录 `_mcp_demo_server.py`——就 20 行），或**直接部署别人**用
+  FastMCP 写的 server（`uvx mcp-server-filesystem /tmp` 之类）。
+- pyxis 端用 `MCPServer + StdioMCP(command=..., args=[...])` 起子进程
+  或 `HttpMCP(url=...)` 连远端，`async with mcp_toolset(server) as tools:`
+  拿到 `list[type[Tool]]`。
+- 拼进判别式联合 + `@step(output=Decision)` 的 `Decision.action` 里，
+  agent loop 一行 `d.action.run()` 调用——对来源、传输全无感。
 
-跑起来（用内置的 demo MCP server，零外部依赖）：
+跑起来（demo 会自动 Popen `_mcp_demo_server.py` 做 stdio 子进程）：
 
     OPENROUTER_API_KEY=... uv run --env-file .env \\
         python examples/mcp_tool_use.py
 
-替换成真 MCP server：把下面 `StdioMCP(command=..., args=[...])` 改成
-例如 `StdioMCP(command="uvx", args=["mcp-server-filesystem", "/tmp"])`。
+换成生产 MCP server：把 `StdioMCP(...)` 指到真 server 的启动命令
+（`StdioMCP(command="uvx", args=["mcp-server-filesystem", "/tmp"])`），
+或把 `transport` 换成 `HttpMCP(url="https://your.host/mcp",
+headers={"Authorization": "..."})`。**本文件其他代码一行都不用改。**
 """
 
 from __future__ import annotations

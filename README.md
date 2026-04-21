@@ -202,8 +202,13 @@ async def agent(q: str) -> str:
 ```
 
 Streamable HTTP 传输同样：换成 `HttpMCP(url="https://...", headers={...})`。
-完整示例见 [examples/mcp_tool_use.py](examples/mcp_tool_use.py)（带一个
-10 行的本地 demo stdio MCP server，零外部依赖）。
+`HttpMCP` 对齐 MCP 2024-11-05 规范——`Accept` 头 / SSE 响应体解析 /
+`Mcp-Session-Id` 跨请求追踪 / `notifications/initialized`——可以**直接
+对接 FastMCP 写的 server**（`mcp.server.fastmcp.FastMCP`）。
+
+完整示例见 [examples/mcp_tool_use.py](examples/mcp_tool_use.py)：配一个
+用 FastMCP 写的 20 行 stdio server（[examples/_mcp_demo_server.py](examples/_mcp_demo_server.py)），
+展示你日常写自己业务 MCP server + 用 pyxis 连进 agent 的完整闭环。
 
 带前端的可视化见 [apps/mcp-demo/](apps/mcp-demo/)：左栏扁平展开"LLM
 眼里的工具清单"（native 蓝、MCP 绿），右栏流式显示 agent 每一步的

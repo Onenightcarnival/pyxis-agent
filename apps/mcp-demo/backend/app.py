@@ -80,27 +80,19 @@ class RunRequest(BaseModel):
 # ---- 应用状态：启动时连 MCP，关闭时释放 ----
 
 
-async def _wait_for_http_mcp(url: str, timeout_s: float = 10.0) -> None:
-    """轮询 HTTP MCP server 的 /mcp 端点直到 initialize 成功或超时。"""
+async def _wait_for_port(host: str, port: int, timeout_s: float = 10.0) -> None:
+    """等 TCP 端口可以 connect——不发 HTTP 请求，避开各 MCP server 的协议
+    前置要求（比如 FastMCP 强制要求 Accept: text/event-stream，否则 406）。"""
     deadline = time.monotonic() + timeout_s
-    async with httpx.AsyncClient(timeout=1.0) as client:
-        while time.monotonic() < deadline:
-            try:
-                r = await client.post(
-                    url,
-                    json={
-                        "jsonrpc": "2.0",
-                        "id": 0,
-                        "method": "initialize",
-                        "params": {},
-                    },
-                )
-                if r.status_code == 200:
-                    return
-            except httpx.HTTPError:
-                pass
+    while time.monotonic() < deadline:
+        try:
+            reader, writer = await asyncio.open_connection(host, port)
+            writer.close()
+            await writer.wait_closed()
+            return
+        except OSError:
             await asyncio.sleep(0.15)
-    raise RuntimeError(f"HTTP MCP server 在 {timeout_s}s 内未就绪：{url}")
+    raise RuntimeError(f"HTTP MCP server 在 {timeout_s}s 内未监听 {host}:{port}")
 
 
 @asynccontextmanager
@@ -108,24 +100,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     if "OPENROUTER_API_KEY" in os.environ:
         set_default_client(openrouter_client())
 
-    # 启动独立 uvicorn 进程托管 HTTP MCP server
+    # 启动独立进程：`python mcp_http_server.py` → FastMCP 自己管 uvicorn，
+    # 端口通过 MCP_HTTP_PORT 环境变量传递（与 mcp_http_server.py 里读法一致）。
     http_proc = subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "mcp_http_server:app",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            str(HTTP_MCP_PORT),
-            "--log-level",
-            "warning",
-        ],
-        cwd=str(Path(__file__).parent),
+        [sys.executable, str(Path(__file__).parent / "mcp_http_server.py")],
+        env={**os.environ, "MCP_HTTP_PORT": str(HTTP_MCP_PORT)},
     )
     try:
-        await _wait_for_http_mcp(HTTP_MCP_URL)
+        await _wait_for_port("127.0.0.1", HTTP_MCP_PORT)
 
         stdio_server = MCPServer(
             name="stdio-demo",

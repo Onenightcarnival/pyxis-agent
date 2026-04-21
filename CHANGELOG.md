@@ -7,6 +7,26 @@
 
 ### 新增
 
+- **`HttpMCP` 对齐 Streamable HTTP 规范，兼容 FastMCP 写的 server**。
+  原实现只认 `application/json` 响应体，遇到 FastMCP（`mcp.server.fastmcp`
+  / 独立 `fastmcp` 包）默认的 SSE 格式响应会拿到 406/解析失败。升级后
+  `_HttpConn` 按 MCP 2024-11-05 规范做了四件事：(1) 请求头带
+  `Accept: application/json, text/event-stream`，(2) 按 `Content-Type`
+  分支解析 JSON 或 SSE（`_parse_sse_jsonrpc` 抠出 id 匹配的事件消息），
+  (3) 跨请求追踪 `Mcp-Session-Id` 头，(4) `initialize` 后发
+  `notifications/initialized` 通知。新增一条 SSE-path 测试（用
+  `httpx.MockTransport` 伪造 SSE 响应 + session id + 多事件消息）。
+  **这意味着 pyxis 现在可以零改动对接任何 FastMCP 写的 MCP server。**
+- **`examples/_mcp_demo_server.py` + `apps/mcp-demo/backend/{mcp_server,
+  mcp_http_server}.py` 改用 FastMCP 写**。之前手搓的 JSON-RPC server 在
+  测试里保留（`tests/test_mcp.py` 的 stdio 用例用 10 行 inline hand-rolled
+  server 确保"pyxis 能对任何 JSON-RPC MCP server 对话"这件事依然被证明），
+  但例子与 demo app 里的 server 换成了业务侧真实使用的 `FastMCP` + `@mcp.tool()`
+  写法——贴近用户 "我自己用 FastMCP 写 / 或部署别人的 MCP server" 的实际
+  工作流。`apps/mcp-demo/backend` 加 `mcp>=1.0` 依赖。
+
+### 新增（先前已落）
+
 - **MCP（Model Context Protocol）适配层 —— `pyxis.mcp`**（规格 013）。
   把一个 MCP server 变成一批 pyxis `Tool` 子类：声明 `MCPServer` +
   `StdioMCP | HttpMCP` 判别式联合、`async with mcp_toolset(server) as

@@ -182,7 +182,7 @@ async def test_http_toolset_discovers_and_invokes_tools():
         assert add.run() == "5"
 
     methods = [c["method"] for c in state["calls"]]
-    assert methods[:2] == ["initialize", "tools/list"]
+    assert methods[:3] == ["initialize", "notifications/initialized", "tools/list"]
     assert "tools/call" in methods
 
 
@@ -212,6 +212,88 @@ async def test_http_toolset_include_unknown_name_raises():
     with pytest.raises(ValueError, match="nonexistent"):
         async with mcp_toolset(server, _http_transport=transport):
             pass
+
+
+async def test_http_toolset_handles_sse_response_and_session_id():
+    """FastMCP 等真实 server 默认用 text/event-stream 回响应；pyxis 必须能解析。
+
+    同时验证 `Mcp-Session-Id` 头在 initialize 里分配、后续请求回写。
+    """
+    SESSION_ID = "sess-abcd"
+    calls: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(
+            {
+                "method": body.get("method"),
+                "id": body.get("id"),
+                "sid": request.headers.get("mcp-session-id"),
+                "accept": request.headers.get("accept"),
+            }
+        )
+        method = body["method"]
+        rid = body.get("id")
+
+        # notification 按规范返回 202 空响应
+        if rid is None:
+            return httpx.Response(202)
+
+        if method == "initialize":
+            result = {"protocolVersion": "2024-11-05", "capabilities": {}}
+            sse_body = f"event: message\ndata: {json.dumps({'jsonrpc': '2.0', 'id': rid, 'result': result})}\n\n"
+            return httpx.Response(
+                200,
+                content=sse_body,
+                headers={
+                    "content-type": "text/event-stream",
+                    "mcp-session-id": SESSION_ID,
+                },
+            )
+        if method == "tools/list":
+            # 响应前面先夹一条无关的事件（server 可能这么干），确保解析器
+            # 正确跳过不匹配 id 的消息
+            result = {"tools": SAMPLE_TOOLS}
+            sse_body = (
+                "event: message\n"
+                'data: {"jsonrpc":"2.0","method":"notifications/progress","params":{}}\n'
+                "\n"
+                f"event: message\ndata: {json.dumps({'jsonrpc': '2.0', 'id': rid, 'result': result})}\n\n"
+            )
+            return httpx.Response(
+                200, content=sse_body, headers={"content-type": "text/event-stream"}
+            )
+        if method == "tools/call":
+            result = {"content": [{"type": "text", "text": "sse-ok"}]}
+            sse_body = f"event: message\ndata: {json.dumps({'jsonrpc': '2.0', 'id': rid, 'result': result})}\n\n"
+            return httpx.Response(
+                200, content=sse_body, headers={"content-type": "text/event-stream"}
+            )
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": rid,
+                "error": {"code": -32601, "message": f"unknown: {method}"},
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    server = MCPServer(name="web", transport=HttpMCP(url="http://fake/mcp"))
+
+    async with mcp_toolset(server, _http_transport=transport) as tools:
+        echo_cls = next(t for t in tools if t.model_fields["kind"].default == "echo")
+        assert echo_cls(text="x").run() == "sse-ok"  # type: ignore[call-arg]
+
+    # 第一条请求无 session id；initialize 之后所有请求必须带上 SESSION_ID
+    assert calls[0]["method"] == "initialize"
+    assert calls[0]["sid"] is None
+    assert calls[0]["accept"] == "application/json, text/event-stream"
+    for c in calls[1:]:
+        assert c["sid"] == SESSION_ID, f"{c['method']} 没带 session id"
+    # notifications/initialized 应当在 initialize 之后、tools/list 之前
+    methods = [c["method"] for c in calls]
+    assert methods[:3] == ["initialize", "notifications/initialized", "tools/list"]
 
 
 async def test_http_toolset_duplicate_tool_names_raise():

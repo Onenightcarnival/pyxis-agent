@@ -108,10 +108,14 @@ pyxis 不抢这些位子。
 - `pyxis.mcp` —— MCP 适配层。`MCPServer` + `StdioMCP | HttpMCP`（判别式
   联合）是**数据**（没有 `run()`）；`async with mcp_toolset(server) as
   tools:` 进入时建立连接 + `tools/list` + 把远端工具翻成 pyxis `Tool`
-  子类，退出时关连接。传输差异在 adapter 内部消化：HTTP 用 `httpx`、
-  stdio 用持久子进程 + id 关联——`Tool.run()` 契约不扩。混合注册 = 拼
-  list：`[NativeTool1, NativeTool2, *mcp_tools]` 直接进判别式联合。
-  `trace()` 零集成自动覆盖。**故意不做**：`arun` / SSE 传输 /
+  子类，退出时关连接。`HttpMCP` 对齐 **MCP 2024-11-05 Streamable HTTP**
+  规范：`Accept: application/json, text/event-stream` / 兼容 JSON 或 SSE
+  格式响应体 / 跨请求追踪 `Mcp-Session-Id` / `initialize` 后发
+  `notifications/initialized`——这意味着可以**直接对接 FastMCP 写的 server**
+  （官方 `mcp.server.fastmcp` 或独立 `fastmcp` 包）。混合注册 = 拼 list：
+  `[NativeTool1, *stdio_tools, *http_tools]` 直接进判别式联合。`trace()`
+  零集成自动覆盖。**故意不做**：`arun` / SSE 传输（老规范的 `GET /sse`
+  长连接那种，与 Streamable HTTP 的 SSE 响应体不是一回事）/
   resources / prompts / sampling / 全局 registry / 断线重连 / tool
   schema 动态刷新 / `ToolSet` 抽象 protocol。
 
