@@ -1,0 +1,233 @@
+"""mcp-demo 的 FastAPI 后端：一次 POST /run 流式吐出 agent 的每一步。
+
+设计要点：
+- 后端在启动时连上本地 stdio MCP server，拉 `tools/list`，和 native
+  工具（`Calculate` / `Finish`）拼成一个联合，跑普通 pyxis agent loop。
+- 每一步都把"决策 + 工具来源标签（native / mcp:<name>） + 调用结果"
+  打成 SSE 帧推给前端；前端只管渲染。
+- 先推一条 `inventory` 帧，让前端能**在开跑前**渲染工具清单（以及
+  它们的来源）——这是 pyxis 的核心卖点可视化：**多源工具被统一成
+  一个判别式联合**。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import sys
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from functools import reduce
+from operator import or_
+from pathlib import Path
+from typing import Annotated, Any, Literal
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
+from pyxis import Tool, set_default_client, step
+from pyxis.mcp import MCPServer, StdioMCP, mcp_toolset
+from pyxis.providers import openrouter_client
+
+MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-5.4-nano")
+MCP_SERVER_SCRIPT = Path(__file__).parent / "mcp_server.py"
+
+
+# ---- native 工具 ----
+
+
+class Calculate(Tool):
+    """计算一个简单的算术表达式，返回数值结果。"""
+
+    kind: Literal["calculate"] = "calculate"
+    expression: str = Field(description="一个 Python 数学表达式，例如 '2*(3+4)'")
+
+    def run(self) -> str:
+        return str(eval(self.expression, {"__builtins__": {}}, {}))
+
+
+class Finish(Tool):
+    """停止并给出最终答案。"""
+
+    kind: Literal["finish"] = "finish"
+    answer: str = Field(description="给用户的最终答案")
+
+    def run(self) -> str:
+        return self.answer
+
+
+NATIVE_TOOLS: list[type[Tool]] = [Calculate, Finish]
+NATIVE_NAMES = {t.model_fields["kind"].default for t in NATIVE_TOOLS}
+
+
+# ---- 请求 / SSE 帧的形状（前端共用） ----
+
+
+class RunRequest(BaseModel):
+    question: str
+    max_steps: int = 6
+
+
+# ---- 应用状态：启动时连 MCP，关闭时释放 ----
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    if "OPENROUTER_API_KEY" in os.environ:
+        set_default_client(openrouter_client())
+    server = MCPServer(
+        name="demo",
+        transport=StdioMCP(
+            command=sys.executable, args=[str(MCP_SERVER_SCRIPT)]
+        ),
+    )
+    async with mcp_toolset(server) as mcp_tools:
+        app.state.mcp_server_name = server.name
+        app.state.mcp_tools = mcp_tools
+        app.state.mcp_names = {
+            t.model_fields["kind"].default for t in mcp_tools
+        }
+        yield
+
+
+app = FastAPI(title="pyxis mcp-demo", lifespan=_lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def _sse(data: dict) -> bytes:
+    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n".encode()
+
+
+def _describe(tool_cls: type[Tool], *, source: str) -> dict:
+    """把一个 Tool 子类描述成前端能直接渲染的 card 数据。"""
+    fields = []
+    for name, info in tool_cls.model_fields.items():
+        if name == "kind":
+            continue
+        fields.append(
+            {
+                "name": name,
+                "type": _type_label(info.annotation),
+                "description": info.description or "",
+                "required": info.is_required(),
+            }
+        )
+    return {
+        "name": tool_cls.model_fields["kind"].default,
+        "source": source,
+        "description": (tool_cls.__doc__ or "").strip(),
+        "fields": fields,
+    }
+
+
+def _type_label(annotation: Any) -> str:
+    return getattr(annotation, "__name__", None) or str(annotation)
+
+
+def _source_of(action_kind: str, mcp_server_name: str, mcp_names: set[str]) -> str:
+    if action_kind in NATIVE_NAMES:
+        return "native"
+    if action_kind in mcp_names:
+        return f"mcp:{mcp_server_name}"
+    return "unknown"
+
+
+async def _stream_run(req: RunRequest) -> AsyncIterator[bytes]:
+    mcp_tools: list[type[Tool]] = app.state.mcp_tools
+    mcp_server_name: str = app.state.mcp_server_name
+    mcp_names: set[str] = app.state.mcp_names
+
+    # 1) inventory 帧：把所有工具（native + MCP）打包推给前端
+    inventory = [
+        *[_describe(t, source="native") for t in NATIVE_TOOLS],
+        *[_describe(t, source=f"mcp:{mcp_server_name}") for t in mcp_tools],
+    ]
+    yield _sse({"kind": "inventory", "tools": inventory})
+
+    # 2) 拼判别式联合
+    tool_classes: list[type[Tool]] = [*NATIVE_TOOLS, *mcp_tools]
+    Action = Annotated[reduce(or_, tool_classes), Field(discriminator="kind")]
+
+    class Decision(BaseModel):
+        thought: str = Field(description="先推理接下来要做什么")
+        action: Action = Field(description="这一步要调用的工具")  # type: ignore[valid-type]
+
+    @step(output=Decision, model=MODEL)
+    def decide(question: str, scratch: str) -> str:
+        """你是一个会推理的中文 agent。只能用已提供的工具解决问题；
+        拿到答案后用 `finish` 停止。"""
+        return f"问题：{question}\n\n草稿板：\n{scratch or '（空）'}"
+
+    scratch: list[str] = []
+    try:
+        for i in range(req.max_steps):
+            d = decide(req.question, "\n".join(scratch))
+            action_kind = d.action.kind
+            # 同步调用 run()——tools 的 I/O 策略（HTTP / 子进程）被 adapter 吸收；
+            # 这里加 run_in_executor 是防止 MCP 调用时阻塞 event loop。
+            obs = await asyncio.get_running_loop().run_in_executor(
+                None, d.action.run
+            )
+            source = _source_of(action_kind, mcp_server_name, mcp_names)
+            yield _sse(
+                {
+                    "kind": "step",
+                    "index": i,
+                    "thought": d.thought,
+                    "action": {
+                        "name": action_kind,
+                        "args": d.action.model_dump(exclude={"kind"}),
+                        "source": source,
+                    },
+                    "observation": obs,
+                }
+            )
+            scratch.append(f"thought: {d.thought}")
+            scratch.append(f"{action_kind}({d.action.model_dump_json()}) -> {obs}")
+            await asyncio.sleep(0)
+            if isinstance(d.action, Finish):
+                yield _sse({"kind": "done", "answer": obs})
+                return
+        yield _sse(
+            {"kind": "error", "message": f"达到 max_steps={req.max_steps} 仍未结束"}
+        )
+    except Exception as exc:  # noqa: BLE001
+        yield _sse({"kind": "error", "message": f"{type(exc).__name__}: {exc}"})
+
+
+@app.post("/run")
+async def run(req: RunRequest) -> StreamingResponse:
+    headers = {
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    }
+    return StreamingResponse(
+        _stream_run(req), media_type="text/event-stream", headers=headers
+    )
+
+
+@app.get("/inventory")
+async def inventory() -> dict:
+    """静态拉一次工具清单——前端可以在空闲时就渲染它。"""
+    mcp_tools: list[type[Tool]] = app.state.mcp_tools
+    mcp_server_name: str = app.state.mcp_server_name
+    return {
+        "tools": [
+            *[_describe(t, source="native") for t in NATIVE_TOOLS],
+            *[_describe(t, source=f"mcp:{mcp_server_name}") for t in mcp_tools],
+        ]
+    }
+
+
+@app.get("/healthz")
+async def healthz() -> dict:
+    return {"ok": True, "model": MODEL, "has_key": "OPENROUTER_API_KEY" in os.environ}

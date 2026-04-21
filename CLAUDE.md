@@ -105,6 +105,15 @@ pyxis 不抢这些位子。
   人类答案 `.send()` 回生成器。没有 checkpoint、没有状态快照——生成器
   本身就是活的状态。异步生成器里用 `yield finish(value)` 作终态哨兵
   （Python 禁用 async gen 的值返回）。
+- `pyxis.mcp` —— MCP 适配层。`MCPServer` + `StdioMCP | HttpMCP`（判别式
+  联合）是**数据**（没有 `run()`）；`async with mcp_toolset(server) as
+  tools:` 进入时建立连接 + `tools/list` + 把远端工具翻成 pyxis `Tool`
+  子类，退出时关连接。传输差异在 adapter 内部消化：HTTP 用 `httpx`、
+  stdio 用持久子进程 + id 关联——`Tool.run()` 契约不扩。混合注册 = 拼
+  list：`[NativeTool1, NativeTool2, *mcp_tools]` 直接进判别式联合。
+  `trace()` 零集成自动覆盖。**故意不做**：`arun` / SSE 传输 /
+  resources / prompts / sampling / 全局 registry / 断线重连 / tool
+  schema 动态刷新 / `ToolSet` 抽象 protocol。
 
 **不做的事**（违反核心哲学）：图式 DSL、YAML pipeline、节点编辑器、
 隐式响应式状态、function-calling 协议适配、把 agent loop 藏进框架。
@@ -124,6 +133,7 @@ src/pyxis/        库代码
   hooks.py        StepHook + add_hook/remove_hook/clear_hooks 观察者钩子
   human.py        HumanQuestion / FlowResult / ask_human / finish /
                   run_flow / run_aflow 人工介入原语
+  mcp.py          MCPServer / StdioMCP / HttpMCP / mcp_toolset MCP 适配层
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
 specs/            SDD 规格 —— 每个迭代一份 markdown
@@ -131,6 +141,8 @@ examples/         跑得起来的单文件 demo（默认接 OpenRouter）
 apps/             monorepo 风格的示例应用（非库；打包时 exclude）
   chat-demo/      FastAPI + Vite+React+TS：一个开关切换
                   Chat / Inspect 两种前端渲染风格
+  mcp-demo/       FastAPI + Vite+React+TS：native Tool + MCP server
+                  混合注册的可视化（工具清单 + agent 每步 + source 徽章）
 ```
 
 ## 开发流

@@ -7,6 +7,32 @@
 
 ### 新增
 
+- **MCP（Model Context Protocol）适配层 —— `pyxis.mcp`**（规格 013）。
+  把一个 MCP server 变成一批 pyxis `Tool` 子类：声明 `MCPServer` +
+  `StdioMCP | HttpMCP` 判别式联合、`async with mcp_toolset(server) as
+  tools:` 拿到 `list[type[Tool]]`，直接拼进 agent loop 的判别式联合。
+  **`Tool.run()` 契约不扩**——HTTP 用 `httpx.Client`、stdio 用持久子
+  进程 + `id→response` 关联表，传输复杂度全部吸收在 adapter 里，
+  agent loop 里仍是一行 `d.action.run()`。`trace()` 自动生效（零集成）。
+  故意不做（见 [specs/013-mcp.md](specs/013-mcp.md)）：不扩 `arun` /
+  不做 SSE / 不做 resources / prompts / sampling / 不做全局 registry /
+  不做断线重连 / 不做 tool schema 动态刷新 / 不做 `ToolSet` 抽象
+  protocol（只有 MCP 一家实现时它就是空抽象）。
+- **`examples/mcp_tool_use.py` + `examples/_mcp_demo_server.py`**：零外
+  部依赖的示例——后者是一个 10 行的 stdio MCP server（`word_count` /
+  `reverse`），前者把它和 `Finish` native 工具拼成混合联合跑 agent loop。
+  真场景只需把 `StdioMCP(command=..., args=[...])` 指向任意 MCP server。
+- **`apps/mcp-demo/` —— 带前端的 MCP 可视化 demo**。
+  - 后端：FastAPI，启动时 `async with mcp_toolset(...)` 连上本地 demo
+    MCP server，POST `/run` 流式推帧：先一帧 `inventory`（工具清单 +
+    每个工具的 source 标签：`native` 或 `mcp:<server>`），再按 agent
+    迭代推 `step` 帧（`thought` + `action{name, args, source}` +
+    `observation`），最后 `done` 携带 `answer`。
+  - 前端：Vite + React + TS + Tailwind。左栏 `Inventory` 把工具按 source
+    分组展示（native 蓝、MCP 绿），右栏 `StepCard` 流逐步显示 agent 的
+    每一步——同一种卡片形态渲染 native / MCP，只在 badge 上区分来源，
+    呼应"agent loop 对来源无感"。
+  - 详见 [apps/mcp-demo/README.md](apps/mcp-demo/README.md)。
 - **CLAUDE.md 记录协作模式**：明确 Claude（我）是这个项目的"AI 产品
   经理"、用户是"哲学方向引导者 + 品味守门员"。附带"自知之明"三条
   注意事项留给未来读文档的 Claude——警惕训练偏置导致的讨好折衷、
