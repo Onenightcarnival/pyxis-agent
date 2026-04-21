@@ -1,13 +1,14 @@
 """mcp-demo 的 FastAPI 后端：一次 POST /run 流式吐出 agent 的每一步。
 
 设计要点：
-- 后端在启动时连上本地 stdio MCP server，拉 `tools/list`，和 native
-  工具（`Calculate` / `Finish`）拼成一个联合，跑普通 pyxis agent loop。
-- 每一步都把"决策 + 工具来源标签（native / mcp:<name>） + 调用结果"
-  打成 SSE 帧推给前端；前端只管渲染。
-- 先推一条 `inventory` 帧，让前端能**在开跑前**渲染工具清单（以及
-  它们的来源）——这是 pyxis 的核心卖点可视化：**多源工具被统一成
-  一个判别式联合**。
+- 后端在启动时**同时**连两个 MCP server：
+  - `mcp:stdio-demo`——本地子进程（`mcp_server.py`）走 stdio JSON-RPC。
+  - `mcp:http-demo`——本地 uvicorn 子进程（`mcp_http_server.py`）走
+    Streamable HTTP JSON-RPC。
+  两条传输在 pyxis `Tool.run()` 层面完全对称，agent loop 对此无感。
+- 和 native 工具（`Calculate` / `Finish`）拼成一个判别式联合跑 agent loop。
+- 每一步 SSE 帧携带**工具来源标签**（`native` / `mcp:<server-name>`），
+  前端据此上色，可视化"多源工具 + 统一调用面"这件事。
 """
 
 from __future__ import annotations
@@ -15,7 +16,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import subprocess
 import sys
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from functools import reduce
@@ -23,17 +26,20 @@ from operator import or_
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from pyxis import Tool, set_default_client, step
-from pyxis.mcp import MCPServer, StdioMCP, mcp_toolset
+from pyxis.mcp import HttpMCP, MCPServer, StdioMCP, mcp_toolset
 from pyxis.providers import openrouter_client
 
 MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-5.4-nano")
-MCP_SERVER_SCRIPT = Path(__file__).parent / "mcp_server.py"
+MCP_STDIO_SCRIPT = Path(__file__).parent / "mcp_server.py"
+HTTP_MCP_PORT = int(os.environ.get("MCP_HTTP_PORT", "3003"))
+HTTP_MCP_URL = f"http://127.0.0.1:{HTTP_MCP_PORT}/mcp"
 
 
 # ---- native 工具 ----
@@ -74,19 +80,81 @@ class RunRequest(BaseModel):
 # ---- 应用状态：启动时连 MCP，关闭时释放 ----
 
 
+async def _wait_for_http_mcp(url: str, timeout_s: float = 10.0) -> None:
+    """轮询 HTTP MCP server 的 /mcp 端点直到 initialize 成功或超时。"""
+    deadline = time.monotonic() + timeout_s
+    async with httpx.AsyncClient(timeout=1.0) as client:
+        while time.monotonic() < deadline:
+            try:
+                r = await client.post(
+                    url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 0,
+                        "method": "initialize",
+                        "params": {},
+                    },
+                )
+                if r.status_code == 200:
+                    return
+            except httpx.HTTPError:
+                pass
+            await asyncio.sleep(0.15)
+    raise RuntimeError(f"HTTP MCP server 在 {timeout_s}s 内未就绪：{url}")
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     if "OPENROUTER_API_KEY" in os.environ:
         set_default_client(openrouter_client())
-    server = MCPServer(
-        name="demo",
-        transport=StdioMCP(command=sys.executable, args=[str(MCP_SERVER_SCRIPT)]),
+
+    # 启动独立 uvicorn 进程托管 HTTP MCP server
+    http_proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "mcp_http_server:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(HTTP_MCP_PORT),
+            "--log-level",
+            "warning",
+        ],
+        cwd=str(Path(__file__).parent),
     )
-    async with mcp_toolset(server) as mcp_tools:
-        app.state.mcp_server_name = server.name
-        app.state.mcp_tools = mcp_tools
-        app.state.mcp_names = {t.model_fields["kind"].default for t in mcp_tools}
-        yield
+    try:
+        await _wait_for_http_mcp(HTTP_MCP_URL)
+
+        stdio_server = MCPServer(
+            name="stdio-demo",
+            transport=StdioMCP(command=sys.executable, args=[str(MCP_STDIO_SCRIPT)]),
+        )
+        http_server = MCPServer(
+            name="http-demo",
+            transport=HttpMCP(url=HTTP_MCP_URL),
+        )
+        async with (
+            mcp_toolset(stdio_server) as stdio_tools,
+            mcp_toolset(http_server) as http_tools,
+        ):
+            # 保留来源信息：前端 / agent loop 都要靠它区分 native vs mcp:<name>
+            app.state.mcp_sources = [
+                (stdio_server.name, stdio_tools),
+                (http_server.name, http_tools),
+            ]
+            app.state.mcp_names_by_source = {
+                name: {t.model_fields["kind"].default for t in tools}
+                for name, tools in app.state.mcp_sources
+            }
+            yield
+    finally:
+        http_proc.terminate()
+        try:
+            http_proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            http_proc.kill()
 
 
 app = FastAPI(title="pyxis mcp-demo", lifespan=_lifespan)
@@ -128,28 +196,36 @@ def _type_label(annotation: Any) -> str:
     return getattr(annotation, "__name__", None) or str(annotation)
 
 
-def _source_of(action_kind: str, mcp_server_name: str, mcp_names: set[str]) -> str:
+def _source_of(action_kind: str, mcp_names_by_source: dict[str, set[str]]) -> str:
     if action_kind in NATIVE_NAMES:
         return "native"
-    if action_kind in mcp_names:
-        return f"mcp:{mcp_server_name}"
+    for name, names in mcp_names_by_source.items():
+        if action_kind in names:
+            return f"mcp:{name}"
     return "unknown"
 
 
+def _build_inventory(
+    mcp_sources: list[tuple[str, list[type[Tool]]]],
+) -> list[dict]:
+    """native + 所有 MCP 来源的工具描述 flatten 成一个列表。"""
+    inv = [_describe(t, source="native") for t in NATIVE_TOOLS]
+    for name, tools in mcp_sources:
+        inv.extend(_describe(t, source=f"mcp:{name}") for t in tools)
+    return inv
+
+
 async def _stream_run(req: RunRequest) -> AsyncIterator[bytes]:
-    mcp_tools: list[type[Tool]] = app.state.mcp_tools
-    mcp_server_name: str = app.state.mcp_server_name
-    mcp_names: set[str] = app.state.mcp_names
+    mcp_sources: list[tuple[str, list[type[Tool]]]] = app.state.mcp_sources
+    mcp_names_by_source: dict[str, set[str]] = app.state.mcp_names_by_source
 
-    # 1) inventory 帧：把所有工具（native + MCP）打包推给前端
-    inventory = [
-        *[_describe(t, source="native") for t in NATIVE_TOOLS],
-        *[_describe(t, source=f"mcp:{mcp_server_name}") for t in mcp_tools],
-    ]
-    yield _sse({"kind": "inventory", "tools": inventory})
+    # 1) inventory 帧：把所有工具（native + 每个 MCP source）打包推给前端
+    yield _sse({"kind": "inventory", "tools": _build_inventory(mcp_sources)})
 
-    # 2) 拼判别式联合
-    tool_classes: list[type[Tool]] = [*NATIVE_TOOLS, *mcp_tools]
+    # 2) 拼判别式联合：native + 所有 MCP 来源的工具全部 flatten
+    tool_classes: list[type[Tool]] = [*NATIVE_TOOLS]
+    for _, tools in mcp_sources:
+        tool_classes.extend(tools)
     Action = Annotated[reduce(or_, tool_classes), Field(discriminator="kind")]
 
     class Decision(BaseModel):
@@ -179,7 +255,7 @@ async def _stream_run(req: RunRequest) -> AsyncIterator[bytes]:
             # 同步调用 run()——tools 的 I/O 策略（HTTP / 子进程）被 adapter 吸收；
             # 这里加 run_in_executor 是防止 MCP 调用时阻塞 event loop。
             obs = await asyncio.get_running_loop().run_in_executor(None, d.action.run)
-            source = _source_of(action_kind, mcp_server_name, mcp_names)
+            source = _source_of(action_kind, mcp_names_by_source)
             yield _sse(
                 {
                     "kind": "step",
@@ -217,14 +293,7 @@ async def run(req: RunRequest) -> StreamingResponse:
 @app.get("/inventory")
 async def inventory() -> dict:
     """静态拉一次工具清单——前端可以在空闲时就渲染它。"""
-    mcp_tools: list[type[Tool]] = app.state.mcp_tools
-    mcp_server_name: str = app.state.mcp_server_name
-    return {
-        "tools": [
-            *[_describe(t, source="native") for t in NATIVE_TOOLS],
-            *[_describe(t, source=f"mcp:{mcp_server_name}") for t in mcp_tools],
-        ]
-    }
+    return {"tools": _build_inventory(app.state.mcp_sources)}
 
 
 @app.get("/healthz")

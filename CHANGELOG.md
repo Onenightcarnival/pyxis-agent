@@ -33,6 +33,15 @@
     每一步——同一种卡片形态渲染 native / MCP，只在 badge 上区分来源，
     呼应"agent loop 对来源无感"。
   - 详见 [apps/mcp-demo/README.md](apps/mcp-demo/README.md)。
+- **`apps/mcp-demo/` 加 Streamable HTTP MCP server**。现在 demo 同时连
+  两条 MCP 传输：`mcp:stdio-demo`（子进程）+ `mcp:http-demo`（独立
+  uvicorn 进程，`mcp_http_server.py`，端口 3003，暴露 `base64_encode`
+  / `slugify` / `json_pretty`）。lifespan 里 Popen HTTP server →
+  `await _wait_for_http_mcp` → `async with mcp_toolset(stdio),
+  mcp_toolset(http)` 嵌套；agent loop 仍是一行 `d.action.run()`，
+  直接验证 `HttpMCP` 与 `StdioMCP` 在调用面完全对称。实测三步链
+  `reverse[stdio-demo] → base64_encode[http-demo] → finish[native]`
+  跑通——三个来源、三种传输、一条 loop。
 - **CLAUDE.md 记录协作模式**：明确 Claude（我）是这个项目的"AI 产品
   经理"、用户是"哲学方向引导者 + 品味守门员"。附带"自知之明"三条
   注意事项留给未来读文档的 Claude——警惕训练偏置导致的讨好折衷、
