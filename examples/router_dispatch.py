@@ -2,9 +2,10 @@
 
 - `@step route`：输出 `{reasoning, intent}`，`intent` 是 `Literal[...]`。
   字段顺序强制先讲理由再定标签，不让 LLM 跳到结论。
-- 三个 handler 各是一个 `@step`，专门 prompt + 专门 schema。
+- 四个 handler 各是一个 `@step`，专门 prompt + 专门 schema。
 - `@flow` 里就是 `match intent:` 四个分支，想加分类、想加预处理、想
   fan-out 多个 handler，都是改这段 Python。
+- router 用 `params={"temperature": 0}` 降低随机性；handler 不强制。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/router_dispatch.py
@@ -15,12 +16,17 @@ from __future__ import annotations
 import os
 from typing import Literal
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, set_default_client, step, trace
-from pyxis.providers import openrouter_client
+from pyxis import flow, step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- Router：Literal 标签即分派键 ----
@@ -33,7 +39,7 @@ class Route(BaseModel):
     )
 
 
-@step(output=Route, model=MODEL)
+@step(output=Route, model=MODEL, client=openrouter, params={"temperature": 0})
 def route(user_input: str) -> str:
     """你是意图分类器。先解释一两句再给标签。
     sql：涉及表、查询、报表、统计；
@@ -51,7 +57,7 @@ class SqlAnswer(BaseModel):
     note: str = Field(description="一句话解释这段 SQL 做了什么")
 
 
-@step(output=SqlAnswer, model=MODEL)
+@step(output=SqlAnswer, model=MODEL, client=openrouter)
 def handle_sql(user_input: str) -> str:
     """你是数据分析师。为用户需求写一句可执行的 PostgreSQL。
     未知表就合理假设名字，写完后一句话说明。"""
@@ -63,7 +69,7 @@ class DebugAnswer(BaseModel):
     fix: str = Field(description="建议怎么改")
 
 
-@step(output=DebugAnswer, model=MODEL)
+@step(output=DebugAnswer, model=MODEL, client=openrouter)
 def handle_debug(user_input: str) -> str:
     """你是代码 reviewer。只给最可能的原因和具体修法，不要泛泛而谈。"""
     return f"问题：{user_input}"
@@ -74,7 +80,7 @@ class CreativeAnswer(BaseModel):
     text: str = Field(description="具体产出（文案 / 诗 / 名字 等）")
 
 
-@step(output=CreativeAnswer, model=MODEL)
+@step(output=CreativeAnswer, model=MODEL, client=openrouter)
 def handle_creative(user_input: str) -> str:
     """你是有品味的文案。先点一句核心创意再给成品，不废话。"""
     return f"需求：{user_input}"
@@ -84,7 +90,7 @@ class FallbackAnswer(BaseModel):
     reply: str = Field(description="礼貌而简短的回应")
 
 
-@step(output=FallbackAnswer, model=MODEL)
+@step(output=FallbackAnswer, model=MODEL, client=openrouter)
 def handle_other(user_input: str) -> str:
     """你是礼貌的助手。用户问题不属于 SQL / 调试 / 创意任何一类，
     给一句短回应引导他说得更具体。"""
@@ -117,13 +123,10 @@ INPUTS: list[str] = [
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
     for inp in INPUTS:
         print(f"\n输入：{inp}")
-        with trace() as t:
-            intent, ans = dispatch(inp)
-        print(f"  [分派到 {intent}] ({len(t.records)} 次调用)")
+        intent, ans = dispatch(inp)
+        print(f"  [分派到 {intent}]")
         print(f"  {ans.model_dump_json(indent=2)}")
 
 

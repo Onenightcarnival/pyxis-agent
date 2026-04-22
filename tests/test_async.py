@@ -7,7 +7,7 @@ import asyncio
 import pytest
 from pydantic import BaseModel
 
-from pyxis import AsyncClient, Client, CompletionResult, FakeClient, flow, step, trace
+from pyxis import FakeClient, flow, step
 from pyxis.flow import AsyncFlow, Flow
 from pyxis.step import AsyncStep, Step
 
@@ -56,16 +56,15 @@ async def test_async_step_builds_messages_like_sync():
     assert call.response_model is Analysis
 
 
-async def test_fake_client_acomplete_delegates_to_complete():
+async def test_fake_client_acomplete_returns_response_directly():
     fake = _fake("x")
     result = await fake.acomplete(
         messages=[{"role": "user", "content": "hi"}],
         response_model=Analysis,
         model="gpt-4o-mini",
     )
-    assert isinstance(result, CompletionResult)
-    assert isinstance(result.output, Analysis)
-    assert result.output.observation == "x"
+    assert isinstance(result, Analysis)
+    assert result.observation == "x"
     assert len(fake.calls) == 1
 
 
@@ -119,48 +118,16 @@ async def test_sync_flow_still_works_after_async_added():
     assert research("x").observation == "sync"
 
 
-async def test_async_flow_run_traced_captures_records():
-    fake = _fake("first", "second")
-
-    @step(output=Analysis, client=fake)
-    async def analyze(t: str) -> str:
-        return t
-
-    @flow
-    async def chain(t: str) -> Analysis:
-        a = await analyze(t)
-        return await analyze(a.observation)
-
-    result, tr = await chain.run_traced("seed")
-    assert len(tr.records) == 2
-    assert [r.step for r in tr.records] == ["analyze", "analyze"]
-    assert result.observation == "second"
-
-
-async def test_trace_context_propagates_across_gather():
+async def test_async_gather_runs_in_parallel():
     fake = FakeClient([Analysis(observation=f"o{i}", conclusion="c") for i in range(5)])
 
     @step(output=Analysis, client=fake)
     async def analyze(t: str) -> str:
         return t
 
-    with trace() as t:
-        results = await asyncio.gather(*(analyze(f"task-{i}") for i in range(5)))
-
+    results = await asyncio.gather(*(analyze(f"task-{i}") for i in range(5)))
     assert len(results) == 5
-    assert len(t.records) == 5
-    assert all(r.step == "analyze" for r in t.records)
-
-
-async def test_async_step_outside_trace_records_nothing():
-    fake = _fake("o")
-
-    @step(output=Analysis, client=fake)
-    async def analyze(t: str) -> str:
-        return t
-
-    result = await analyze("x")
-    assert isinstance(result, Analysis)
+    assert len(fake.calls) == 5
 
 
 async def test_async_step_with_tool_output():
@@ -198,11 +165,6 @@ async def test_async_step_with_tool_output():
     d = await decide("math")
     assert isinstance(d.action, Calc)
     assert d.action.run() == "42"
-
-
-def test_client_and_async_client_are_exposed():
-    assert Client is not None
-    assert AsyncClient is not None
 
 
 async def test_fake_client_exhausted_raises_on_async_path():

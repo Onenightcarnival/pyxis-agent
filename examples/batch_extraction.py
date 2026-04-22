@@ -3,8 +3,7 @@
 - 一个 `@step`：schema 字段顺序 summary → sentiment → topic → severity，
   先还原意思再下标签，避免跳到结论。
 - 一个 `@flow` 裹 for 循环，try/except 兜单条失败，整批不中断。
-- 一个 `trace()` 统计成功率、tokens、错例；跑完 `to_jsonl(...)` 落盘就是
-  一份 eval log。
+- 聚合就是 `Counter`。
 
 这种任务里 LLM 输出直接进 Counter / DataFrame / DB，不再有"解析自然
 语言"这一步——字段顺序即思维链。
@@ -19,12 +18,17 @@ import os
 from collections import Counter
 from typing import Literal
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, set_default_client, step, trace
-from pyxis.providers import openrouter_client
+from pyxis import flow, step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- 一批模拟的客户反馈 ----
@@ -55,7 +59,7 @@ class Feedback(BaseModel):
     )
 
 
-@step(output=Feedback, model=MODEL)
+@step(output=Feedback, model=MODEL, client=openrouter)
 def extract(text: str) -> str:
     """你是一位客户反馈分析师。把每条反馈抽成结构化字段。
     先用一句话还原用户说的是什么，再判断情感、话题与严重度。"""
@@ -78,11 +82,8 @@ def extract_many(texts: list[str]) -> list[Feedback | None]:
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
     print(f"共 {len(FEEDBACKS)} 条反馈待抽取...\n")
-    with trace() as t:
-        results = extract_many(FEEDBACKS)
+    results = extract_many(FEEDBACKS)
 
     # ---- 聚合：就是普通 Python 统计 ----
     ok = [r for r in results if r is not None]
@@ -104,12 +105,6 @@ def main() -> None:
     print(f"高严重度条数：{len(high_severity)}")
     for r in high_severity:
         print(f"  - {r.summary}")
-
-    usage = t.total_usage()
-    avg = usage.total_tokens / max(len(t.records), 1)
-    print("\n=== 成本 ===")
-    print(f"调用 {len(t.records)} 次；{usage.total_tokens} tokens；")
-    print(f"平均 {avg:.0f} tokens/次；失败 {len(t.errors())} 次")
 
 
 if __name__ == "__main__":

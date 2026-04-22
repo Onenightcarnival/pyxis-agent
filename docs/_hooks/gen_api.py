@@ -13,10 +13,7 @@ MODULES: list[tuple[str, str]] = [
     ("step", "Step / AsyncStep + @step"),
     ("flow", "Flow / AsyncFlow + @flow"),
     ("tool", "Tool 基类 + @tool 装饰器"),
-    ("client", "Client 协议 / FakeClient / InstructorClient"),
-    ("providers", "OpenRouter / OpenAI 便捷工厂"),
-    ("trace", "trace() / TraceRecord"),
-    ("hooks", "StepHook 观察者中间件"),
+    ("client", "FakeClient / FakeCall：测试用的确定性后端"),
     ("human", "human-in-the-loop：让 agent 停下来等人回应"),
     ("mcp", "MCP 适配层"),
 ]

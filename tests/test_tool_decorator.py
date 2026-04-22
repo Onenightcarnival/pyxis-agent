@@ -7,7 +7,7 @@ from typing import Annotated, Literal, get_args, get_origin
 import pytest
 from pydantic import BaseModel, Field, TypeAdapter
 
-from pyxis import FakeClient, Tool, step, tool, trace
+from pyxis import FakeClient, Tool, step, tool
 
 
 def test_tool_decorator_produces_tool_subclass():
@@ -108,7 +108,7 @@ def test_tool_decorator_participates_in_discriminated_union():
     assert b.run() == "完成"
 
 
-def test_tool_decorator_end_to_end_with_step_and_trace():
+def test_tool_decorator_end_to_end_with_step():
     @tool
     def calc(expression: str) -> str:
         return str(eval(expression, {"__builtins__": {}}, {}))
@@ -134,13 +134,12 @@ def test_tool_decorator_end_to_end_with_step_and_trace():
     def decide(q: str) -> str:
         return q
 
-    with trace() as t:
-        d1 = decide("算 6*7")
-        d2 = decide("下一步")
+    d1 = decide("算 6*7")
+    d2 = decide("下一步")
 
     assert d1.action.run() == "42"
     assert d2.action.run() == "42"
-    assert [r.step for r in t.records] == ["decide", "decide"]
+    assert len(fake.calls) == 2
 
 
 def test_tool_decorator_rejects_varargs():

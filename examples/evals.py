@@ -1,15 +1,15 @@
-"""跑一个小数据集做 eval：准确率、token 成本、p50/p95 延迟、错例清单。
+"""跑一个小数据集做 eval：准确率、p50/p95 延迟、错例清单、原始调用 log。
 
 组合是一个 Python list（输入 + 期望）+ 一个 `@step` 出结构化结果 +
-一个 `for` + 一个 `trace()`。聚合全是普通 Python：`statistics.mean`、
-`Counter`、排序取分位。跑完 `Trace.to_jsonl(path)` 存盘，得到一份
-原始调用 log，可以回放、diff、抽检。
+一个 `for` 循环。聚合全是普通 Python：`statistics.mean`、`Counter`、
+排序取分位。原始调用 log 自己 `json.dumps` 存盘——pyxis 不做"eval 框架"
+也不做 trace 聚合，这些都是几行 Python 的事。
 
-要 A/B 两个模型？换 `set_default_client(...)` 跑两遍，diff 两份 JSONL。
+要 A/B 两个模型？把 `client` / `MODEL` 换一下跑两遍，diff 两份 JSONL。
 要比两次 commit 的质量漂移？存两份 JSONL 对照即可。
 
 跑起来：
-    OPENROUTER_API_KEY=... uv run --env-file .env python examples/evals_with_trace.py
+    OPENROUTER_API_KEY=... uv run --env-file .env python examples/evals.py
 
     # 跑完会在 runs/ 下生成原始调用 log：
     #   runs/eval_latest.jsonl
@@ -17,19 +17,25 @@
 
 from __future__ import annotations
 
+import json
 import os
 import statistics
 import time
 from pathlib import Path
 from typing import Literal
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, set_default_client, step, trace
-from pyxis.providers import openrouter_client
+from pyxis import flow, step
 
 MODEL = "openai/gpt-5.4-nano"
 LOG_DIR = Path(__file__).parent / "runs"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- Eval dataset：输入 + 期望 label + 可选备注 ----
@@ -54,7 +60,7 @@ class Classification(BaseModel):
     label: Literal["spam", "ham"] = Field(description="最终分类")
 
 
-@step(output=Classification, model=MODEL)
+@step(output=Classification, model=MODEL, client=openrouter, params={"temperature": 0})
 def classify(subject: str) -> str:
     """你是垃圾邮件分类器。先用一两句话说理由，再给最终标签。
     spam：钓鱼、推广奖品、违规广告、荐股等骚扰邮件。
@@ -66,20 +72,34 @@ def classify(subject: str) -> str:
 
 
 @flow
-def run_eval(dataset: list[tuple[str, str, str]]) -> list[tuple[str, str, str | None, float]]:
-    """返回每条的 (expected, actual, error, latency_ms)。失败条 actual=None。"""
-    records: list[tuple[str, str, str | None, float]] = []
-    for text, expected, _ in dataset:
+def run_eval(
+    dataset: list[tuple[str, str, str]],
+) -> list[dict]:
+    """返回每条的调用记录。失败条 actual=None。"""
+    records: list[dict] = []
+    for text, expected, note in dataset:
         t0 = time.perf_counter()
         try:
             out = classify(text)
             actual: str | None = out.label
+            reasoning = out.reasoning
             err = None
         except Exception as e:
             actual = None
+            reasoning = None
             err = f"{e.__class__.__name__}: {e}"
         dt = (time.perf_counter() - t0) * 1000
-        records.append((expected, actual or "(error)", err, dt))
+        records.append(
+            {
+                "text": text,
+                "expected": expected,
+                "actual": actual,
+                "reasoning": reasoning,
+                "note": note,
+                "latency_ms": round(dt, 1),
+                "error": err,
+            }
+        )
     return records
 
 
@@ -92,49 +112,47 @@ def _percentile(xs: list[float], p: float) -> float:
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
     print(f"跑 {len(DATASET)} 条 eval 样本（模型 {MODEL}）...\n")
-    with trace() as t:
-        records = run_eval(DATASET)
+    records = run_eval(DATASET)
 
     # ---- 明细 ----
     print("=== 明细 ===")
     correct = 0
-    mistakes: list[tuple[str, str, str]] = []
-    for (text, expected, _note), (_, actual, _err, dt) in zip(DATASET, records, strict=True):
-        ok = actual == expected
+    for r in records:
+        ok = r["actual"] == r["expected"]
         correct += int(ok)
         mark = "OK  " if ok else "FAIL"
-        print(f"  [{mark}] [{dt:6.0f}ms] {expected:4} -> {actual:4}  | {text[:30]}")
-        if not ok:
-            mistakes.append((text, expected, actual))
+        actual_s = str(r["actual"] or "(error)")
+        print(
+            f"  [{mark}] [{r['latency_ms']:6.0f}ms] {r['expected']:4} -> {actual_s:4}  | {r['text'][:30]}"
+        )
 
     # ---- 聚合 ----
     n = len(records)
-    latencies = [dt for _, _, _, dt in records]
-    usage = t.total_usage()
+    latencies = [r["latency_ms"] for r in records]
+    errors = [r for r in records if r["error"]]
     print("\n=== 指标 ===")
     print(f"准确率：{correct}/{n} = {correct / n:.1%}")
-    print(f"总 tokens：{usage.total_tokens}（avg {usage.total_tokens / max(n, 1):.0f}/条）")
     print(
         f"延迟：p50={_percentile(latencies, 50):.0f}ms  "
         f"p95={_percentile(latencies, 95):.0f}ms  "
         f"mean={statistics.mean(latencies):.0f}ms"
     )
-    print(f"失败（含 schema 校验错）：{len(t.errors())}")
+    print(f"失败（含 schema 校验错）：{len(errors)}")
 
+    mistakes = [r for r in records if not r["error"] and r["actual"] != r["expected"]]
     if mistakes:
         print("\n=== 错例（要人审的地方）===")
-        for text, exp, act in mistakes:
-            print(f"  期望 {exp} / 实际 {act}：{text}")
+        for r in mistakes:
+            print(f"  期望 {r['expected']} / 实际 {r['actual']}：{r['text']}")
 
-    # ---- 存 JSONL：原始调用全记录，用于回放 / diff ----
+    # ---- 存 JSONL：普通 Python 一把梭，pyxis 不掺和 ----
     LOG_DIR.mkdir(exist_ok=True)
     log_path = LOG_DIR / "eval_latest.jsonl"
-    t.to_jsonl(log_path)
+    with log_path.open("w", encoding="utf-8") as f:
+        for r in records:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
     print(f"\n=== 原始调用 log ===\n{log_path}")
-    print("（用这个做 A/B：换 set_default_client(...) 再跑一次，diff 两个 jsonl）")
 
 
 if __name__ == "__main__":

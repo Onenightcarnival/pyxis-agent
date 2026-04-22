@@ -1,108 +1,141 @@
 # 可观测性
 
-- **生产** → 接 [Langfuse](https://langfuse.com)（换一个 import，所有 LLM 调用自动被抓）
-- **测试 / 本地 debug** → `trace()` + `FakeClient`
-- 两套可同时开，互不干扰
+**pyxis 本体不做观测。** 观测由现成的 APM / LLM-ops 工具承担——pyxis
+暴露干净的 OpenAI SDK 接口，你想接什么就接什么。
 
-## 生产：Langfuse 接入
+这是刻意的设计：把观测做进框架会变成"造配套"，既卷不过 Langfuse /
+OpenTelemetry / Datadog，又会让用户学两套。不如不做。
 
-### 1. 装依赖
+---
+
+## Langfuse：换一行 `import`
+
+pyxis 的 `@step(client=...)` 吃任何 OpenAI-compatible SDK 实例。
+Langfuse 就提供了一个 drop-in 的 `langfuse.openai.OpenAI`——包了
+tracing 的同款 API。
 
 ```bash
 uv add langfuse
-```
-
-pyxis 本身不依赖 langfuse，用到才装。
-
-### 2. 设环境变量
-
-```bash
 export LANGFUSE_PUBLIC_KEY=pk-lf-...
 export LANGFUSE_SECRET_KEY=sk-lf-...
-export LANGFUSE_HOST=https://cloud.langfuse.com   # 或自托管地址
+export LANGFUSE_HOST=https://cloud.langfuse.com
 ```
-
-### 3. 换一个 import
 
 ```python
 import os
 
-# 关键一行：langfuse 的 drop-in 替代。其他代码不动。
-from langfuse.openai import OpenAI, AsyncOpenAI
+from langfuse.openai import OpenAI   # ← 换这一行
+from pyxis import step
 
-import instructor
-from pyxis import InstructorClient, set_default_client
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ["OPENROUTER_API_KEY"],
+)
 
-key = os.environ["OPENROUTER_API_KEY"]
-base = "https://openrouter.ai/api/v1"
-
-sync = instructor.from_openai(OpenAI(api_key=key, base_url=base))
-async_ = instructor.from_openai(AsyncOpenAI(api_key=key, base_url=base))
-set_default_client(InstructorClient(sync, async_))
+@step(output=Plan, model="gpt-4o", client=client)
+def plan(topic: str) -> str:
+    """..."""
+    return topic
 ```
 
-完毕。每次 `@step` 调用都会被 langfuse 自动抓到：
+每次 `@step` 调用自动被 Langfuse 抓到：完整 prompt / response / token
+用量 / 延迟 / `response_model` schema。
 
-- 完整 prompt / response
-- token 用量 + 成本
-- 响应延迟
-- instructor 的 `response_model` schema（trace metadata）
-
-### 把一次 flow 拼成一个 trace
-
-默认每次 LLM 调用是独立 trace。要把整个 `@flow` 拼成一棵带嵌套 span 的 trace，用 langfuse 的 `@observe()` 装饰 flow：
+把一整个 `@flow` 拼成一棵带嵌套 span 的 trace：用 Langfuse 的 `@observe`
+装饰 flow。
 
 ```python
 from langfuse.decorators import observe
+from pyxis import flow
 
 @flow
-@observe()   # 先 @flow 再 @observe，给 flow 开外层 span
+@observe()
 def research(topic: str):
     return plan_from(analyze(topic))
 ```
 
-`analyze` / `plan_from` 里的 LLM 调用会挂在 `research` 父 span 下。
-
 可跑示例：[examples/with_langfuse.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/with_langfuse.py)。
-
-## 测试 / 本地 debug：trace()
-
-`trace()` 是上下文管理器，把作用域内每次 `@step` 调用记一条：
-
-```python
-from pyxis import trace
-
-with trace() as t:
-    result = triage("今天糟透了")
-
-print(t.to_json(indent=2))
-print(t.total_usage())            # 本次 token 总量
-t.to_jsonl("logs/local.jsonl")    # append 一条一行
-for e in t.errors():
-    print(e.step, e.error)
-```
-
-单测里最常用的断言：
-
-```python
-assert t.records[-1].output == Expected(...)   # Pydantic 实例直接 == 比较，无需跑 LLM
-```
-
-`@flow` 自带 `.run_traced()`，等价于自动开一个 `trace()`：
-
-```python
-result, t = triage.run_traced("...")
-```
-
-## 自己接指标 / 告警：StepHook
-
-- Prometheus · OpenTelemetry · Slack 告警这种 Langfuse 不覆盖的路径 → 用 `StepHook` 注册全局回调
-- 详见 [Hook：观察者](hooks.md)
-
-## 框架不做 dashboard
-
-pyxis 不自建 trace UI。Langfuse / LangSmith / OpenTelemetry 生态已经够好。框架只负责暴露数据，画图归应用层。
 
 ---
 
-- 完整签名：[API → pyxis.trace](../api/trace.md) · [pyxis.hooks](../api/hooks.md)
+## OpenTelemetry
+
+`opentelemetry-instrumentation-openai` 一装上就自动 instrument
+`openai.OpenAI` / `AsyncOpenAI`——pyxis `@step` 内部就是调这两个。
+你不需要对 pyxis 做任何改动。
+
+```bash
+uv add opentelemetry-instrumentation-openai
+```
+
+```python
+from opentelemetry.instrumentation.openai import OpenAIInstrumentor
+OpenAIInstrumentor().instrument()
+```
+
+后续 `@step` 的所有调用出现在你的 OTel collector 里。
+
+---
+
+## Datadog / New Relic / 其他 APM
+
+这些厂商的 Python agent 都支持 OpenAI SDK 的 auto-instrumentation。装上
+agent、按它们的文档配好，`@step` 调用自动进 dashboard——pyxis 不需要
+任何适配。
+
+---
+
+## 自己写装饰器（最灵活）
+
+想在 `@step` 外加自定义的计时 / 日志 / Slack 告警？Python 装饰器叠加
+就完事：
+
+```python
+import time
+import functools
+
+def timed(step_fn):
+    @functools.wraps(step_fn)
+    def wrapper(*args, **kwargs):
+        t0 = time.perf_counter()
+        try:
+            return step_fn(*args, **kwargs)
+        finally:
+            print(f"{step_fn.__name__} 用了 {(time.perf_counter()-t0)*1000:.0f}ms")
+    return wrapper
+
+@timed
+@step(output=Plan, model="gpt-4o", client=my_client)
+def plan(topic: str) -> str: ...
+```
+
+这是 Python 原生的 middleware 模式——pyxis 不发明自己的 hook 协议。
+
+---
+
+## 测试：`FakeClient`
+
+单测环境下零网络，靠 `FakeClient` 预置 Pydantic 响应 + 断言
+`FakeClient.calls`：
+
+```python
+from pyxis import FakeClient, step
+
+fake = FakeClient([Plan(goal="g", next_action="a")])
+
+@step(output=Plan, client=fake)
+def plan(topic: str) -> str:
+    """..."""
+    return topic
+
+result = plan("build x")
+assert result == Plan(goal="g", next_action="a")
+
+# 想断言调用细节？用 fake.calls
+assert fake.calls[0].model == "gpt-4o-mini"
+assert fake.calls[0].messages[-1]["content"] == "build x"
+assert fake.calls[0].params == {"temperature": 0}   # 如果 @step 传了 params
+```
+
+每次调用都写入 `fake.calls`，字段覆盖 messages / response_model / model /
+max_retries / params。

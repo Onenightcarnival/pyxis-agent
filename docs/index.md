@@ -32,14 +32,17 @@ Python 3.12+。
 ## 30 秒看懂
 
 ```python
+from openai import OpenAI
 from pydantic import BaseModel
 from pyxis import step
+
+client = OpenAI(api_key="sk-...")   # 就是 OpenAI SDK 你已经熟的那个
 
 class Verdict(BaseModel):
     sentiment: str     # 先判情感
     confidence: float  # 再给置信度——字段顺序就是思维链
 
-@step(output=Verdict)
+@step(output=Verdict, model="gpt-4o-mini", client=client)
 def classify(text: str) -> str:
     """你是一个情感分类器。判断给定文本的情感倾向，给出置信度。"""
     return text
@@ -88,7 +91,7 @@ def triage(text: str) -> str:
 | `Tool` / `@tool` | 工具 = `BaseModel` + `run() -> str` | [概念](concepts/tool.md) · [API](api/tool.md) |
 | `ask_human` / `run_flow` | 生成器挂起等人类回应 | [概念](concepts/human.md) · [API](api/human.md) |
 | `mcp_toolset` | MCP 远端工具翻成本地 `Tool` 子类 | [概念](concepts/mcp.md) · [API](api/mcp.md) |
-| 可观测性 | 生产直接接 Langfuse；测试用 `trace()` + `FakeClient` | [概念](concepts/observability.md) |
+| 可观测性 | **pyxis 本体不做**；生产接 Langfuse / OTel / APM；测试用 `FakeClient` | [概念](concepts/observability.md) |
 
 ---
 

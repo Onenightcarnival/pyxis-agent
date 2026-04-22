@@ -1,6 +1,6 @@
 # 概念
 
-- 8 页，4 主线 + 3 按需 + 1 进阶
+- 7 页，4 主线 + 3 按需
 - 每页含：最小例子（可跑）· 设计理由 · 边界 · API 回链
 
 ## 主线（按顺序读）
@@ -14,11 +14,7 @@
 
 - [human-in-the-loop](human.md) — 要人类回应
 - [MCP 适配](mcp.md) — 要接远端工具
-- [可观测性](observability.md) — 生产部署前读一次
-
-## 进阶
-
-- [Hook](hooks.md) — Langfuse 覆盖不到的自建指标链路
+- [可观测性](observability.md) — pyxis 本体不做；这是接 Langfuse / OTel / APM 的姿势
 
 ---
 

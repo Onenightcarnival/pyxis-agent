@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import os
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, set_default_client, step
-from pyxis.providers import openrouter_client
+from pyxis import flow, step
 
 MODEL = "openai/gpt-5.4-nano"
 
@@ -39,16 +39,24 @@ class Plan(BaseModel):
     next_action: str = Field(description="第一个要做的具体步骤")
 
 
+# ---- client：直接用 OpenAI SDK，pyxis 不封装 ----
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
+
+
 # ---- Step：docstring = system prompt，返回 = user message ----
 
 
-@step(output=Analysis, model=MODEL)
+@step(output=Analysis, model=MODEL, client=openrouter)
 def analyze(topic: str) -> str:
     """你是严谨的分析师。先观察，再推理，最后下结论。"""
     return f"主题：{topic}"
 
 
-@step(output=Plan, model=MODEL)
+@step(output=Plan, model=MODEL, client=openrouter)
 def plan_from_analysis(a: Analysis) -> str:
     """你是一丝不苟的规划者。把分析转成行动计划。"""
     return f"分析：\n{a.model_dump_json(indent=2)}"
@@ -64,16 +72,11 @@ def research(topic: str) -> Plan:
     return plan_from_analysis(a)
 
 
-def _configure_openrouter() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
-
 # ---- 展示层：给人看的时候拿字段拼自然语言。这段属于应用代码。 ----
 #
-# schema 是给 LLM 的结构化骨架（机器可读）；trace 是 debug 用的（JSON 合
-# 适）；但给用户看的最终产出，应该是按 schema 字段拼出来的自然语言。
-# pyxis 刻意不替你做这一步——schema 字段是你自己定义的，对不同前端
-# （CLI / Web / Slack）渲染方式都不一样。
+# schema 是给 LLM 的结构化骨架（机器可读）；给用户看的最终产出，应该是
+# 按 schema 字段拼出来的自然语言。pyxis 刻意不替你做这一步——schema
+# 字段是你自己定义的，不同前端（CLI / Web / Slack）的渲染方式都不一样。
 
 
 def render_plan(p: Plan) -> str:
@@ -85,19 +88,9 @@ def render_plan(p: Plan) -> str:
 
 
 def main() -> None:
-    _configure_openrouter()
-    result, t = research.run_traced("用声明式思维链搭一个 agent 框架")
+    result = research("用声明式思维链搭一个 agent 框架")
 
-    # TRACE 是 debug 视图，JSON 合适（给工具 / 机器看）
     print("=" * 60)
-    print("TRACE（机器可读）")
-    print("=" * 60)
-    for i, rec in enumerate(t.records, 1):
-        print(f"\n[{i}] step={rec.step}  model={rec.model}")
-        print(rec.output.model_dump_json(indent=2))
-
-    # FINAL 是给人看的，自然语言拼字段
-    print("\n" + "=" * 60)
     print("最终计划（给人看）")
     print("=" * 60)
     print(render_plan(result))

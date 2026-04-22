@@ -1,141 +1,119 @@
-"""LLM 客户端抽象。
+"""LLM 客户端：内部规范化层 + 测试用 `FakeClient`。
 
-一个 `Client` 做一次结构化的 LLM 调用：输入 messages 与目标 response_model，
-返回 `CompletionResult[T]`（解析出的实例 + 可选的 token 用量）。生产环境
-用 `InstructorClient`（背后是 instructor 补丁过的 provider SDK），测试环境
-用 `FakeClient`（按队列返回预置响应，零网络）。两者都同时提供同步与异步两路。
+pyxis 不发明"客户端容器"。用户直接把 `openai.OpenAI` /
+`openai.AsyncOpenAI`，或 `instructor.from_openai(...)` 返回的已补丁
+实例，传给 `@step(client=...)`。`@step` 内部用这个模块里的
+`_adapt_sync_client` / `_adapt_async_client` 把它规范化成一个只有
+pyxis 内部看得见的后端协议实例。
+
+对外公开的只有 `FakeClient` + `FakeCall`——给测试场景用，零网络、按队列
+返回预置 Pydantic 实例、`.calls` 全量记录输入便于断言。
 """
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import AsyncIterator, Iterable, Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
-Message = dict[str, str]
-
-
-@dataclass
-class Usage:
-    """一次 LLM 调用的 token 账单，字段默认为 0。"""
-
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
-    total_tokens: int = 0
-
-    def __add__(self, other: Usage) -> Usage:
-        return Usage(
-            prompt_tokens=self.prompt_tokens + other.prompt_tokens,
-            completion_tokens=self.completion_tokens + other.completion_tokens,
-            total_tokens=self.total_tokens + other.total_tokens,
-        )
-
-
-@dataclass
-class CompletionResult[T: BaseModel]:
-    """一次结构化调用的结果：解析出的 output，以及可选的 usage。"""
-
-    output: T
-    usage: Usage | None = None
+_Messages = list[dict[str, str]]
 
 
 @runtime_checkable
-class Client(Protocol):
-    """最小同步结构化调用接口。"""
+class _SyncBackend(Protocol):
+    """pyxis 内部契约：同步后端。用户不直接实现，仅 `FakeClient` 与内部
+    adapter 走这个接口。"""
 
     def complete[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
-    ) -> CompletionResult[T]: ...
+        params: dict[str, Any] | None = None,
+    ) -> T: ...
 
     def stream[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
-    ) -> Iterator[T]:
-        """按字段逐步 yield partial 实例；最后一帧是完整实例。"""
-        ...
+        params: dict[str, Any] | None = None,
+    ) -> Iterator[T]: ...
 
 
 @runtime_checkable
-class AsyncClient(Protocol):
-    """`Client` 的异步孪生。"""
+class _AsyncBackend(Protocol):
+    """pyxis 内部契约：异步后端。"""
 
     async def acomplete[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
-    ) -> CompletionResult[T]: ...
+        params: dict[str, Any] | None = None,
+    ) -> T: ...
 
     def astream[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
+        params: dict[str, Any] | None = None,
     ) -> AsyncIterator[T]: ...
 
 
 @dataclass
 class FakeCall:
-    """`FakeClient` 捕获的一次调用。"""
+    """`FakeClient` 捕获的一次调用。`params` 记录 `@step(params=...)` 透传
+    过来的字典，方便测试断言"这次调用的采样参数是什么"。"""
 
-    messages: list[Message]
+    messages: _Messages
     response_model: type[BaseModel]
     model: str
     max_retries: int = 0
+    params: dict[str, Any] | None = None
 
 
 class FakeClient:
-    """给测试用的确定性客户端——按队列顺序返回预置响应。
+    """测试用的确定性后端——按队列顺序返回预置响应，零网络。
 
-    构造时可以同时传入 `usages` 并列列表；每次调用弹出一个（列表短于
-    `responses` 时，后续调用的 usage 为 None）。同时实现 `Client` 与
-    `AsyncClient` 两个协议，async 路径直接委托给 sync（共享队列、共享
-    调用日志、共享错误语义）。
-
-    调用耗尽时抛 `RuntimeError`；预置响应与目标 `response_model` 不匹配
-    时抛 `TypeError`。
+    同时实现 `_SyncBackend` 与 `_AsyncBackend`；async 路径直接委托 sync
+    （共享队列 / 调用日志 / 错误语义）。调用耗尽抛 `RuntimeError`；响应
+    与 `response_model` 类型不符抛 `TypeError`。
     """
 
-    def __init__(
-        self,
-        responses: Iterable[BaseModel],
-        *,
-        usages: Iterable[Usage | None] | None = None,
-    ):
+    def __init__(self, responses: Iterable[BaseModel]):
         self._responses: list[BaseModel] = list(responses)
-        self._usages: list[Usage | None] = list(usages) if usages is not None else []
         self._cursor: int = 0
         self.calls: list[FakeCall] = []
 
     def complete[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
-    ) -> CompletionResult[T]:
+        params: dict[str, Any] | None = None,
+    ) -> T:
         self.calls.append(
             FakeCall(
                 messages=list(messages),
                 response_model=response_model,
                 model=model,
                 max_retries=max_retries,
+                params=dict(params) if params is not None else None,
             )
         )
         if self._cursor >= len(self._responses):
@@ -145,179 +123,194 @@ class FakeClient:
                 f"（期望 {response_model.__name__}）"
             )
         resp = self._responses[self._cursor]
-        usage = self._usages[self._cursor] if self._cursor < len(self._usages) else None
         self._cursor += 1
         if not isinstance(resp, response_model):
             raise TypeError(
                 f"FakeClient 第 {self._cursor} 个响应是 "
                 f"{type(resp).__name__}，期望 {response_model.__name__}"
             )
-        return CompletionResult(output=resp, usage=usage)
+        return resp
 
     async def acomplete[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
-    ) -> CompletionResult[T]:
-        return self.complete(messages, response_model, model, max_retries=max_retries)
+        params: dict[str, Any] | None = None,
+    ) -> T:
+        return self.complete(
+            messages, response_model, model, max_retries=max_retries, params=params
+        )
 
     def stream[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
+        params: dict[str, Any] | None = None,
     ) -> Iterator[T]:
-        """模拟"一帧流"：消费一个 response 并 yield 一次。"""
-        result = self.complete(messages, response_model, model, max_retries=max_retries)
-        yield result.output
+        """模拟"一帧流"：消费一个响应并 yield 一次。"""
+        yield self.complete(messages, response_model, model, max_retries=max_retries, params=params)
 
     async def astream[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
+        params: dict[str, Any] | None = None,
     ) -> AsyncIterator[T]:
-        result = self.complete(messages, response_model, model, max_retries=max_retries)
-        yield result.output
+        yield self.complete(messages, response_model, model, max_retries=max_retries, params=params)
 
 
-def _extract_usage(raw: Any) -> Usage | None:
-    """尽力从 OpenAI 风格的 raw response 里提一个 `Usage` 出来。"""
-    if raw is None:
-        return None
-    u = getattr(raw, "usage", None)
-    if u is None:
-        return None
-    return Usage(
-        prompt_tokens=int(getattr(u, "prompt_tokens", 0) or 0),
-        completion_tokens=int(getattr(u, "completion_tokens", 0) or 0),
-        total_tokens=int(getattr(u, "total_tokens", 0) or 0),
-    )
+class _SyncInstructorAdapter:
+    """包一层 instructor-patched 同步客户端，暴露 `_SyncBackend` 接口。"""
 
-
-class InstructorClient:
-    """基于 instructor 的真实客户端，同时承担同步与异步两路。
-
-    两路后端在未指定时都会从 OpenAI 默认环境懒构造出来。想接 Anthropic
-    或其他 provider？直接传一个 instructor 已经 patch 过的 client 进来。
-    """
-
-    def __init__(
-        self,
-        instructor_client: Any = None,
-        async_instructor_client: Any = None,
-    ):
-        self._sync = instructor_client
-        self._async = async_instructor_client
-
-    def _get_sync(self) -> Any:
-        if self._sync is None:
-            import instructor
-            from openai import OpenAI
-
-            self._sync = instructor.from_openai(OpenAI())
-        return self._sync
-
-    def _get_async(self) -> Any:
-        if self._async is None:
-            import instructor
-            from openai import AsyncOpenAI
-
-            self._async = instructor.from_openai(AsyncOpenAI())
-        return self._async
+    def __init__(self, client: Any):
+        self._c = client
 
     def complete[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
-    ) -> CompletionResult[T]:
-        result, raw = self._get_sync().chat.completions.create_with_completion(
+        params: dict[str, Any] | None = None,
+    ) -> T:
+        extra = dict(params) if params is not None else {}
+        return self._c.chat.completions.create(
             messages=messages,
             response_model=response_model,
             model=model,
             max_retries=max_retries,
+            **extra,
         )
-        return CompletionResult(output=result, usage=_extract_usage(raw))
-
-    async def acomplete[T: BaseModel](
-        self,
-        messages: list[Message],
-        response_model: type[T],
-        model: str,
-        *,
-        max_retries: int = 0,
-    ) -> CompletionResult[T]:
-        result, raw = await self._get_async().chat.completions.create_with_completion(
-            messages=messages,
-            response_model=response_model,
-            model=model,
-            max_retries=max_retries,
-        )
-        return CompletionResult(output=result, usage=_extract_usage(raw))
 
     def stream[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
+        params: dict[str, Any] | None = None,
     ) -> Iterator[T]:
-        """基于 instructor `create_partial` 的同步流式。"""
-        yield from self._get_sync().chat.completions.create_partial(
+        extra = dict(params) if params is not None else {}
+        yield from self._c.chat.completions.create_partial(
             messages=messages,
             response_model=response_model,
             model=model,
             max_retries=max_retries,
+            **extra,
+        )
+
+
+class _AsyncInstructorAdapter:
+    """包一层 instructor-patched 异步客户端，暴露 `_AsyncBackend` 接口。"""
+
+    def __init__(self, client: Any):
+        self._c = client
+
+    async def acomplete[T: BaseModel](
+        self,
+        messages: _Messages,
+        response_model: type[T],
+        model: str,
+        *,
+        max_retries: int = 0,
+        params: dict[str, Any] | None = None,
+    ) -> T:
+        extra = dict(params) if params is not None else {}
+        return await self._c.chat.completions.create(
+            messages=messages,
+            response_model=response_model,
+            model=model,
+            max_retries=max_retries,
+            **extra,
         )
 
     async def astream[T: BaseModel](
         self,
-        messages: list[Message],
+        messages: _Messages,
         response_model: type[T],
         model: str,
         *,
         max_retries: int = 0,
+        params: dict[str, Any] | None = None,
     ) -> AsyncIterator[T]:
-        """基于 instructor `create_partial` 的异步流式。"""
-        async for partial in self._get_async().chat.completions.create_partial(
+        extra = dict(params) if params is not None else {}
+        async for partial in self._c.chat.completions.create_partial(
             messages=messages,
             response_model=response_model,
             model=model,
             max_retries=max_retries,
+            **extra,
         ):
             yield partial
 
 
-@dataclass
-class _DefaultClient:
-    client: Any = None
-    _lazy: Any = field(default=None, repr=False)
+def _looks_like_async_instructor(client: Any) -> bool:
+    create = getattr(getattr(getattr(client, "chat", None), "completions", None), "create", None)
+    return create is not None and inspect.iscoroutinefunction(create)
 
 
-_default = _DefaultClient()
+def _adapt_sync_client(client: Any) -> _SyncBackend:
+    """把用户传进来的 client 规范化为 `_SyncBackend`。
+
+    - `FakeClient` / 鸭子类型实现了 `_SyncBackend`（带 `complete` + `stream`）
+      的对象 → 直接返回。用户要接第三方 mock / cache wrapper 走这条路。
+    - `openai.AsyncOpenAI` / 异步 instructor 实例 → 报 `TypeError`。
+    - `openai.OpenAI` → 懒 patch 成 instructor 再包 adapter。
+    - 其余假设已经是同步 instructor 实例 → 直接包 adapter。
+    """
+    if isinstance(client, FakeClient):
+        return client
+
+    # 只在真正需要的时候 import openai / instructor，避免给纯 FakeClient
+    # 的单元测试强加硬依赖（虽然本项目都装了，但保持入口干净）。
+    from openai import AsyncOpenAI, OpenAI
+
+    if isinstance(client, AsyncOpenAI):
+        raise TypeError("同步 @step 拿到 AsyncOpenAI；请传同步 OpenAI 实例，或改写成 async def")
+    if isinstance(client, OpenAI):
+        import instructor
+
+        return _SyncInstructorAdapter(instructor.from_openai(client))
+
+    # 鸭子类型：实现了 _SyncBackend 协议（测试桩、cache wrapper、
+    # 自研 non-instructor 后端等）。runtime_checkable Protocol 的
+    # isinstance 走方法存在性检查。
+    if isinstance(client, _SyncBackend):
+        return client
+
+    if _looks_like_async_instructor(client):
+        raise TypeError("同步 @step 拿到异步 instructor 实例；请传同步版本，或改写成 async def")
+    return _SyncInstructorAdapter(client)
 
 
-def set_default_client(client: Any) -> None:
-    """设置进程级默认 client。传 `None` 则重置为懒构造 `InstructorClient`。"""
-    _default.client = client
-    _default._lazy = None
+def _adapt_async_client(client: Any) -> _AsyncBackend:
+    """把用户传进来的 client 规范化为 `_AsyncBackend`。"""
+    if isinstance(client, FakeClient):
+        return client
 
+    from openai import AsyncOpenAI, OpenAI
 
-def get_default_client() -> Any:
-    """取当前默认 client，必要时懒构造出 `InstructorClient`。"""
-    if _default.client is not None:
-        return _default.client
-    if _default._lazy is None:
-        _default._lazy = InstructorClient()
-    return _default._lazy
+    if isinstance(client, OpenAI):
+        raise TypeError("异步 @step 拿到 OpenAI（同步）；请传 AsyncOpenAI，或改写成 def")
+    if isinstance(client, AsyncOpenAI):
+        import instructor
+
+        return _AsyncInstructorAdapter(instructor.from_openai(client))
+
+    if isinstance(client, _AsyncBackend):
+        return client
+
+    if not _looks_like_async_instructor(client):
+        raise TypeError("异步 @step 拿到同步 instructor 实例；请传异步版本，或改写成 def")
+    return _AsyncInstructorAdapter(client)

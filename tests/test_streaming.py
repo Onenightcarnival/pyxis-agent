@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from pyxis import FakeClient, step, trace
+from pyxis import FakeClient, step
 
 
 class Plan(BaseModel):
@@ -27,51 +27,15 @@ def test_step_stream_yields_final_frame():
     assert frames[0].goal == "g"
 
 
-def test_step_stream_records_trace_after_full_consumption():
-    fake = FakeClient([Plan(goal="g", next_action="a")])
-
-    @step(output=Plan, client=fake)
-    def plan(x: str) -> str:
-        return x
-
-    with trace() as t:
-        frames = list(plan.stream("hello"))
-
-    assert len(frames) == 1
-    assert len(t.records) == 1
-    rec = t.records[0]
-    assert rec.step == "plan"
-    assert rec.output == Plan(goal="g", next_action="a")
-    assert rec.usage is None
-    assert rec.error is None
-
-
-def test_step_stream_outside_trace_does_nothing_to_trace():
-    fake = FakeClient([Plan(goal="g", next_action="a")])
-
-    @step(output=Plan, client=fake)
-    def plan(x: str) -> str:
-        return x
-
-    # 不在 trace() 里也能正常 stream
-    frames = list(plan.stream("x"))
-    assert frames[0].goal == "g"
-
-
-def test_step_stream_exhaustion_records_error_and_reraises():
+def test_step_stream_exhaustion_reraises():
     fake = FakeClient([])
 
     @step(output=Plan, client=fake)
     def plan(x: str) -> str:
         return x
 
-    with trace() as t, pytest.raises(RuntimeError, match="耗尽"):
+    with pytest.raises(RuntimeError, match="耗尽"):
         list(plan.stream("x"))
-
-    (rec,) = t.records
-    assert rec.output is None
-    assert rec.error is not None
-    assert "耗尽" in rec.error
 
 
 async def test_async_step_astream_yields_final_frame():
@@ -88,36 +52,16 @@ async def test_async_step_astream_yields_final_frame():
     assert frames[0].goal == "async"
 
 
-async def test_async_step_astream_records_trace():
-    fake = FakeClient([Plan(goal="async", next_action="a")])
-
-    @step(output=Plan, client=fake)
-    async def aplan(x: str) -> str:
-        return x
-
-    with trace() as t:
-        async for _ in aplan.astream("x"):
-            pass
-
-    assert len(t.records) == 1
-    assert t.records[0].output == Plan(goal="async", next_action="a")
-    assert t.records[0].error is None
-
-
-async def test_async_step_astream_exhaustion_records_error_and_reraises():
+async def test_async_step_astream_exhaustion_reraises():
     fake = FakeClient([])
 
     @step(output=Plan, client=fake)
     async def aplan(x: str) -> str:
         return x
 
-    with trace() as t, pytest.raises(RuntimeError, match="耗尽"):
+    with pytest.raises(RuntimeError, match="耗尽"):
         async for _ in aplan.astream("x"):
             pass
-
-    (rec,) = t.records
-    assert rec.error is not None
-    assert rec.output is None
 
 
 def test_fake_client_stream_records_call():
@@ -144,7 +88,18 @@ def test_plain_call_still_works_alongside_stream():
     def plan(x: str) -> str:
         return x
 
-    r1 = plan("1")  # 普通阻塞式
-    frames = list(plan.stream("2"))  # 流式
+    r1 = plan("1")
+    frames = list(plan.stream("2"))
     assert r1.goal == "a"
     assert frames[0].goal == "b"
+
+
+def test_step_stream_forwards_params():
+    fake = FakeClient([Plan(goal="g", next_action="a")])
+
+    @step(output=Plan, client=fake, params={"temperature": 0.7})
+    def plan(x: str) -> str:
+        return x
+
+    list(plan.stream("hi"))
+    assert fake.calls[0].params == {"temperature": 0.7}

@@ -21,12 +21,17 @@ from __future__ import annotations
 import os
 from typing import Annotated, Literal
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import Tool, flow, set_default_client, step, trace
-from pyxis.providers import openrouter_client
+from pyxis import Tool, flow, step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- "虚拟磁盘"：就是一个 dict，换成真磁盘只改这里 ----
@@ -93,7 +98,7 @@ class Decision(BaseModel):
     action: Action = Field(description="这一步调用的工具")
 
 
-@step(output=Decision, model=MODEL)
+@step(output=Decision, model=MODEL, client=openrouter)
 def decide(task: str, history: str) -> str:
     """你是一个能读写文件的编码 agent。每轮**恰好**发一次工具调用。
 
@@ -122,48 +127,32 @@ def _format_turn(i: int, d: Decision, obs: str) -> str:
 
 
 @flow
-def harness(task: str, max_steps: int = 10) -> str:
+def harness(task: str, max_steps: int = 10) -> tuple[str, list[str]]:
     history: list[str] = []
     for step_i in range(1, max_steps + 1):
         d = decide(task, "\n\n".join(history))
         obs = d.action.run()
         history.append(_format_turn(step_i, d, obs))
         if isinstance(d.action, Finish):
-            return obs
+            return obs, history
     raise RuntimeError(f"{max_steps} 轮未完成")
 
 
-def _dump_trace(t) -> None:
-    for i, rec in enumerate(t.records, 1):
-        d: Decision = rec.output
-        args = d.action.model_dump(exclude={"kind"})
-        args_str = ", ".join(f"{k}={str(v)[:50]!r}" for k, v in args.items())
-        print(f"[{i}] {d.action.kind}({args_str})")
-        print(f"    thought: {d.thought[:100]}")
-
-
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
     task = "打开 todo.txt，在末尾追加一行 '- check PR #42'，保存，然后结束。"
     print(f"任务：{task}\n")
 
     before = _FS["todo.txt"]
-    try:
-        with trace() as t:
-            result = harness(task)
-    except RuntimeError as e:
-        print(f"[未收敛] {e}\n=== 轮次回放 ===")
-        _dump_trace(t)
-        raise
+    result, history = harness(task)
 
     print("=== 轮次详情 ===")
-    _dump_trace(t)
-    print("\n=== 文件改动 ===")
+    for line in history:
+        print(line)
+        print()
+    print("=== 文件改动 ===")
     print(f"todo.txt（前）：\n{before}")
     print(f"todo.txt（后）：\n{_FS['todo.txt']}")
     print(f"\n=== agent 汇报 ===\n{result}")
-    print(f"\n=== 成本 ===\n{len(t.records)} 轮；{t.total_usage().total_tokens} tokens")
 
 
 if __name__ == "__main__":

@@ -9,12 +9,17 @@ from __future__ import annotations
 import os
 from typing import Annotated, Literal
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import Tool, flow, set_default_client, step, trace
-from pyxis.providers import openrouter_client
+from pyxis import Tool, flow, step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- 工具：用 schema 声明，用 run() 实现 ----
@@ -50,7 +55,7 @@ class Decision(BaseModel):
     action: Action = Field(description="这一步要调用的工具")
 
 
-@step(output=Decision, model=MODEL)
+@step(output=Decision, model=MODEL, client=openrouter)
 def decide(question: str, scratch: str) -> str:
     """你是一个会推理的 agent。先思考，再**恰好**发一次工具调用。
     拿到答案之后就用 `finish` 工具停止。"""
@@ -73,20 +78,10 @@ def agent(question: str, max_steps: int = 6) -> str:
     raise RuntimeError("达到 max_steps 仍未结束")
 
 
-def _configure() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
-
 def main() -> None:
-    _configure()
-    with trace() as t:
-        answer = agent("(17 * 23) + 41 等于多少？")
-    print("=" * 60, "TRACE", "=" * 60, sep="\n")
-    for i, rec in enumerate(t.records, 1):
-        print(f"\n[{i}] step={rec.step}")
-        print(rec.output.model_dump_json(indent=2))
-    print("=" * 60, "ANSWER", "=" * 60, sep="\n")
-    print(answer)
+    answer = agent("(17 * 23) + 41 等于多少？")
+    print("=" * 60)
+    print("答案：", answer)
 
 
 if __name__ == "__main__":

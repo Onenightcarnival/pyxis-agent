@@ -111,7 +111,6 @@ nav:
       - human-in-the-loop: concepts/human.md
       - MCP 适配: concepts/mcp.md
       - 可观测性: concepts/observability.md
-      - Hook：观察者（进阶）: concepts/hooks.md
   - Cookbook:
       - cookbook/index.md
       - 端到端：分析 + 规划: cookbook/research.md
@@ -129,7 +128,7 @@ nav:
       - Human-in-the-loop: cookbook/human_review.md
       - Guardrails：输入/输出校验: cookbook/guardrails.md
       - 接入 Langfuse: cookbook/with_langfuse.md
-      - 用 Trace 做 evals: cookbook/evals_with_trace.md
+      - Evals 一把梭: cookbook/evals.md
   - Demos:
       - demos/index.md
       - chat-demo：schema-as-CoT 可视化: demos/chat-demo.md
@@ -139,9 +138,6 @@ nav:
       - pyxis.flow: api/flow.md
       - pyxis.tool: api/tool.md
       - pyxis.client: api/client.md
-      - pyxis.providers: api/providers.md
-      - pyxis.trace: api/trace.md
-      - pyxis.hooks: api/hooks.md
       - pyxis.human: api/human.md
       - pyxis.mcp: api/mcp.md
 

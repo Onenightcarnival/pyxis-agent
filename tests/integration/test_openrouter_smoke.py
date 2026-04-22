@@ -10,24 +10,29 @@ import asyncio
 import os
 from typing import Annotated
 
-import instructor
 import pytest
 from openai import AsyncOpenAI, OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import InstructorClient, flow, step, tool, trace
+from pyxis import flow, step, tool
 
 
 @pytest.fixture(scope="module")
-def openrouter() -> InstructorClient:
+def openrouter_sync() -> OpenAI:
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
         pytest.skip("OPENROUTER_API_KEY not set; skipping integration test")
     base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-    return InstructorClient(
-        instructor_client=instructor.from_openai(OpenAI(api_key=key, base_url=base_url)),
-        async_instructor_client=instructor.from_openai(AsyncOpenAI(api_key=key, base_url=base_url)),
-    )
+    return OpenAI(api_key=key, base_url=base_url)
+
+
+@pytest.fixture(scope="module")
+def openrouter_async() -> AsyncOpenAI:
+    key = os.environ.get("OPENROUTER_API_KEY")
+    if not key:
+        pytest.skip("OPENROUTER_API_KEY not set; skipping integration test")
+    base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    return AsyncOpenAI(api_key=key, base_url=base_url)
 
 
 @pytest.fixture(scope="module")
@@ -46,8 +51,8 @@ class Summary(BaseModel):
     bullets: list[str] = Field(description="3 key bullet points")
 
 
-def test_step_round_trip_produces_valid_schema(openrouter: InstructorClient, model: str) -> None:
-    @step(output=Classification, model=model, client=openrouter)
+def test_step_round_trip_produces_valid_schema(openrouter_sync: OpenAI, model: str) -> None:
+    @step(output=Classification, model=model, client=openrouter_sync)
     def classify(text: str) -> str:
         """You classify text. Observe first, then categorize, then score confidence."""
         return f"Text: {text}"
@@ -59,13 +64,13 @@ def test_step_round_trip_produces_valid_schema(openrouter: InstructorClient, mod
     assert 0.0 <= result.confidence <= 1.0
 
 
-def test_flow_multi_step_with_trace(openrouter: InstructorClient, model: str) -> None:
-    @step(output=Classification, model=model, client=openrouter)
+def test_flow_multi_step(openrouter_sync: OpenAI, model: str) -> None:
+    @step(output=Classification, model=model, client=openrouter_sync)
     def classify(text: str) -> str:
         """You classify text. Observe, categorize, score."""
         return text
 
-    @step(output=Summary, model=model, client=openrouter)
+    @step(output=Summary, model=model, client=openrouter_sync)
     def summarize(c: Classification) -> str:
         """You summarize classified text into a topic and 3 bullets."""
         return f"Classified as {c.category} (conf={c.confidence}). Note: {c.observation}"
@@ -74,60 +79,31 @@ def test_flow_multi_step_with_trace(openrouter: InstructorClient, model: str) ->
     def digest(text: str) -> Summary:
         return summarize(classify(text))
 
-    with trace() as t:
-        s = digest("Claude Opus 4.7 supports a 1M token context window.")
+    s = digest("Claude Opus 4.7 supports a 1M token context window.")
 
     assert isinstance(s, Summary)
     assert len(s.bullets) >= 1
-    assert [r.step for r in t.records] == ["classify", "summarize"]
-    assert isinstance(t.records[0].output, Classification)
-    assert isinstance(t.records[1].output, Summary)
 
 
-def test_async_parallel_steps_share_trace(openrouter: InstructorClient, model: str) -> None:
-    @step(output=Classification, model=model, client=openrouter)
+def test_async_parallel_steps(openrouter_async: AsyncOpenAI, model: str) -> None:
+    @step(output=Classification, model=model, client=openrouter_async)
     async def classify(text: str) -> str:
         """You classify text. Observe, categorize, score."""
         return text
 
     async def fan_out():
-        with trace() as t:
-            results = await asyncio.gather(
-                classify("Python 3.12 supports PEP 695 type parameters."),
-                classify("Claude supports long context windows."),
-                classify("The capital of France is Paris."),
-            )
-        return results, t
+        return await asyncio.gather(
+            classify("Python 3.12 supports PEP 695 type parameters."),
+            classify("Claude supports long context windows."),
+            classify("The capital of France is Paris."),
+        )
 
-    results, t = asyncio.run(fan_out())
+    results = asyncio.run(fan_out())
     assert len(results) == 3
     assert all(isinstance(r, Classification) for r in results)
-    assert len(t.records) == 3
-    assert all(r.step == "classify" for r in t.records)
 
 
-def test_live_step_captures_usage(openrouter: InstructorClient, model: str) -> None:
-    @step(output=Classification, model=model, client=openrouter)
-    def classify(text: str) -> str:
-        """You classify text. Observe, categorize, score."""
-        return text
-
-    with trace() as t:
-        classify("What is 2+2?")
-
-    (rec,) = t.records
-    assert rec.usage is not None
-    assert rec.usage.prompt_tokens > 0
-    assert rec.usage.completion_tokens > 0
-    assert rec.usage.total_tokens >= rec.usage.prompt_tokens + rec.usage.completion_tokens - 1
-    total = t.total_usage()
-    assert total.total_tokens == rec.usage.total_tokens
-
-    exported = t.to_dict()
-    assert exported["records"][0]["usage"]["total_tokens"] == rec.usage.total_tokens
-
-
-def test_live_tool_decorator_agent(openrouter: InstructorClient, model: str) -> None:
+def test_live_tool_decorator_agent(openrouter_sync: OpenAI, model: str) -> None:
     """用 `@tool` 装饰的纯函数在真实 LLM 上完成一个 ReAct 风格小 agent。"""
 
     @tool
@@ -146,7 +122,7 @@ def test_live_tool_decorator_agent(openrouter: InstructorClient, model: str) -> 
         thought: str
         action: Action
 
-    @step(output=Decision, model=model, max_retries=3, client=openrouter)
+    @step(output=Decision, model=model, max_retries=3, client=openrouter_sync)
     def decide(question: str, scratch: str) -> str:
         """你是一个会推理的 agent。先思考，再恰好发一次工具调用，
         拿到答案用 `finish` 结束。"""
@@ -162,16 +138,11 @@ def test_live_tool_decorator_agent(openrouter: InstructorClient, model: str) -> 
                 return d.action.run()
         raise RuntimeError("达到 max_steps 仍未结束")
 
-    with trace() as t:
-        answer = agent("7 * 6 等于多少？")
-
+    answer = agent("7 * 6 等于多少？")
     assert "42" in answer
-    steps = [type(r.output.action).__name__ for r in t.records]
-    assert "Calculate" in steps
-    assert "Finish" in steps
 
 
-def test_live_stream_yields_progressively(openrouter: InstructorClient, model: str) -> None:
+def test_live_stream_yields_progressively(openrouter_sync: OpenAI, model: str) -> None:
     """真实 partial streaming：字段逐步出现，最后一帧所有必选字段都齐了。"""
 
     class Analysis(BaseModel):
@@ -179,28 +150,23 @@ def test_live_stream_yields_progressively(openrouter: InstructorClient, model: s
         reasoning: str = Field(description="为什么这重要")
         conclusion: str = Field(description="一句话结论")
 
-    @step(output=Analysis, model=model, client=openrouter)
+    @step(output=Analysis, model=model, client=openrouter_sync)
     def analyze(topic: str) -> str:
         """你是严谨的分析师。观察，推理，结论。"""
         return f"主题：{topic}"
 
     frames: list[Analysis] = []
-    with trace() as t:
-        for partial in analyze.stream("为什么雨是咸的"):
-            frames.append(partial)
+    for partial in analyze.stream("为什么雨是咸的"):
+        frames.append(partial)
 
     assert len(frames) >= 1
     final = frames[-1]
     assert final.observation
     assert final.reasoning
     assert final.conclusion
-    # 只有一条 TraceRecord，output 是最终帧
-    (rec,) = t.records
-    assert rec.output is not None
-    assert rec.output.observation == final.observation
 
 
-def test_live_human_in_the_loop_review(openrouter: InstructorClient, model: str) -> None:
+def test_live_human_in_the_loop_review(openrouter_sync: OpenAI, model: str) -> None:
     """真实 LLM 出计划 → 模拟人工审核后继续。"""
     from pyxis import ask_human, flow, run_flow
 
@@ -212,7 +178,7 @@ def test_live_human_in_the_loop_review(openrouter: InstructorClient, model: str)
         approve: bool
         comments: str | None = None
 
-    @step(output=Plan, model=model, client=openrouter)
+    @step(output=Plan, model=model, client=openrouter_sync)
     def make_plan(q: str) -> str:
         """你是严谨的规划者。先复述目标，再列 3-5 个具体步骤。"""
         return f"问题：{q}"
@@ -225,10 +191,26 @@ def test_live_human_in_the_loop_review(openrouter: InstructorClient, model: str)
             return {"status": "rejected"}
         return {"status": "done", "plan_goal": plan.goal}
 
-    # 脚本式 on_ask：直接批准
     result = run_flow(
         plan_then_review("怎么演示声明式 CoT 框架？"),
         on_ask=lambda q: Decision(approve=True),
     )
     assert result["status"] == "done"
     assert result["plan_goal"]
+
+
+def test_live_step_with_params(openrouter_sync: OpenAI, model: str) -> None:
+    """params 透传：把 temperature=0 发给 provider，不应被 pyxis 拦截。"""
+
+    @step(
+        output=Classification,
+        model=model,
+        client=openrouter_sync,
+        params={"temperature": 0},
+    )
+    def classify(text: str) -> str:
+        """You classify text. Observe, categorize, score."""
+        return text
+
+    result = classify("What is 2+2?")
+    assert isinstance(result, Classification)

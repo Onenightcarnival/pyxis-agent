@@ -1,10 +1,13 @@
-"""Flow 原语的测试 —— 规格 002。"""
+"""Flow 原语的测试 —— 规格 002。
+
+收敛后 `@flow` 只剩"语义标记 + sync/async 分派"。调用断言改用
+`FakeClient.calls` 而不是 `trace()`。"""
 
 from __future__ import annotations
 
 from pydantic import BaseModel
 
-from pyxis import FakeClient, flow, step, trace
+from pyxis import FakeClient, flow, step
 
 
 class Observation(BaseModel):
@@ -54,7 +57,7 @@ def test_flow_direct_call_works_like_function():
     assert result.action == "a1"
 
 
-def test_run_traced_captures_records_in_order():
+def test_flow_calls_captured_across_fake_clients():
     analyze_fake = _analyze_client("obs")
     plan_fake = _plan_client("act")
 
@@ -70,20 +73,17 @@ def test_run_traced_captures_records_in_order():
     def research(topic: str) -> Plan:
         return plan(analyze(topic))
 
-    result, t = research.run_traced("AI")
+    result = research("AI")
     assert isinstance(result, Plan)
-    assert len(t.records) == 2
-    assert [r.step for r in t.records] == ["analyze", "plan"]
+    assert result.action == "act"
 
-    first, second = t.records
-    assert isinstance(first.output, Observation)
-    assert first.output.note == "obs"
-    assert second.output.action == "act"
-    assert first.messages[-1] == {"role": "user", "content": "AI"}
-    assert second.messages[-1] == {"role": "user", "content": "obs"}
+    assert len(analyze_fake.calls) == 1
+    assert analyze_fake.calls[0].messages[-1] == {"role": "user", "content": "AI"}
+    assert len(plan_fake.calls) == 1
+    assert plan_fake.calls[0].messages[-1] == {"role": "user", "content": "obs"}
 
 
-def test_trace_context_captures_across_multiple_flow_calls():
+def test_multiple_flow_invocations_accumulate_calls():
     analyze_fake = _analyze_client("o1", "o2")
     plan_fake = _plan_client("a1", "a2")
 
@@ -99,92 +99,10 @@ def test_trace_context_captures_across_multiple_flow_calls():
     def research(topic: str) -> Plan:
         return plan(analyze(topic))
 
-    with trace() as t:
-        research("one")
-        research("two")
+    research("one")
+    research("two")
 
-    assert len(t.records) == 4
-    assert [r.step for r in t.records] == ["analyze", "plan", "analyze", "plan"]
-
-
-def test_step_outside_trace_records_nothing():
-    fake = _analyze_client("o1")
-
-    @step(output=Observation, client=fake)
-    def analyze(t: str) -> str:
-        return t
-
-    result = analyze("x")
-    assert result.note == "o1"
-
-
-def test_trace_captures_raw_step_calls_without_flow():
-    fake = _analyze_client("o1", "o2")
-
-    @step(output=Observation, client=fake)
-    def analyze(t: str) -> str:
-        return t
-
-    with trace() as t:
-        analyze("a")
-        analyze("b")
-
-    assert len(t.records) == 2
-    assert [r.step for r in t.records] == ["analyze", "analyze"]
-
-
-def test_nested_trace_inner_captures_outer_does_not():
-    fake = _analyze_client("o1", "o2", "o3")
-
-    @step(output=Observation, client=fake)
-    def analyze(t: str) -> str:
-        return t
-
-    with trace() as outer:
-        analyze("before")
-        with trace() as inner:
-            analyze("inside")
-        analyze("after")
-
-    assert [r.messages[-1]["content"] for r in outer.records] == ["before", "after"]
-    assert [r.messages[-1]["content"] for r in inner.records] == ["inside"]
-
-
-def test_trace_record_fields():
-    fake = _analyze_client("captured")
-
-    @step(output=Observation, model="gpt-4o", client=fake)
-    def analyze(t: str) -> str:
-        """Analyzer."""
-        return t
-
-    with trace() as t:
-        analyze("x")
-
-    (rec,) = t.records
-    assert rec.step == "analyze"
-    assert rec.model == "gpt-4o"
-    assert isinstance(rec.output, Observation)
-    assert rec.output.note == "captured"
-    assert {"role": "system", "content": "Analyzer."} in rec.messages
-    assert {"role": "user", "content": "x"} in rec.messages
-
-
-def test_run_traced_does_not_leak_to_outer_trace():
-    fake = _analyze_client("inner", "outer")
-
-    @step(output=Observation, client=fake)
-    def analyze(t: str) -> str:
-        return t
-
-    @flow
-    def do_it(x: str) -> Observation:
-        return analyze(x)
-
-    with trace() as outer:
-        do_it.run_traced("inner")
-        analyze("outer")
-
-    # run_traced has its own scope; only the raw `analyze("outer")` reaches outer.
-    assert len(outer.records) == 1
-    assert outer.records[0].messages[-1]["content"] == "outer"
+    assert len(analyze_fake.calls) == 2
+    assert len(plan_fake.calls) == 2
+    topics = [c.messages[-1]["content"] for c in analyze_fake.calls]
+    assert topics == ["one", "two"]

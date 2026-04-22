@@ -89,7 +89,7 @@ RECIPES: list[tuple[str, str, str]] = [
     (
         "guardrails",
         "输入 gate + 输出 validator",
-        "Python 正则前置 + Pydantic validator 后置 + StepHook 记账。",
+        "Python 正则前置 + Pydantic validator 后置；pyxis 不需要 hook 协议。",
     ),
     (
         "with_langfuse",
@@ -97,9 +97,9 @@ RECIPES: list[tuple[str, str, str]] = [
         "零侵入——换一个 `OpenAI` 的 import 就启用。",
     ),
     (
-        "evals_with_trace",
-        "用 Trace 做 evals",
-        "dataset + for 循环 + Trace.to_jsonl()，聚合指标是普通 Python。",
+        "evals",
+        "Evals 一把梭",
+        "dataset + for 循环 + 手写 JSONL 落盘；聚合指标是普通 Python。",
     ),
 ]
 
@@ -131,7 +131,7 @@ index_lines = [
     "",
     "可以直接跑起来的案例。每个 recipe 都是 `examples/` 下的一个单文件，复制改改就能当脚手架用。",
     "",
-    "需要 `OPENROUTER_API_KEY`（或者改 `set_default_client(...)` 指向别的 OpenAI 兼容 provider）。",
+    "需要 `OPENROUTER_API_KEY`（或改一下 `OpenAI(base_url=..., api_key=...)` 指向别的 OpenAI 兼容 provider）。",
     "",
     "| Recipe | 讲什么 |",
     "|---|---|",

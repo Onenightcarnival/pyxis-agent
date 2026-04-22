@@ -1,6 +1,6 @@
 """输入前置过滤 + 输出后置校验：两类 guardrail 各用一个 Python 原语。
 
-pyxis 里 `StepHook` 是只读观察者，不能阻断 step——所以拦截走两处：
+pyxis 不做 hook / middleware 协议——所以 guardrail 就写两处：
 
 - **输入侧**：在 flow 里调 step 之前用普通 Python 函数 `_prescreen`
   扫一遍用户输入，命中黑名单（prompt injection、PII 模式）就 raise。
@@ -8,10 +8,8 @@ pyxis 里 `StepHook` 是只读观察者，不能阻断 step——所以拦截走
   Instructor 会按 `max_retries` 自动重试；连续失败抛出来，flow 决定
   要不要降级兜底。
 
-`StepHook` 用来**记录**拒绝事件——on_error 里计数 + 打告警，不改行为。
-
-这三件事（输入 gate、输出 validator、hook 告警）各自一个概念原地解决，
-不需要一个 "Guardrails" 类。
+这两件事（输入 gate、输出 validator）各自一个概念原地解决，不需要
+一个 "Guardrails" 类、也不需要 hook 协议。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/guardrails.py
@@ -22,20 +20,17 @@ from __future__ import annotations
 import os
 import re
 
+from openai import OpenAI
 from pydantic import BaseModel, Field, field_validator
 
-from pyxis import (
-    StepHook,
-    add_hook,
-    clear_hooks,
-    flow,
-    set_default_client,
-    step,
-    trace,
-)
-from pyxis.providers import openrouter_client
+from pyxis import flow, step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- 输入 gate：黑名单就是一组正则 ----
@@ -80,22 +75,11 @@ class Answer(BaseModel):
         return v
 
 
-@step(output=Answer, model=MODEL, max_retries=2)
+@step(output=Answer, model=MODEL, max_retries=2, client=openrouter)
 def answer(user_input: str) -> str:
     """你是安全、简洁的助手。按实际情况回答；不能帮用户生成泄漏
     API Key、破坏数据的 SQL/shell 命令。"""
     return f"用户：{user_input}"
-
-
-# ---- Hook：只记账，不干预 ----
-
-
-class GuardCounter(StepHook):
-    def __init__(self) -> None:
-        self.errors: list[tuple[str, str]] = []
-
-    def on_error(self, step: str, messages, model: str, error: str) -> None:
-        self.errors.append((step, error))
 
 
 # ---- Flow：输入 gate → step（含输出 validator） ----
@@ -116,27 +100,14 @@ INPUTS: list[str] = [
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-    counter = GuardCounter()
-    clear_hooks()
-    add_hook(counter)
-
-    with trace() as t:
-        for inp in INPUTS:
-            print(f"\n输入：{inp}")
-            try:
-                print(f"  输出：{ask(inp)}")
-            except GuardError as e:
-                print(f"  [输入 gate 拒] {e}")
-            except Exception as e:
-                print(f"  [输出 validator 拒] {type(e).__name__}: {str(e)[:120]}")
-
-    print("\n=== GuardCounter 记账 ===")
-    if not counter.errors:
-        print("  （没有 step 层面的错误；输入 gate 的拒在 step 之前，不走 hook）")
-    for step_name, err in counter.errors:
-        print(f"  - {step_name}: {err[:120]}")
-    print(f"\n=== 成本 ===\n{len(t.records)} 次调用；{t.total_usage().total_tokens} tokens")
+    for inp in INPUTS:
+        print(f"\n输入：{inp}")
+        try:
+            print(f"  输出：{ask(inp)}")
+        except GuardError as e:
+            print(f"  [输入 gate 拒] {e}")
+        except Exception as e:
+            print(f"  [输出 validator 拒] {type(e).__name__}: {str(e)[:120]}")
 
 
 if __name__ == "__main__":

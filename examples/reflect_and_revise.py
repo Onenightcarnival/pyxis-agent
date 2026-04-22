@@ -8,12 +8,10 @@
   反过来会变成"先打分再编理由"。
 - 一个 `@flow` 里的 while 循环做轮次控制，通过条件放宽到"score≥阈值
   且 severity 不是 high"，严格条件在弱模型上几乎不收敛。
-- 一个 `trace()` 把每轮分数、字数、token 全记下来——跑完看轨迹决定
-  要不要加轮次 / 换模型。
 
 这份示例跑在 gpt-5.4-nano 上，分数不会单调下降，这是 LLM-as-judge 本身
-的特性；换更强的模型通常稳得住。pyxis 只是不帮你隐藏这件事——trace
-里每一版都看得见。
+的特性；换更强的模型通常稳得住。pyxis 只是不帮你隐藏这件事——flow 里
+的 print 把每一版都显式打出来。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/reflect_and_revise.py
@@ -24,15 +22,20 @@ from __future__ import annotations
 import os
 from typing import Literal
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, set_default_client, step, trace
-from pyxis.providers import openrouter_client
+from pyxis import flow, step
 
 MODEL = "openai/gpt-5.4-nano"
 MAX_CHARS = 100
 TARGET_SCORE = 8
 MAX_ROUNDS = 4
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 SOURCE = (
     "pyxis-agent 是一个 Python 语言实现的 agent 开发框架，它的核心理念是"
@@ -67,7 +70,7 @@ class Revision(BaseModel):
 # ---- 三个 step：docstring 是 prompt，字符串返回是 user message ----
 
 
-@step(output=Draft, model=MODEL)
+@step(output=Draft, model=MODEL, client=openrouter)
 def draft(source: str) -> str:
     """你在为一段技术描述写首页 tagline 的第一版。先列出原文不能丢的
     3-5 个关键词；然后写一版**信息完整的初稿，长度可以偏长（60-90 字）**——
@@ -75,7 +78,7 @@ def draft(source: str) -> str:
     return f"原文：\n{source}"
 
 
-@step(output=Critique, model=MODEL)
+@step(output=Critique, model=MODEL, client=openrouter)
 def critique(source: str, text: str) -> str:
     """你是严格但务实的编辑，按硬标准评判：
     - 长度：严格 **≤ 100 个字**；超过即 high severity。
@@ -86,7 +89,7 @@ def critique(source: str, text: str) -> str:
     return f"原文：\n{source}\n\n当前 tagline（实际字数 {len(text)}）：\n{text}"
 
 
-@step(output=Revision, model=MODEL)
+@step(output=Revision, model=MODEL, client=openrouter)
 def revise(source: str, text: str, must_fix: list[str]) -> str:
     """你是压缩文案的高手。**≤ 100 字是硬约束**，超一字都算失败。
     核心策略——优先压缩：**比上一版至少短 10 个字**，宁可只保留 1-2 个最核心
@@ -122,16 +125,12 @@ def compress_with_reflection(source: str) -> tuple[str, list[int]]:
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
     print(f"原文（{len(SOURCE)} 字）：\n{SOURCE}\n")
 
-    with trace() as t:
-        final_text, scores = compress_with_reflection(SOURCE)
+    final_text, scores = compress_with_reflection(SOURCE)
 
     print(f"\n=== 分数轨迹 ===\n{' → '.join(str(s) for s in scores)}    (目标 ≥ {TARGET_SCORE})")
     print(f"\n=== 终稿（{len(final_text)} 字）===\n{final_text}")
-    print(f"\n=== 成本 ===\n{len(t.records)} 次调用；{t.total_usage().total_tokens} tokens")
 
 
 if __name__ == "__main__":

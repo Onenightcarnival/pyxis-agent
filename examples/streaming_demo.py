@@ -12,12 +12,17 @@ from __future__ import annotations
 import os
 import sys
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import set_default_client, step
-from pyxis.providers import openrouter_client
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 class Analysis(BaseModel):
@@ -28,7 +33,7 @@ class Analysis(BaseModel):
     conclusion: str = Field(description="一句话结论")
 
 
-@step(output=Analysis, model=MODEL)
+@step(output=Analysis, model=MODEL, client=openrouter)
 def analyze(topic: str) -> str:
     """你是严谨的分析师。先观察，再推理，最后下一句话的结论。"""
     return f"主题：{topic}"
@@ -44,15 +49,16 @@ def _render_frame(a: Analysis) -> str:
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
     topic = "为什么海水是咸的？"
     print(f"主题：{topic}\n")
     print("（字段会按 schema 顺序逐个填满；过程是 LLM 推理的真实观察——）\n")
 
+    first = True
     for frame in analyze.stream(topic):
         # 把之前的三行清掉再重绘，像一个简单的"活"面板
-        sys.stdout.write("\x1b[3F\x1b[J" if frame is not analyze else "")
+        if not first:
+            sys.stdout.write("\x1b[3F\x1b[J")
+        first = False
         sys.stdout.write(_render_frame(frame) + "\n")
         sys.stdout.flush()
 

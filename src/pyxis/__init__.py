@@ -8,33 +8,24 @@
   schema 直接声明了推理步骤（**schema-as-CoT**）。
 - 多轮编排直接写普通 Python：`if`、`for`、函数组合已经足够好，框架
   刻意不引入 DSL。
+- **pyxis 不造配套生态**：provider、观测、hooks 都由现成工具承担——
+  直接用 `openai.OpenAI` / `instructor.from_openai(...)` 实例；接
+  Langfuse / OpenTelemetry / APM 请通过标准姿势（换 `import` / SDK
+  instrumentation）。
 
-公共 API 分四类：
-- `@step` / `Step` / `AsyncStep`：一次 LLM 调用，按 Pydantic 字段顺序
-  进行结构化推理。
-- `@flow` / `Flow` / `AsyncFlow`：多次调用的编排，`.run_traced()` 一键
-  观测。
-- `Tool`：动作即 schema，`run()` 即代码；搭配判别式联合完成工具调用。
-- `trace()` / `Trace` / `TraceRecord` / `Usage` / `CompletionResult`：
-  结构化的可观测性，支持 JSON 导出与 token 成本汇总。
+公共 API：
 
-生产用 `InstructorClient`（instructor 背后的 OpenAI 兼容接口），测试
-用 `FakeClient`（按队列返回预置响应，零网络）。
+- `@step` / `Step` / `AsyncStep`：一次类型化的 LLM 调用。
+- `@flow` / `Flow` / `AsyncFlow`：多步 flow 的语义标记。
+- `Tool` / `@tool`：动作即 schema，`run()` 即代码。
+- `FakeClient` / `FakeCall`：测试用的确定性后端，零网络。
+- `ask_human` / `finish` / `run_flow` / `run_aflow` / `HumanQuestion` /
+  `FlowResult`：人工介入的生成器驱动。
+- `mcp.*`：MCP 适配层。
 """
 
-from .client import (
-    AsyncClient,
-    Client,
-    CompletionResult,
-    FakeCall,
-    FakeClient,
-    InstructorClient,
-    Usage,
-    get_default_client,
-    set_default_client,
-)
+from .client import FakeCall, FakeClient
 from .flow import AsyncFlow, Flow, flow
-from .hooks import StepHook, add_hook, clear_hooks, remove_hook
 from .human import (
     FlowResult,
     HumanQuestion,
@@ -45,39 +36,24 @@ from .human import (
 )
 from .step import AsyncStep, Step, step
 from .tool import Tool, tool
-from .trace import Trace, TraceRecord, trace
 
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 __all__ = [
-    "AsyncClient",
     "AsyncFlow",
     "AsyncStep",
-    "Client",
-    "CompletionResult",
     "FakeCall",
     "FakeClient",
     "Flow",
     "FlowResult",
     "HumanQuestion",
-    "InstructorClient",
     "Step",
-    "StepHook",
     "Tool",
-    "Trace",
-    "TraceRecord",
-    "Usage",
-    "add_hook",
     "ask_human",
-    "clear_hooks",
     "finish",
     "flow",
-    "get_default_client",
-    "remove_hook",
     "run_aflow",
     "run_flow",
-    "set_default_client",
     "step",
     "tool",
-    "trace",
 ]

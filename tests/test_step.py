@@ -1,11 +1,11 @@
-"""Step 原语的测试 —— 规格 001。"""
+"""Step 原语的测试 —— 规格 001 / 023。"""
 
 from __future__ import annotations
 
 import pytest
 from pydantic import BaseModel
 
-from pyxis import FakeClient, set_default_client, step
+from pyxis import FakeClient, step
 
 
 class Plan(BaseModel):
@@ -106,37 +106,13 @@ def test_fake_client_type_mismatch_raises():
         plan("x")
 
 
-def test_global_default_client():
-    fake = FakeClient([Plan(goal="global", next_action="a")])
-    set_default_client(fake)
-    try:
+def test_step_requires_client():
+    """`client` 是必填关键字参数；不传要在装饰时就失败。"""
+    with pytest.raises(TypeError):
 
-        @step(output=Plan)
+        @step(output=Plan)  # type: ignore[call-arg]
         def plan(req: str) -> str:
             return req
-
-        result = plan("x")
-        assert result.goal == "global"
-    finally:
-        set_default_client(None)
-
-
-def test_explicit_client_beats_global_default():
-    global_fake = FakeClient([Plan(goal="global", next_action="a")])
-    explicit_fake = FakeClient([Plan(goal="explicit", next_action="a")])
-    set_default_client(global_fake)
-    try:
-
-        @step(output=Plan, client=explicit_fake)
-        def plan(req: str) -> str:
-            return req
-
-        result = plan("x")
-        assert result.goal == "explicit"
-        assert len(global_fake.calls) == 0
-        assert len(explicit_fake.calls) == 1
-    finally:
-        set_default_client(None)
 
 
 def test_step_forwards_model_param():
@@ -161,6 +137,51 @@ def test_step_default_model_is_gpt4o_mini():
     assert fake.calls[0].model == "gpt-4o-mini"
 
 
+def test_step_default_max_retries_is_zero():
+    fake = FakeClient([Plan(goal="g", next_action="a")])
+
+    @step(output=Plan, client=fake)
+    def plan(req: str) -> str:
+        return req
+
+    plan("x")
+    assert fake.calls[0].max_retries == 0
+
+
+def test_step_max_retries_is_forwarded():
+    fake = FakeClient([Plan(goal="g", next_action="a")])
+
+    @step(output=Plan, max_retries=3, client=fake)
+    def plan(req: str) -> str:
+        return req
+
+    plan("x")
+    assert fake.calls[0].max_retries == 3
+
+
+def test_step_params_forwarded_to_fake_client():
+    """`params` 字典哑透传到 `FakeCall.params`——测试可断言采样参数。"""
+    fake = FakeClient([Plan(goal="g", next_action="a")])
+
+    @step(output=Plan, client=fake, params={"temperature": 0, "max_tokens": 500})
+    def plan(req: str) -> str:
+        return req
+
+    plan("x")
+    assert fake.calls[0].params == {"temperature": 0, "max_tokens": 500}
+
+
+def test_step_params_defaults_to_none():
+    fake = FakeClient([Plan(goal="g", next_action="a")])
+
+    @step(output=Plan, client=fake)
+    def plan(req: str) -> str:
+        return req
+
+    plan("x")
+    assert fake.calls[0].params is None
+
+
 def test_fake_client_sequential_responses():
     fake = FakeClient(
         [
@@ -178,3 +199,27 @@ def test_fake_client_sequential_responses():
     assert r1.goal == "first"
     assert r2.goal == "second"
     assert len(fake.calls) == 2
+
+
+def test_step_rejects_async_openai_on_sync_def():
+    """同步 def 拿到 AsyncOpenAI → 立即 TypeError。"""
+    from openai import AsyncOpenAI
+
+    async_client = AsyncOpenAI(api_key="sk-fake", base_url="http://localhost")
+    with pytest.raises(TypeError, match="AsyncOpenAI"):
+
+        @step(output=Plan, client=async_client)
+        def plan(req: str) -> str:
+            return req
+
+
+def test_async_step_rejects_sync_openai():
+    """async def 拿到 OpenAI（同步）→ 立即 TypeError。"""
+    from openai import OpenAI
+
+    sync_client = OpenAI(api_key="sk-fake", base_url="http://localhost")
+    with pytest.raises(TypeError, match="OpenAI"):
+
+        @step(output=Plan, client=sync_client)
+        async def plan(req: str) -> str:
+            return req

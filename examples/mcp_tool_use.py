@@ -29,14 +29,19 @@ from operator import or_
 from pathlib import Path
 from typing import Annotated, Literal
 
+from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import Tool, flow, set_default_client, step, trace
+from pyxis import Tool, flow, step
 from pyxis.mcp import MCPServer, StdioMCP, mcp_toolset
-from pyxis.providers import openrouter_client
 
 MODEL = "openai/gpt-5.4-nano"
 DEMO_SERVER = Path(__file__).parent / "_mcp_demo_server.py"
+
+openrouter = AsyncOpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- native 工具：一个用 @tool 都嫌重的就手写 ----
@@ -76,7 +81,7 @@ async def agent(question: str, max_steps: int = 10) -> str:
             thought: str = Field(description="先推理接下来要做什么")
             action: Action = Field(description="这一步要调用的工具")  # type: ignore[valid-type]
 
-        @step(output=Decision, model=MODEL, max_retries=2)
+        @step(output=Decision, model=MODEL, max_retries=2, client=openrouter)
         async def decide(question: str, scratch: str) -> str:
             """你是一个会推理的 agent。规则：
 
@@ -102,20 +107,10 @@ async def agent(question: str, max_steps: int = 10) -> str:
         raise RuntimeError(f"达到 max_steps={max_steps} 仍未结束\n草稿板：\n" + "\n".join(scratch))
 
 
-def _configure() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
-
 async def main() -> None:
-    _configure()
-    with trace() as t:
-        answer = await agent("把 'pyxis is declarative' 这句话反转，然后数一下它的单词数。")
-    print("=" * 60, "TRACE", "=" * 60, sep="\n")
-    for i, rec in enumerate(t.records, 1):
-        print(f"\n[{i}] step={rec.step}")
-        print(rec.output.model_dump_json(indent=2))
-    print("=" * 60, "ANSWER", "=" * 60, sep="\n")
-    print(answer)
+    answer = await agent("把 'pyxis is declarative' 这句话反转，然后数一下它的单词数。")
+    print("=" * 60)
+    print("答案：", answer)
 
 
 if __name__ == "__main__":

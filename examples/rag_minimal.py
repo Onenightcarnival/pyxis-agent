@@ -18,12 +18,17 @@ from __future__ import annotations
 import os
 import re
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, set_default_client, step, trace
-from pyxis.providers import openrouter_client
+from pyxis import flow, step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- "知识库"：几条关于 pyxis 的事实。真场景换成 vector DB / 文档库 ----
@@ -34,8 +39,8 @@ KB: list[str] = [
     "pyxis 里 Pydantic 模型的字段顺序就是思维链，LLM 必须自上而下把字段填完。",
     "pyxis 的多轮编排直接用普通 Python 写 if/for/函数组合，不提供 DSL 或 graph。",
     "pyxis 的 Tool 是 BaseModel 子类，带 run() 方法，动作即 schema、run() 即代码。",
-    "pyxis 的 trace() 是基于 ContextVar 的观测器，跨 asyncio task 自动传播。",
-    "pyxis 用 instructor 库调用 OpenAI 兼容的 provider，生产推荐接 Langfuse 做可观测。",
+    "pyxis 本体不做观测；生产用 Langfuse / OpenTelemetry / APM 直接适配 OpenAI SDK 调用。",
+    "pyxis 用 instructor 库调用 OpenAI 兼容的 provider；client 直接传 OpenAI SDK 实例。",
     "Claude Desktop 追求丝滑 chat 体感，pyxis 对标的是 agent-for-machine——LLM 产结构化数据喂下一段 Python。",
 ]
 
@@ -57,7 +62,7 @@ class Answer(BaseModel):
     answer: str = Field(description="给用户的最终答案，一两句话")
 
 
-@step(output=Answer, model=MODEL)
+@step(output=Answer, model=MODEL, client=openrouter)
 def answer_with_context(question: str, context: str) -> str:
     """你是严谨的问答助手。只能基于提供的上下文作答；
     上下文没说的就承认不知道，不要编。先列引用，再推理，最后给答案。"""
@@ -75,13 +80,10 @@ def rag(question: str) -> Answer:
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
     question = "pyxis 里的 schema-as-workflow 是什么意思？"
     print(f"问题：{question}\n")
 
-    with trace() as t:
-        ans = rag(question)
+    ans = rag(question)
 
     print("=== 检索到的片段 ===")
     for c in _retrieve(question):
@@ -91,7 +93,6 @@ def main() -> None:
         print(f"  - {c}")
     print(f"\n=== 推理 ===\n{ans.reasoning}")
     print(f"\n=== 回答 ===\n{ans.answer}")
-    print(f"\n=== 成本 ===\n调用 {len(t.records)} 次；{t.total_usage().total_tokens} tokens")
 
 
 if __name__ == "__main__":

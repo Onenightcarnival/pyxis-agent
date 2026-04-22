@@ -30,16 +30,21 @@ import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import Tool, set_default_client, step
+from pyxis import Tool, step
 from pyxis.mcp import HttpMCP, MCPServer, StdioMCP, mcp_toolset
-from pyxis.providers import openrouter_client
 
 MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-5.4-nano")
 MCP_STDIO_SCRIPT = Path(__file__).parent / "mcp_server.py"
 HTTP_MCP_PORT = int(os.environ.get("MCP_HTTP_PORT", "3003"))
 HTTP_MCP_URL = f"http://127.0.0.1:{HTTP_MCP_PORT}/mcp"
+
+openrouter = AsyncOpenAI(
+    base_url=os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- native 工具 ----
@@ -97,9 +102,6 @@ async def _wait_for_port(host: str, port: int, timeout_s: float = 10.0) -> None:
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    if "OPENROUTER_API_KEY" in os.environ:
-        set_default_client(openrouter_client())
-
     # 启动独立进程：`python mcp_http_server.py` → FastMCP 自己管 uvicorn，
     # 端口通过 MCP_HTTP_PORT 环境变量传递（与 mcp_http_server.py 里读法一致）。
     http_proc = subprocess.Popen(
@@ -214,7 +216,7 @@ async def _stream_run(req: RunRequest) -> AsyncIterator[bytes]:
         thought: str = Field(description="先推理接下来要做什么")
         action: Action = Field(description="这一步要调用的工具")  # type: ignore[valid-type]
 
-    @step(output=Decision, model=MODEL, max_retries=2)
+    @step(output=Decision, model=MODEL, max_retries=2, client=openrouter)
     async def decide(question: str, scratch: str) -> str:
         """你是一个会推理的中文 agent。**严格**按下列规则产出 Decision：
 

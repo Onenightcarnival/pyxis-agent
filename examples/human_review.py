@@ -19,12 +19,17 @@ from __future__ import annotations
 
 import os
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import ask_human, flow, run_flow, set_default_client, step
-from pyxis.providers import openrouter_client
+from pyxis import ask_human, flow, run_flow, step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 class Plan(BaseModel):
@@ -37,13 +42,13 @@ class ReviewDecision(BaseModel):
     comments: str | None = Field(default=None, description="不批准时的改进建议")
 
 
-@step(output=Plan, model=MODEL)
+@step(output=Plan, model=MODEL, client=openrouter)
 def make_plan(question: str) -> str:
     """你是严谨的规划者。先复述目标，再列 3-5 个具体可执行步骤。"""
     return f"问题：{question}"
 
 
-@step(output=Plan, model=MODEL)
+@step(output=Plan, model=MODEL, client=openrouter)
 def refine_plan(question: str, prev: Plan, comments: str) -> str:
     """你是规划者。上一个计划被审阅者打回，请根据意见改好。"""
     return (
@@ -102,8 +107,6 @@ def terminal_on_ask(q) -> ReviewDecision:
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
     result = run_flow(
         plan_with_review("如何用 30 分钟做一个 agent 框架的演示？"),
         on_ask=terminal_on_ask,

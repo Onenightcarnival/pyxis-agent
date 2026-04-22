@@ -73,33 +73,28 @@ pyxis 不抢这些位子。
 框架刻意拒绝为显式编排发明 DSL —— Python 本身就有 `if`、`for`、函数组合。
 我们只提供这些概念：
 
-- `@step(output=...)`：把 prompt 函数变成类型化的 LLM 调用。同步 `def` 得到
-  `Step[T]`；异步 `async def` 得到 `AsyncStep[T]`。
-- `@flow`：多步函数的薄包装，附带 `.run_traced(...)` 一键观测。同步/异步分派。
+- `@step(output=..., model=..., client=..., params=None, max_retries=0)`：
+  把 prompt 函数变成类型化的 LLM 调用。`client` **必填**——直接吃
+  `openai.OpenAI` / `openai.AsyncOpenAI` 或已 `instructor.from_openai(...)`
+  的实例；pyxis 内部懒 patch 成 instructor。同步 `def` 得到 `Step[T]`；
+  异步 `async def` 得到 `AsyncStep[T]`；sync / async 错配立即 `TypeError`。
+  `params` 是一个 dict，哑透传给 provider API（`temperature` / `max_tokens`
+  / `seed` / `top_p` / `stop` / ...），pyxis 不枚举、不校验。
+- `@flow`：多步函数的薄包装；就是一个语义标记 + `async def` / `def`
+  分派。不带"观测" / "重跑" / "checkpoint" 能力——这些交给 APM 和你
+  自己的代码。
 - `Tool`：`BaseModel` 子类，带 `run() -> str`。动作即 schema，`run()` 即代码。
   LLM 在 schema 的判别式联合 `action` 字段里选一个工具；Python 用
   `isinstance` / `action.run()` 分派。
 - `@tool` 装饰器：把一个普通函数直接转成 Tool 子类——类名、`kind` 字面量、
   字段全部从函数签名推出；无需手写样板。
-- `Client` / `AsyncClient`：provider 无关的 LLM 接口，返回
-  `CompletionResult[T]`（output + 可选 `Usage`）。生产用 instructor
-  背后的真 client，测试用 `FakeClient`。
-- `pyxis.providers.openrouter_client()` / `openai_client()`：一行拿到
-  已配好 sync + async 两路的 `InstructorClient`；未提供 api_key 时
-  自动读对应环境变量。
-- `trace()` + `TraceRecord`：基于 `ContextVar` 的可观测性，跨 asyncio
-  task 自动传播。记录带 `usage` 与 `error`；`Trace.to_dict()` /
-  `to_json()` / `to_jsonl(path)` / `total_usage()` / `errors()` 负责
-  导出与聚合。`@step` 在 LLM 调用抛异常时也会写一条 `error` 非空的
-  `TraceRecord` 再重抛，保证 trace 完整可复现。
-- `@step(..., max_retries=N)`：把重试预算传给 instructor 用于结构化
-  输出的校验重试。
+- `FakeClient` / `FakeCall`：测试用的确定性后端——按队列顺序返回预置
+  Pydantic 实例，每次调用写进 `.calls`（messages / response_model /
+  model / max_retries / params）。零网络；覆盖 sync + async + stream +
+  astream 四条路径。
 - `Step.stream(...)` / `AsyncStep.astream(...)`：按字段逐步 yield partial
-  实例，把 schema-as-CoT 的"字段被逐个填完"过程完整暴露给用户。底层
-  借 instructor `create_partial`；一次流完整消费后写一条 TraceRecord。
-- `StepHook`：只读观察者中间件，三个回调 `on_start` / `on_end` / `on_error`。
-  通过 `add_hook()` / `remove_hook()` / `clear_hooks()` 管理。用来接
-  Prometheus、Slack 告警、OpenTelemetry；**不**允许修改 messages / output。
+  实例，把 schema-as-CoT 的"字段被逐个填完"过程完整暴露。底层借
+  instructor `create_partial`。
 - `ask_human` / `finish` / `run_flow` / `run_aflow`：human-in-the-loop。
   `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起；驱动器把
   人类答案 `.send()` 回生成器。没有 checkpoint、没有状态快照——生成器
@@ -121,32 +116,34 @@ pyxis 不抢这些位子。
 
 **不做的事**：权威清单放在
 [docs/concepts/philosophy.md](docs/concepts/philosophy.md)，CLAUDE.md 里
-不再重复列一遍。核心原则一句话——**能写成 Python 函数的东西，就写成
-Python 函数**。
+不再重复列一遍。三条最硬的原则：
+- **能写成 Python 函数的东西，就写成 Python 函数。**
+- **pyxis 不造配套生态。** 没有自己的 client 封装（直接吃 OpenAI SDK
+  实例）、没有自己的观测体系（生产接 Langfuse / OTel / APM）、没有
+  hook / middleware 协议（Python 装饰器叠加就是最好的 middleware）。
+- **永远不让用户手写 messages 列表。** docstring 是 system、函数返回
+  是 user。想要多轮 chat 或手动控制轮次？那不是 pyxis 的用法。
 
 ## 目录
 
 ```
 src/pyxis/        库代码
-  step.py         Step / AsyncStep + @step 装饰器
+  step.py         Step / AsyncStep + @step 装饰器（client 必填、params 透传）
   flow.py         Flow / AsyncFlow + @flow 装饰器
   tool.py         Tool 基类
-  trace.py        Trace / TraceRecord + trace() 上下文管理器
-  client.py       Client + AsyncClient 协议、CompletionResult、
-                  Usage、FakeClient、InstructorClient
-  providers.py    provider 便捷工厂：openrouter_client、openai_client
-  hooks.py        StepHook + add_hook/remove_hook/clear_hooks 观察者钩子
+  client.py       FakeClient / FakeCall（公共）+ 内部 adapter 把
+                  OpenAI / instructor 实例规范化成 _SyncBackend / _AsyncBackend
   human.py        HumanQuestion / FlowResult / ask_human / finish /
                   run_flow / run_aflow 人工介入相关的核心概念
   mcp.py          MCPServer / StdioMCP / HttpMCP / mcp_toolset MCP 适配层
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
 specs/            SDD 规格 —— 每个迭代一份 markdown
-examples/         跑得起来的单文件 demo（默认接 OpenRouter）——三类：
+examples/         跑得起来的单文件 demo（用 OpenRouter OpenAI SDK 实例）——三类：
                   ① 入门（research / streaming_demo / plan_then_execute）
                   ② 热词翻译（rag_minimal / batch_extraction /
                     router_dispatch / memory_kv / multi_agent /
-                    reflect_and_revise / coding_harness / evals_with_trace）
+                    reflect_and_revise / coding_harness / evals）
                   ③ 工具 + 工程化（agent_tool_use / mcp_tool_use /
                     human_review / guardrails / with_langfuse）
 apps/             monorepo 风格的示例应用（非库；打包时 exclude）
@@ -208,13 +205,17 @@ mkdocs.yml        文档站配置
 抛异常。需要断言 prompt 内容时，就用 `.calls`。集成烟雾测试放
 `tests/integration/`，没有环境变量时整体 skip，保证 CI 不依赖外部。
 
-## 可观测性：生产 Langfuse，测试 trace()
+## 可观测性：pyxis 本体不做
 
-生产推荐直接接 Langfuse——换个 import（`from langfuse.openai import OpenAI`）
-塞进 `instructor.from_openai(...)`，其他代码不动。细节见
-[docs/concepts/observability.md](docs/concepts/observability.md)
-（在线版：文档站 → 概念 → 可观测性）。
+观测由现成工具承担——pyxis 暴露干净的 OpenAI SDK 接口，你想接什么就接
+什么。这是刻意的设计：造配套等于和 Langfuse / OpenTelemetry / Datadog
+抢位子，既卷不过也会让用户学两套。
 
-测试与本地 debug 用 pyxis 内置的 `trace()` + `FakeClient`——零网络、断言
-Pydantic 实例。要自己接 Prometheus / OpenTelemetry / Slack 告警就写
-`StepHook`。三者可以同时开，互不干扰。框架本身不做 dashboard。
+- **生产**：换 `from langfuse.openai import OpenAI` 直接接 Langfuse；或
+  `opentelemetry-instrumentation-openai` 自动接 OTel；或装 Datadog /
+  New Relic 的 Python agent 自动 instrument OpenAI SDK。pyxis 不需要
+  任何配合。细节见 [docs/concepts/observability.md](docs/concepts/observability.md)。
+- **自定义打点**：`@step` 外套自己的 Python 装饰器。原生 Python
+  middleware 模式，不需要 pyxis 发明 hook 协议。
+- **测试**：`FakeClient([响应, ...])` 预置 Pydantic 实例 + 断言
+  `fake.calls`（messages / params / model / max_retries）。零网络。

@@ -1,18 +1,20 @@
 # Flow：显式编排
 
-`@flow` 在多次 LLM 调用之间加一层薄壳。一个 `@flow` 就是一个普通 Python 函数，额外挂一个 `.run_traced()` 方便本地 debug。
+`@flow` 在多次 LLM 调用之间加一层**语义标记**——就是一个普通 Python
+函数包一下，外加 `async def` / `def` 自动分派。不做观测、不做
+checkpoint、不做重跑——那些交给 APM 和你的业务代码。
 
 ## 最小例子
 
 ```python
 from pyxis import flow, step
 
-@step(output=Verdict)
+@step(output=Verdict, model="gpt-4o", client=client)
 def classify(text: str) -> str:
     """你是情感分类器..."""
     return text
 
-@step(output=Reply)
+@step(output=Reply, model="gpt-4o", client=client)
 def reply(sentiment: str, text: str) -> str:
     """根据情感生成回复..."""
     return f"sentiment={sentiment}, text={text}"
@@ -23,27 +25,11 @@ def triage(text: str) -> Reply:
     if v.confidence < 0.6:
         return escalate(text)
     return reply(v.sentiment, text)
+
+result = triage("今天糟透了")
 ```
 
-`@flow` 给函数挂一个 `.run_traced()`，方便本地 debug 一次拿到中间结果：
-
-```python
-result, trace = triage.run_traced("今天糟透了")
-print(trace.to_jsonl())
-```
-
-- `result` — 函数正常返回值
-- `trace` — `Trace` 实例，含本次所有 `@step` 的 `TraceRecord`
-- `trace.total_usage()` — token 总量
-- `trace.errors()` — 失败记录
-
-不加 `.run_traced()` 也能直接调：
-
-```python
-result = triage("今天糟透了")   # 等价于 triage.run_traced(...)[0]
-```
-
-生产的可观测性一般不走这个 → 直接接 [Langfuse](observability.md)。`run_traced` 主要给单测断言和本地 debug 用。
+没有 `.run_traced()` 这类糖——就是一个函数调用。
 
 ## 写一个 agent loop
 
@@ -72,12 +58,19 @@ async def triage(text: str) -> Reply:
     v = await classify_async(text)
     ...
 
-result, trace = await triage.run_atraced("...")
+result = await triage("...")
 ```
 
 - `@flow` 按函数签名分派同步 / 异步
-- trace API 对应 `run_traced` / `run_atraced`
-- 底层 `trace()` 基于 `ContextVar`，跨 asyncio task 自动传播；`asyncio.gather` 并发也能完整记录
+- 多 step 并发就裸写 `asyncio.gather(step_a(...), step_b(...))`
+
+## 观测怎么做？
+
+- 生产：接 [Langfuse](observability.md) / OpenTelemetry / Datadog——OpenAI
+  SDK 层 auto-instrument 自动覆盖每个 `@step` 调用。pyxis 不提供自己的
+  trace 体系。
+- 测试：用 `FakeClient` 预置响应 + 断言 `fake.calls`。
+- 自定义打点：`@step` 外再套自己的 Python 装饰器。
 
 ## 什么时候不用 Flow
 

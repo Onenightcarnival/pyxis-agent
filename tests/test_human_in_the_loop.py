@@ -14,7 +14,6 @@ from pyxis import (
     run_aflow,
     run_flow,
     step,
-    trace,
 )
 
 
@@ -136,7 +135,7 @@ def test_multi_turn_conversation_via_human_in_the_loop():
     assert result == [("user", "你好"), ("user", "再聊聊 schema-as-CoT")]
 
 
-def test_trace_captures_steps_across_yields():
+def test_step_calls_across_yields_are_captured_by_fake_client():
     fake = FakeClient(
         [
             Plan(goal="g1", next_action="a"),
@@ -156,11 +155,10 @@ def test_trace_captures_steps_across_yields():
         _ = yield ask_human("审第二步", plan=second.goal)
         return (first.goal, second.goal)
 
-    with trace() as t:
-        result = run_flow(interactive(), on_ask=_queued([True, True]))
+    result = run_flow(interactive(), on_ask=_queued([True, True]))
 
     assert result == ("g1", "g2")
-    assert [r.step for r in t.records] == ["plan", "plan"]
+    assert len(fake.calls) == 2
 
 
 async def test_run_aflow_with_sync_generator_and_sync_on_ask():

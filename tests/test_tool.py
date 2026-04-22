@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 import pytest
 from pydantic import BaseModel, Field
 
-from pyxis import FakeClient, Tool, flow, step, trace
+from pyxis import FakeClient, Tool, flow, step
 
 
 class SearchWeb(Tool):
@@ -87,7 +87,7 @@ def test_tool_discriminated_union_dispatch_via_isinstance():
     assert results == ["RESULTS(x)", "done"]
 
 
-def test_tool_in_agent_loop_traced_correctly():
+def test_tool_in_agent_loop_stops_on_finish():
     fake = FakeClient(
         [
             Decision(thought="search first", action=SearchWeb(query="foo")),
@@ -112,10 +112,7 @@ def test_tool_in_agent_loop_traced_correctly():
                 return obs
         raise RuntimeError("max_steps exhausted")
 
-    with trace() as t:
-        answer = agent("what is foo?")
+    answer = agent("what is foo?")
 
     assert answer == "final"
-    assert [r.step for r in t.records] == ["decide", "decide"]
-    assert isinstance(t.records[0].output.action, SearchWeb)
-    assert isinstance(t.records[1].output.action, Finish)
+    assert len(fake.calls) == 2

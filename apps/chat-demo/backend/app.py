@@ -20,12 +20,17 @@ from typing import Literal
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import set_default_client, step
-from pyxis.providers import openrouter_client
+from pyxis import step
 
 MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-5.4-nano")
+
+openrouter = AsyncOpenAI(
+    base_url=os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 class ChatReply(BaseModel):
@@ -57,8 +62,8 @@ def _format_history(history: list[Turn]) -> str:
     return "\n".join(lines)
 
 
-@step(output=ChatReply, model=MODEL)
-def respond(history_text: str, user_message: str) -> str:
+@step(output=ChatReply, model=MODEL, client=openrouter)
+async def respond(history_text: str, user_message: str) -> str:
     """你是一个友好、严谨的中文对话助手。先在 `thought` 里梳理思路
     （不会展示给用户），再在 `response` 里给出最终回复。"""
     return f"{history_text}\n本轮用户输入：\n{user_message}".strip()
@@ -74,12 +79,6 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-async def _configure() -> None:
-    if "OPENROUTER_API_KEY" in os.environ:
-        set_default_client(openrouter_client())
-
-
 def _sse(data: dict) -> bytes:
     """组一行 SSE：`data: {...}\\n\\n`。"""
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n".encode()
@@ -89,10 +88,10 @@ async def _stream_reply(req: ChatRequest) -> AsyncIterator[bytes]:
     history_text = _format_history(req.history)
     last: ChatReply | None = None
 
-    # pyxis 的 stream()：每一帧是 partial ChatReply（字段可能为空串/None）。
+    # pyxis 的 astream()：每一帧是 partial ChatReply（字段可能为空串/None）。
     # 我们把它序列化后推到前端，前端再按 view 选择怎么渲染。
     try:
-        for partial in respond.stream(history_text, req.message):
+        async for partial in respond.astream(history_text, req.message):
             last = partial  # type: ignore[assignment]
             yield _sse(
                 {
@@ -101,7 +100,6 @@ async def _stream_reply(req: ChatRequest) -> AsyncIterator[bytes]:
                     "response": getattr(partial, "response", None),
                 }
             )
-            # 让出一下事件循环，前端 SSE 能流畅接收
             await asyncio.sleep(0)
     except Exception as exc:  # noqa: BLE001
         yield _sse({"kind": "error", "message": f"{type(exc).__name__}: {exc}"})

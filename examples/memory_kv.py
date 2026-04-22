@@ -17,12 +17,17 @@ from __future__ import annotations
 
 import os
 
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, set_default_client, step, trace
-from pyxis.providers import openrouter_client
+from pyxis import flow, step
 
 MODEL = "openai/gpt-5.4-nano"
+
+openrouter = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+)
 
 
 # ---- 长期记忆 = 一个 dict，换存储只动这里 ----
@@ -42,7 +47,7 @@ class Facts(BaseModel):
     facts: list[Fact] = Field(description="抽到的事实条目；没有就给空列表 []")
 
 
-@step(output=Facts, model=MODEL, max_retries=3)
+@step(output=Facts, model=MODEL, max_retries=3, client=openrouter)
 def extract_facts(user: str) -> str:
     """你是信息抽取器。只抽**关于用户自身**的事实（姓名、项目、偏好、
     角色、居住地等）并放进 facts 列表。用户提问或闲聊时给空列表。
@@ -62,7 +67,7 @@ class Answer(BaseModel):
     reply: str = Field(description="给用户的一句话回答")
 
 
-@step(output=Answer, model=MODEL, max_retries=2)
+@step(output=Answer, model=MODEL, max_retries=2, client=openrouter)
 def answer(mem_snapshot: str, user: str) -> str:
     """你是只靠长期记忆作答的助手——没有对话历史，只有记忆快照。
     用户问到你之前该记住的东西 → 从快照里挑相关键填 recall_keys，
@@ -103,13 +108,8 @@ TURNS: list[str] = [
 
 
 def main() -> None:
-    set_default_client(openrouter_client(api_key=os.environ["OPENROUTER_API_KEY"]))
-
-    with trace() as t:
-        chat(TURNS)
-
+    chat(TURNS)
     print(f"\n=== 最终记忆快照 ===\n{_MEM}")
-    print(f"\n=== 成本 ===\n{len(t.records)} 次调用；{t.total_usage().total_tokens} tokens")
 
 
 if __name__ == "__main__":
