@@ -1,13 +1,13 @@
 """LLM 客户端：内部规范化层 + 测试用 `FakeClient`。
 
-pyxis 不发明"客户端容器"。用户直接把 `openai.OpenAI` /
-`openai.AsyncOpenAI`，或 `instructor.from_openai(...)` 返回的已补丁
-实例，传给 `@step(client=...)`。`@step` 内部用这个模块里的
-`_adapt_sync_client` / `_adapt_async_client` 把它规范化成一个只有
-pyxis 内部看得见的后端协议实例。
+`@step(client=...)` 吃 `openai.OpenAI` / `openai.AsyncOpenAI` 或
+`instructor.from_openai(...)` 返回的实例。`@step` 内部用
+`_adapt_sync_client` / `_adapt_async_client` 把它规范化成内部的
+`_SyncBackend` / `_AsyncBackend`。
 
-对外公开的只有 `FakeClient` + `FakeCall`——给测试场景用，零网络、按队列
-返回预置 Pydantic 实例、`.calls` 全量记录输入便于断言。
+对外导出的只有 `FakeClient` + `FakeCall`：零网络、按队列返回预置
+Pydantic 实例、`.calls` 记录每次调用的 messages / model / max_retries /
+params，用于单测断言。
 """
 
 from __future__ import annotations

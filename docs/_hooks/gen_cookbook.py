@@ -17,7 +17,7 @@ GH_BLOB = "https://github.com/Onenightcarnival/pyxis-agent/blob/main"
 # 手工编排顺序 + 中文标题 + 一句话说明（RECIPES 的顺序 = 侧边栏顺序）。
 # 以底部装饰条 cookbook/index.md 里的表格顺序也跟这个列表走。
 RECIPES: list[tuple[str, str, str]] = [
-    # --- 入门：原语逐个登场 ---
+    # --- 入门：各核心概念逐个登场 ---
     (
         "research",
         "端到端：分析 + 规划",
@@ -33,7 +33,7 @@ RECIPES: list[tuple[str, str, str]] = [
         "Plan-then-execute",
         "先让 LLM 出计划，再让另一个 Step 逐步执行。",
     ),
-    # --- 热词翻译：行业概念落到 pyxis 原语 ---
+    # --- 热词翻译：行业概念落到 pyxis 的具体 API ---
     (
         "rag_minimal",
         "RAG 最小版",
@@ -89,7 +89,7 @@ RECIPES: list[tuple[str, str, str]] = [
     (
         "guardrails",
         "输入 gate + 输出 validator",
-        "Python 正则前置 + Pydantic validator 后置；pyxis 不需要 hook 协议。",
+        "Python 正则前置 + Pydantic validator 后置，guardrail 逻辑原地写。",
     ),
     (
         "with_langfuse",

@@ -91,7 +91,7 @@ def triage(text: str) -> str:
 | `Tool` / `@tool` | 工具 = `BaseModel` + `run() -> str` | [概念](concepts/tool.md) · [API](api/tool.md) |
 | `ask_human` / `run_flow` | 生成器挂起等人类回应 | [概念](concepts/human.md) · [API](api/human.md) |
 | `mcp_toolset` | MCP 远端工具翻成本地 `Tool` 子类 | [概念](concepts/mcp.md) · [API](api/mcp.md) |
-| 可观测性 | **pyxis 本体不做**；生产接 Langfuse / OTel / APM；测试用 `FakeClient` | [概念](concepts/observability.md) |
+| 可观测性 | 接 Langfuse / OTel / APM instrument OpenAI SDK 层；测试用 `FakeClient` | [概念](concepts/observability.md) |
 
 ---
 

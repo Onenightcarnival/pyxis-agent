@@ -1,8 +1,7 @@
 # Flow：显式编排
 
-`@flow` 在多次 LLM 调用之间加一层**语义标记**——就是一个普通 Python
-函数包一下，外加 `async def` / `def` 自动分派。不做观测、不做
-checkpoint、不做重跑——那些交给 APM 和你的业务代码。
+`@flow` 是一层很薄的语义标记，套在一个普通 Python 函数外面，按
+`async def` / `def` 分派 `AsyncFlow` / `Flow`。
 
 ## 最小例子
 
@@ -64,13 +63,12 @@ result = await triage("...")
 - `@flow` 按函数签名分派同步 / 异步
 - 多 step 并发就裸写 `asyncio.gather(step_a(...), step_b(...))`
 
-## 观测怎么做？
+## 观测
 
-- 生产：接 [Langfuse](observability.md) / OpenTelemetry / Datadog——OpenAI
-  SDK 层 auto-instrument 自动覆盖每个 `@step` 调用。pyxis 不提供自己的
-  trace 体系。
-- 测试：用 `FakeClient` 预置响应 + 断言 `fake.calls`。
-- 自定义打点：`@step` 外再套自己的 Python 装饰器。
+- 生产：[可观测性](observability.md) 页——APM / OTel / Langfuse 在
+  OpenAI SDK 层 instrument，自动覆盖每个 `@step` 调用
+- 测试：`FakeClient` 预置响应 + 断言 `fake.calls`
+- 自定义打点：`@step` 外再套 Python 装饰器
 
 ## 什么时候不用 Flow
 

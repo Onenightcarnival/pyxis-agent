@@ -79,10 +79,8 @@ pyxis 不抢这些位子。
   的实例；pyxis 内部懒 patch 成 instructor。同步 `def` 得到 `Step[T]`；
   异步 `async def` 得到 `AsyncStep[T]`；sync / async 错配立即 `TypeError`。
   `params` 是一个 dict，哑透传给 provider API（`temperature` / `max_tokens`
-  / `seed` / `top_p` / `stop` / ...），pyxis 不枚举、不校验。
-- `@flow`：多步函数的薄包装；就是一个语义标记 + `async def` / `def`
-  分派。不带"观测" / "重跑" / "checkpoint" 能力——这些交给 APM 和你
-  自己的代码。
+  / `seed` / `top_p` / `stop` / ...），不做枚举或校验。
+- `@flow`：多步函数的薄包装；一个语义标记 + `async def` / `def` 分派。
 - `Tool`：`BaseModel` 子类，带 `run() -> str`。动作即 schema，`run()` 即代码。
   LLM 在 schema 的判别式联合 `action` 字段里选一个工具；Python 用
   `isinstance` / `action.run()` 分派。
@@ -116,13 +114,12 @@ pyxis 不抢这些位子。
 
 **不做的事**：权威清单放在
 [docs/concepts/philosophy.md](docs/concepts/philosophy.md)，CLAUDE.md 里
-不再重复列一遍。三条最硬的原则：
-- **能写成 Python 函数的东西，就写成 Python 函数。**
-- **pyxis 不造配套生态。** 没有自己的 client 封装（直接吃 OpenAI SDK
-  实例）、没有自己的观测体系（生产接 Langfuse / OTel / APM）、没有
-  hook / middleware 协议（Python 装饰器叠加就是最好的 middleware）。
-- **永远不让用户手写 messages 列表。** docstring 是 system、函数返回
-  是 user。想要多轮 chat 或手动控制轮次？那不是 pyxis 的用法。
+不再重复列一遍。核心原则一句话——**能写成 Python 函数的东西，就写成
+Python 函数**。几条硬边界：
+- client 不封装——`@step(client=...)` 吃原生 `OpenAI` / `AsyncOpenAI`
+  或 `instructor.from_openai(...)` 的实例。
+- 观测体系不自建——接 Langfuse / OpenTelemetry / APM。
+- 手写 messages 列表的入口不给——docstring 是 system、函数返回是 user。
 
 ## 目录
 
@@ -205,17 +202,14 @@ mkdocs.yml        文档站配置
 抛异常。需要断言 prompt 内容时，就用 `.calls`。集成烟雾测试放
 `tests/integration/`，没有环境变量时整体 skip，保证 CI 不依赖外部。
 
-## 可观测性：pyxis 本体不做
+## 可观测性
 
-观测由现成工具承担——pyxis 暴露干净的 OpenAI SDK 接口，你想接什么就接
-什么。这是刻意的设计：造配套等于和 Langfuse / OpenTelemetry / Datadog
-抢位子，既卷不过也会让用户学两套。
+`@step(client=...)` 吃 OpenAI SDK 实例；APM / LLM-ops 工具 instrument
+这层就覆盖每次调用。
 
-- **生产**：换 `from langfuse.openai import OpenAI` 直接接 Langfuse；或
-  `opentelemetry-instrumentation-openai` 自动接 OTel；或装 Datadog /
-  New Relic 的 Python agent 自动 instrument OpenAI SDK。pyxis 不需要
-  任何配合。细节见 [docs/concepts/observability.md](docs/concepts/observability.md)。
-- **自定义打点**：`@step` 外套自己的 Python 装饰器。原生 Python
-  middleware 模式，不需要 pyxis 发明 hook 协议。
+- **生产**：换 `from langfuse.openai import OpenAI` 接 Langfuse；或
+  `opentelemetry-instrumentation-openai`；或 Datadog / New Relic 的
+  Python agent。详见 [docs/concepts/observability.md](docs/concepts/observability.md)。
+- **自定义打点**：`@step` 外套 Python 装饰器。
 - **测试**：`FakeClient([响应, ...])` 预置 Pydantic 实例 + 断言
-  `fake.calls`（messages / params / model / max_retries）。零网络。
+  `fake.calls`（messages / params / model / max_retries），零网络。

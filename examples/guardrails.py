@@ -1,15 +1,10 @@
-"""输入前置过滤 + 输出后置校验：两类 guardrail 各用一个 Python 原语。
+"""输入前置过滤 + 输出后置校验：两类 guardrail 各一段 Python。
 
-pyxis 不做 hook / middleware 协议——所以 guardrail 就写两处：
-
-- **输入侧**：在 flow 里调 step 之前用普通 Python 函数 `_prescreen`
-  扫一遍用户输入，命中黑名单（prompt injection、PII 模式）就 raise。
-- **输出侧**：在 Pydantic 的 `@field_validator` 里做合规校验，失败
-  Instructor 会按 `max_retries` 自动重试；连续失败抛出来，flow 决定
-  要不要降级兜底。
-
-这两件事（输入 gate、输出 validator）各自一个概念原地解决，不需要
-一个 "Guardrails" 类、也不需要 hook 协议。
+- 输入侧：在 flow 里调 step 之前用普通 Python 函数 `_prescreen` 扫一遍
+  用户输入，命中黑名单（prompt injection、PII 模式）就 raise。
+- 输出侧：在 Pydantic 的 `@field_validator` 里做合规校验，失败
+  instructor 按 `max_retries` 自动重试；连续失败抛出来，flow 决定要
+  不要降级兜底。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/guardrails.py

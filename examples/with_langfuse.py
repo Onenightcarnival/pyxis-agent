@@ -1,12 +1,11 @@
-"""接入 Langfuse 做托管级可观测性——"换一行 import"就完事。
+"""接入 Langfuse：换一行 import 就开始收集 trace。
 
-pyxis 自己不做可观测；生产观测推荐直接接 Langfuse。做法极简：把
-`from openai import OpenAI` 换成 `from langfuse.openai import OpenAI`，
-其余代码（`@step` / `@flow` / `@tool`）完全不变。跑完去 Langfuse
-dashboard 就能看到每次 LLM 调用的 prompt / response / token / latency。
+把 `from openai import OpenAI` 换成 `from langfuse.openai import OpenAI`，
+其他代码都不变。跑完去 Langfuse dashboard 看每次 LLM 调用的 prompt /
+response / token / latency。
 
 运行前需要：
-    uv add langfuse      # 把 langfuse 加进项目依赖
+    uv add langfuse
     export LANGFUSE_PUBLIC_KEY=pk-lf-...
     export LANGFUSE_SECRET_KEY=sk-lf-...
     export LANGFUSE_HOST=https://cloud.langfuse.com   # 或自托管

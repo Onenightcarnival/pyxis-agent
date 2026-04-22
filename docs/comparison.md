@@ -150,7 +150,7 @@ result = Research()(topic="AI agents")
 
 - **LangGraph** — 原生跑 LangSmith，上线即送 trace 可视化
 - **DSPy** — callback 或 `dspy.inspect_history()`
-- **pyxis** — **框架本体不做**。生产接 [Langfuse](concepts/observability.md)（换一行 `import`）· OpenTelemetry auto-instrument · Datadog / New Relic 的 OpenAI SDK instrumentation 都直接覆盖 `@step` 调用。要自定义打点就用 Python 装饰器叠加
+- **pyxis** — 接 [Langfuse](concepts/observability.md)（换一行 `import`）/ OpenTelemetry auto-instrument / Datadog / New Relic，都 instrument OpenAI SDK 层覆盖 `@step` 调用。自定义打点用 Python 装饰器叠加
 
 ### 5. 测试
 
@@ -175,16 +175,13 @@ result = Research()(topic="AI agents")
 - 观测想自己配（直接接 Langfuse / OTel / APM，不被框架挟持）
 - 项目规模小到中等（几十个 Step、几个 flow），不需要可视化状态机
 
-## 什么时候**不**选 pyxis（请直接用 LangGraph / DSPy）？
+## 什么时候**不**选 pyxis
 
-- **复杂图状控制流 / 断点续跑 / checkpointer / 多 agent 协商** → LangGraph。
-  pyxis 刻意不做状态机、不做图可视化——这些是 LangGraph 的核心价值，
-  我们不抢这个位子
-- 要**图可视化**做 PM / 设计评审 → LangGraph
-- 核心要**自动优化 prompt**（teleprompter、MIPRO、BootstrapFewShot）→ DSPy
-- 要**开箱即用的托管 trace UI** → LangSmith
-- 追求极致丝滑的 chat 体感（token 流式打字机） → Anthropic SDK 原生
-  tool use / Claude Desktop 风路线更直
+- 图状控制流 / 断点续跑 / checkpointer / 多 agent 协商 → LangGraph
+- 图可视化做 PM / 设计评审 → LangGraph
+- 自动优化 prompt（teleprompter、MIPRO、BootstrapFewShot）→ DSPy
+- 开箱即用的托管 trace UI → LangSmith
+- 极致丝滑的 chat 体感（token 流式打字机）→ Anthropic SDK 原生 tool use
 
 ## 总结
 

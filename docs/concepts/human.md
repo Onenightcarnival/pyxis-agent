@@ -66,7 +66,7 @@ result = await run_aflow(booking(), on_ask=some_async_fn)
 ## 什么时候不用
 
 - 纯自动流程 → 普通 `@flow` 不带 `ask_human`
-- 跨服务 / 跨进程 / 长期挂起的工作流 → 工作流引擎（Temporal / Cadence），pyxis 不抢
+- 跨服务 / 跨进程 / 长期挂起的工作流 → 工作流引擎（Temporal / Cadence）
 
 `ask_human(question, *, schema=None, **context)` 造出 `HumanQuestion`；`**context` 原样挂在 `.context` 上，给 UI 渲染或判断用。
 

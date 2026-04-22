@@ -14,7 +14,7 @@
 
 - [human-in-the-loop](human.md) — 要人类回应
 - [MCP 适配](mcp.md) — 要接远端工具
-- [可观测性](observability.md) — pyxis 本体不做；这是接 Langfuse / OTel / APM 的姿势
+- [可观测性](observability.md) — 接 Langfuse / OTel / APM 的姿势
 
 ---
 

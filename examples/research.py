@@ -39,7 +39,7 @@ class Plan(BaseModel):
     next_action: str = Field(description="第一个要做的具体步骤")
 
 
-# ---- client：直接用 OpenAI SDK，pyxis 不封装 ----
+# ---- client：原生 OpenAI SDK 指向 OpenRouter ----
 
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -74,9 +74,9 @@ def research(topic: str) -> Plan:
 
 # ---- 展示层：给人看的时候拿字段拼自然语言。这段属于应用代码。 ----
 #
-# schema 是给 LLM 的结构化骨架（机器可读）；给用户看的最终产出，应该是
-# 按 schema 字段拼出来的自然语言。pyxis 刻意不替你做这一步——schema
-# 字段是你自己定义的，不同前端（CLI / Web / Slack）的渲染方式都不一样。
+# schema 是给 LLM 的结构化骨架（机器可读）；给用户看的最终产出是按
+# schema 字段拼出来的自然语言。字段是业务自己定义的，不同前端（CLI /
+# Web / Slack）的渲染方式不一样，所以这段留给应用层写。
 
 
 def render_plan(p: Plan) -> str:

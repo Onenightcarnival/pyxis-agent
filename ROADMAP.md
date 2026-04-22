@@ -23,14 +23,14 @@
 
 违反核心哲学，**永远不加**：
 
-- **图 / DAG DSL、YAML pipeline 配置** — Python 已经能组合函数。复杂图状控制流请用 LangGraph
-- **内置 agent loop helper**（ReAct / Plan-and-Execute 模板）— loop 是用户自己的 `@flow`。需要这些 → LangGraph
+- **图 / DAG DSL、YAML pipeline 配置** — Python 已经能组合函数。图状控制流用 LangGraph
+- **内置 agent loop helper**（ReAct / Plan-and-Execute 模板）— loop 是用户自己的 `@flow`；要模板走 LangGraph
 - **function-calling 协议适配层** — 输出 schema 就是接口；要用 provider 的 function-calling 直接用 instructor
 - **响应式状态 / 全局可变 agent context** — 显式传参
 - **对标 Claude Desktop / ChatGPT 的对话丝滑度** — pyxis 是 agent-for-machine，LLM 直出 Pydantic 给代码用；要聊天顺滑用 Anthropic SDK 原生 tool use
-- **自己的客户端封装**（~~`InstructorClient`~~、~~`openrouter_client`~~、~~`openai_client`~~、~~`set_default_client`~~）— pyxis 不重新发明 OpenAI SDK。`@step(client=...)` 直接吃 `OpenAI` / `AsyncOpenAI` / instructor 实例。[规格 023](specs/023-公共面收敛.md)
-- **观测体系**（~~`trace()`~~、~~`TraceRecord`~~、~~`Usage`~~、~~`StepHook`~~、~~`add_hook`~~）— 生产接 Langfuse / OpenTelemetry / Datadog 等现成工具，直接 instrument OpenAI SDK 即可。自定义打点用 Python 装饰器叠加。框架不发明 hook 协议。[规格 023](specs/023-公共面收敛.md)
-- **手写 messages 列表的入口** — docstring 是 system，函数返回是 user。想要多轮 chat / 手动控制 system / user / assistant 轮次？那不是 pyxis 的用法，直接用原生 OpenAI SDK 或 instructor
+- **客户端封装**（~~`InstructorClient`~~、~~`openrouter_client`~~、~~`openai_client`~~、~~`set_default_client`~~）— `@step(client=...)` 吃 `OpenAI` / `AsyncOpenAI` / instructor 实例。[规格 023](specs/023-公共面收敛.md)
+- **观测体系**（~~`trace()`~~、~~`TraceRecord`~~、~~`Usage`~~、~~`StepHook`~~、~~`add_hook`~~）— 接 Langfuse / OpenTelemetry / Datadog，instrument OpenAI SDK 层；自定义打点用 Python 装饰器叠加。[规格 023](specs/023-公共面收敛.md)
+- **手写 messages 列表的入口** — docstring 是 system、函数返回是 user；多轮 chat / assistant 轮次控制直接用 OpenAI SDK
 
 ## 怎么贡献一个迭代
 

@@ -10,8 +10,7 @@
   且 severity 不是 high"，严格条件在弱模型上几乎不收敛。
 
 这份示例跑在 gpt-5.4-nano 上，分数不会单调下降，这是 LLM-as-judge 本身
-的特性；换更强的模型通常稳得住。pyxis 只是不帮你隐藏这件事——flow 里
-的 print 把每一版都显式打出来。
+的特性；换更强的模型通常稳得住。flow 里的 print 把每一版都显式打出来。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/reflect_and_revise.py

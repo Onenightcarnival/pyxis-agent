@@ -100,46 +100,42 @@ def summarize(article: str) -> str:
 
 ## 采样参数：`params`
 
-`params` 是一个字典，哑透传给 provider API（`temperature` / `max_tokens`
-/ `seed` / `top_p` / `stop` / ...）。pyxis 不枚举、不校验，所以 provider
-原生支持什么参数就能传什么。
+`params` 是一个字典，透传给 provider API（`temperature` / `max_tokens`
+/ `seed` / `top_p` / `stop` / ...）。
 
 ```python
 @step(
     output=Route,
     model="gpt-4o-mini",
     client=client,
-    params={"temperature": 0, "max_tokens": 200},   # 路由 step 要确定性
+    params={"temperature": 0, "max_tokens": 200},
 )
 def route(user_input: str) -> str:
     """..."""
     return user_input
 ```
 
-不同 `@step` 可以用不同的 `params`——路由要 `temperature=0`，creative
-要 `temperature=0.9`。
+不同 step 用不同 `params`——路由 `temperature=0`、creative `0.9`。
 
-## 客户端：直接吃 OpenAI SDK 实例
+## 客户端
 
-`client` 是必填参数。吃两种东西之一：
+`client` 必填。吃两种实例之一：
 
 ```python
-# ① 原生 OpenAI SDK（最常见）
+# ① 原生 OpenAI SDK
 from openai import OpenAI, AsyncOpenAI
 sync_client = OpenAI(base_url="...", api_key="...")
 async_client = AsyncOpenAI(base_url="...", api_key="...")
 
-# ② 已经 patch 过的 instructor 实例（例如接 Langfuse）
+# ② instructor 已 patch 的实例（例如接 Langfuse）
 import instructor
 traced_client = instructor.from_openai(some_langfuse_openai)
 ```
 
-pyxis 内部自动把原生 OpenAI 实例懒 patch 成 instructor。不传 `client`
-会立即 `TypeError`——没有"默认 client"这回事，你业务代码里的 client
-就是 client。
+原生实例会在第一次调用时懒 patch 成 instructor。`@step(client=...)`
+不接受省略，sync / async 跟 `def` / `async def` 不匹配立即 `TypeError`。
 
-想接 OpenRouter / Ollama / 自己的 OpenAI-compatible proxy？就是换
-`base_url`：
+OpenRouter / Ollama / 其他 OpenAI-compatible 代理就换 `base_url`：
 
 ```python
 openrouter = OpenAI(

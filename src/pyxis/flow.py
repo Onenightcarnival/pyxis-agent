@@ -1,11 +1,17 @@
-"""Flow：显式多步编排，完全用普通 Python 写。
+"""Flow：显式多步编排。
 
-`@flow` 是有意做得很薄的——Python 本身就能组合函数；这里只加一件事：
-一个"这是多步 flow"的语义标记 + 按 `async def` / `def` 分派到
-`AsyncFlow` / `Flow`。
+`@flow` 是一层很薄的语义标记——套在一个普通 Python 函数外面，按
+`async def` / `def` 分派成 `AsyncFlow` / `Flow`。多步编排直接写
+`if` / `for` / 函数组合。
 
-pyxis 本体不做可观测；生产接 Langfuse / OpenTelemetry / APM，测试用
-`FakeClient` 断言 `.calls`。
+语义上 `@flow` 的价值是声明意图：读代码的人一眼看出"这段是协调多次
+LLM 调用的 flow"。运行时就是一个透明包装，调用时等价于调原函数；
+图状调度 / 断点续跑 / checkpointer 等能力由调用方的代码和 APM 层
+负责。
+
+生成器版 `@flow` 配合 `ask_human` + `run_flow` / `run_aflow` 做
+human-in-the-loop——中间 `yield` 挂起等人类回应，驱动器 `.send()` 答案
+回生成器。细节见 `pyxis.human`。
 """
 
 from __future__ import annotations

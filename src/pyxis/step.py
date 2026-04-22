@@ -1,16 +1,14 @@
 """Step：一次 LLM 调用 + 结构即思维链（schema-as-CoT）。
 
-- **code-as-prompt**：函数的 docstring 是 system prompt，字符串返回是 user message。
-- **schema-as-CoT**：Pydantic 输出模型的字段顺序就是思维链——LLM 必须自上
-  而下把它们填完。
+- code-as-prompt：函数 docstring 是 system prompt，字符串返回是 user
+  message。
+- schema-as-CoT：Pydantic 输出模型的字段顺序就是思维链——LLM 必须
+  自上而下把它们填完。
 
-`@step` 装饰器会检测 `async def` 的 prompt 函数，并分派到 `AsyncStep`，
-调用方就能拿到一个 coroutine function 直接 `await`。
-
-`client` 参数必填，吃两种东西之一：
-- `openai.OpenAI` / `openai.AsyncOpenAI` 实例——内部自动 `instructor.from_openai()`
-  懒 patch。
-- 用户已经 patch 过的 instructor 实例——直接使用。
+`@step` 按 `def` / `async def` 分派到 `Step` / `AsyncStep`。
+`client` 参数必填，吃 `openai.OpenAI` / `openai.AsyncOpenAI` 或已经
+`instructor.from_openai(...)` 过的实例。原生 SDK 实例在第一次调用时
+懒 patch。
 """
 
 from __future__ import annotations
@@ -137,8 +135,8 @@ def step[T: BaseModel](
     - 函数的返回值必须是 `str`，它就是 user message。
     - `client` 必填。吃 `openai.OpenAI` / `openai.AsyncOpenAI` 或已经
       `instructor.from_openai(...)` 的实例；sync / async 不匹配会立即 `TypeError`。
-    - `params`：透传给 provider API 的字典（`temperature` / `max_tokens`
-      / `seed` / `top_p` / `stop` / ...）。pyxis 不枚举、不校验，哑透传。
+    - `params`：字典，透传给 provider API（`temperature` / `max_tokens`
+      / `seed` / `top_p` / `stop` / ...），不做枚举或校验。
     - `max_retries`：instructor 校验失败的重试次数，透传给 instructor。
     """
 

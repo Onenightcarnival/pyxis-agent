@@ -1,12 +1,11 @@
 """跑一个小数据集做 eval：准确率、p50/p95 延迟、错例清单、原始调用 log。
 
-组合是一个 Python list（输入 + 期望）+ 一个 `@step` 出结构化结果 +
-一个 `for` 循环。聚合全是普通 Python：`statistics.mean`、`Counter`、
-排序取分位。原始调用 log 自己 `json.dumps` 存盘——pyxis 不做"eval 框架"
-也不做 trace 聚合，这些都是几行 Python 的事。
+组合是 Python list（输入 + 期望）+ 一个 `@step` 出结构化结果 + 一个
+`for` 循环。聚合用 `statistics.mean` / `Counter` / 排序取分位，都是
+几行 Python。原始调用 log 自己 `json.dumps` 落盘。
 
-要 A/B 两个模型？把 `client` / `MODEL` 换一下跑两遍，diff 两份 JSONL。
-要比两次 commit 的质量漂移？存两份 JSONL 对照即可。
+A/B 两个模型：换 `client` / `MODEL` 跑两遍，diff 两份 JSONL。比两次
+commit 的质量漂移：存两份 JSONL 对照即可。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/evals.py
@@ -146,7 +145,7 @@ def main() -> None:
         for r in mistakes:
             print(f"  期望 {r['expected']} / 实际 {r['actual']}：{r['text']}")
 
-    # ---- 存 JSONL：普通 Python 一把梭，pyxis 不掺和 ----
+    # ---- 存 JSONL：普通 Python 一把梭 ----
     LOG_DIR.mkdir(exist_ok=True)
     log_path = LOG_DIR / "eval_latest.jsonl"
     with log_path.open("w", encoding="utf-8") as f:
