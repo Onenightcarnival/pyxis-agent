@@ -31,3 +31,15 @@
   见 [可观测性](observability.md)
 
 能用普通 Python 函数组合表达的事，就写成普通 Python 函数。
+
+## 开发方法
+
+pyxis 的 SDD 不再靠长期保留的迭代规格文档驱动。概念设计和工程设计分层：
+
+- **产品 / 哲学 / 定位层**直接改长期文档：`docs/concepts/`、`README.md`、
+  `CLAUDE.md` / `AGENTS.md`。这些文档表达当前系统是什么、为什么故意不做某些事。
+- **代码 / API / 行为层**走 TODO-driven skeleton：先建真实模块、类型、
+  函数签名和 docstring，在实现区留下 `TODO(...)` 或 `NotImplementedError`，
+  再用失败测试绑定行为契约。
+- 迭代完成时，测试、ruff、文档构建通过，并且本轮 `TODO(...)` 清零。
+  历史解释交给 commit message 和 GitHub Releases，不把临时规格伪装成长期文档。

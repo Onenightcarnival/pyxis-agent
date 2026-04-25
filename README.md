@@ -74,7 +74,6 @@ assert v.sentiment == "positive"
 | `apps/`         | 带前端的示例应用（`chat-demo`、`mcp-demo`）     | [**Demos**](https://onenightcarnival.github.io/pyxis-agent/demos/) |
 | `docs/`         | 文档站源（MkDocs Material）                    | 文档站本体 |
 | `tests/`        | pytest（单元零网络 + `integration/` 烟雾测试） | 不上站 |
-| `specs/`        | SDD 规格——每次迭代一份 markdown                | **不上站**（内部开发档案） |
 | `CLAUDE.md`     | AI PM 设计笔记（协作模式、决策依据）           | **不上站** |
 | `ROADMAP.md`    | "已做 / 近期候选 / 故意不做"                   | **不上站** |
 
@@ -88,7 +87,8 @@ uv run --env-file .env pytest tests/integration/     # 真实 LLM 烟雾测试
 uv run --group docs mkdocs build --strict            # 文档站验收
 ```
 
-- 迭代方法：**SDD**（`specs/` 里先写规格）+ **TDD**（先写失败测试）
+- 迭代方法：**概念设计改文档，代码设计走 TODO-driven skeleton**；先写真实模块、
+  类型、函数签名、docstring 与失败测试，再填实现，迭代结束前清空本轮 TODO
 - 变更历史：`git log` + [GitHub Releases](https://github.com/Onenightcarnival/pyxis-agent/releases)
 - 待办与"故意不做"：[ROADMAP.md](ROADMAP.md)
 - 设计依据：[CLAUDE.md](CLAUDE.md)

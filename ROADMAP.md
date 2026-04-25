@@ -1,7 +1,8 @@
 # 路线图（Roadmap）
 
 - 刻意**推迟**的功能列在这里 —— 防止公共面被撑垮、迭代节奏被打乱
-- 每项对应一次未来的规格迭代：新建 `specs/NNN-*.md` → SDD + TDD
+- 每项对应一次未来的骨架迭代：先落真实 API 骨架、docstring、失败测试和
+  `TODO(...)`，再实现到测试全绿并清空本轮 TODO
 
 ## 近期候选
 
@@ -11,12 +12,12 @@
 ## 中期候选
 
 - **并行 step 工具** — `@flow` 的 fan-out / gather 糖，超越裸 `asyncio.gather`
-- **对话式记忆** — 历史记录 helper（仍只通过参数传，不藏隐式状态）；多轮对话已可用 [规格 012](specs/012-human-in-the-loop.md) 的生成器 flow 写，helper 再看需求
+- **对话式记忆** — 历史记录 helper（仍只通过参数传，不藏隐式状态）；多轮对话已可用生成器 flow 写，helper 再看需求
 - **CLI** — `pyxis run path/to/flow.py`，支持 env-file / dry-run
 - **更多 `apps/` 示例应用**
     - ~~`chat-demo`~~：多轮聊天 + Chat / Inspect 双视图
     - ~~`mcp-demo`~~：native Tool + stdio/HTTP MCP 混合注册的可视化
-    - 两者已通过 [规格 016](specs/016-文档与仓库的映射一致性.md) 挂进 **Demos** tab
+    - 两者已挂进 **Demos** tab
     - 候选：`pr-review`（代码审）、`research-assistant`（多工具调研）
 
 ## 故意不做
@@ -28,18 +29,19 @@
 - **function-calling 协议适配层** — 输出 schema 就是接口；要用 provider 的 function-calling 直接用 instructor
 - **响应式状态 / 全局可变 agent context** — 显式传参
 - **对标 Claude Desktop / ChatGPT 的对话丝滑度** — pyxis 是 agent-for-machine，LLM 直出 Pydantic 给代码用；要聊天顺滑用 Anthropic SDK 原生 tool use
-- **客户端封装**（~~`InstructorClient`~~、~~`openrouter_client`~~、~~`openai_client`~~、~~`set_default_client`~~）— `@step(client=...)` 吃 `OpenAI` / `AsyncOpenAI` / instructor 实例。[规格 023](specs/023-公共面收敛.md)
-- **观测体系**（~~`trace()`~~、~~`TraceRecord`~~、~~`Usage`~~、~~`StepHook`~~、~~`add_hook`~~）— 接 Langfuse / OpenTelemetry / Datadog，instrument OpenAI SDK 层；自定义打点用 Python 装饰器叠加。[规格 023](specs/023-公共面收敛.md)
+- **客户端封装**（~~`InstructorClient`~~、~~`openrouter_client`~~、~~`openai_client`~~、~~`set_default_client`~~）— `@step(client=...)` 吃 `OpenAI` / `AsyncOpenAI` / instructor 实例
+- **观测体系**（~~`trace()`~~、~~`TraceRecord`~~、~~`Usage`~~、~~`StepHook`~~、~~`add_hook`~~）— 接 Langfuse / OpenTelemetry / Datadog，instrument OpenAI SDK 层；自定义打点用 Python 装饰器叠加
 - **手写 messages 列表的入口** — docstring 是 system、函数返回是 user；多轮 chat / assistant 轮次控制直接用 OpenAI SDK
 
 ## 怎么贡献一个迭代
 
 1. 挑一项 → 开分支
-2. 写 `specs/NNN-<名字>.md`（≤ 40 行，含验收 + 不做）
-3. 先写失败的测试
-4. 写实现
-5. `uv run ruff format && uv run ruff check && uv run pytest`
-6. 动到 Client / Step / Flow 连线 → 跑
+2. 产品 / 哲学 / 定位层变化 → 直接改 `docs/concepts/`、`README.md`、`CLAUDE.md`
+3. 代码 / API / 行为层变化 → 先建真实文件、类、函数签名和 docstring，在实现区留下 `TODO(...)` / `NotImplementedError`
+4. 先写失败的测试
+5. 写实现，直到本轮 `TODO(...)` 清零
+6. `uv run ruff format && uv run ruff check && uv run pytest`
+7. 动到 Client / Step / Flow 连线 → 跑
    `uv run --env-file .env pytest tests/integration/`
-7. 公共面变了 → 同步 `CLAUDE.md` + 文档站
-8. 一次迭代 = 一次 commit，正文引用规格编号
+8. 公共面变了 → 同步 `CLAUDE.md` / `AGENTS.md` + 文档站
+9. 一次迭代 = 一次 commit，正文解释本次做了什么、为什么

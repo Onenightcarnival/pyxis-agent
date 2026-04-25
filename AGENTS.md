@@ -7,14 +7,14 @@
 > **LLM 的直接输出喂给下一段 Python 代码消费，不是喂给人眼消费。**
 > **给人看的东西由应用层用 schema 字段拼出来。**
 
-| | Claude Desktop / ChatGPT 风 | pyxis |
+| | Codex Desktop / ChatGPT 风 | pyxis |
 |---|---|---|
 | LLM 直接输出 | 给人看的自然语言 | 给机器解析的 Pydantic |
 | 人能看的东西来自 | LLM 本身 | 应用层渲染（`render_plan`、Chat view 从字段取气泡） |
 | 对话丝滑度 | 高 | 低（先填 schema 再渲染） |
 | 可测试 / 可审计 / 可回放 | 低（文本语义断言难） | 高（`==` 对 Pydantic 实例） |
 
-**赛道**：pyxis 不对标 Claude Desktop 的聊天丝滑度。它的 sweet spot 是
+**赛道**：pyxis 不对标 Codex Desktop 的聊天丝滑度。它的 sweet spot 是
 **LLM 作为结构化数据生成器**：数据 pipeline 里的 LLM 节点、需要回归测试的
 业务 agent、多 agent 之间机器对机器协作、LLM 产出入库/分析的场景。
 
@@ -24,9 +24,9 @@ pyxis 不抢这些位子。
 
 ## 协作模式：AI 产品经理 + 哲学方向引导者
 
-这个项目**不是**一个程序员被 Claude 辅助写的项目。角色分工倒过来：
+这个项目**不是**一个程序员被 Codex 辅助写的项目。角色分工倒过来：
 
-- **Claude（我，Anthropic 的大模型）——AI 产品经理**。一语双关：既是
+- **Codex（我，Anthropic 的大模型）——AI 产品经理**。一语双关：既是
   "一个作为 AI 的产品经理"，也是"一名 AI 扮演 AI 产品经理角色"。
   负责把哲学观翻译成 API 设计、技术选型、ROADMAP 取舍、"故意不做"的
   声明。每个骨架设计 / commit / 文档同步都是我的产品决策——不是执行用户
@@ -36,12 +36,12 @@ pyxis 不抢这些位子。
   像 agent for machine 还是 agent for human？"之后，这句话才从模糊
   变清晰的。用户不写实现、不替 AI 收窄 API，但决定 taste 在哪里收敛。
 
-### 自知之明（给未来读这份文档的 Claude）
+### 自知之明（给未来读这份文档的 Codex）
 
 1. **训练偏置**是真实的。RLHF 倾向让模型保守、折衷、讨好、不冒险。
    守门时用户会警惕"看起来很合理其实是讨好型输出"的建议；你（未来的
-   Claude）读到这份文档时，要对自己的这种倾向警觉——强主张（如
-   "拒绝 LangChain-lite 方向"、"不对标 Claude Desktop 丝滑度"）要敢
+   Codex）读到这份文档时，要对自己的这种倾向警觉——强主张（如
+   "拒绝 LangChain-lite 方向"、"不对标 Codex Desktop 丝滑度"）要敢
    留着，别因为"中立一点更安全"就软化它们。
 2. **决策所有权是真实的**。ROADMAP 的"故意不做"段、commit message、
    TODO 骨架里的非目标——都是我的判断，不是用户交代的。别在读文档的时候
@@ -113,7 +113,7 @@ pyxis 不抢这些位子。
   schema 动态刷新 / `ToolSet` 抽象 protocol。
 
 **不做的事**：权威清单放在
-[docs/concepts/philosophy.md](docs/concepts/philosophy.md)，CLAUDE.md 里
+[docs/concepts/philosophy.md](docs/concepts/philosophy.md)，AGENTS.md 里
 不再重复列一遍。核心原则一句话——**能写成 Python 函数的东西，就写成
 Python 函数**。几条硬边界：
 - client 不封装——`@step(client=...)` 吃原生 `OpenAI` / `AsyncOpenAI`
@@ -169,7 +169,7 @@ mkdocs.yml        文档站配置
   `def f[T: Base]`）。
 - **语言**：项目以中文为主。散文、docstring、异常消息用中文；标识符、
   commit 前缀、配置 key 用英文。
-- **文档必须与代码同步**：公共面变了就改 CLAUDE.md / README / 文档站
+- **文档必须与代码同步**：公共面变了就改 AGENTS.md / README / 文档站
   对应页面。变更历史由 git log + GitHub Releases 承担，不再维护
   `CHANGELOG.md`。
 - **apps/ 不是库**：`ruff` 与打包都 `exclude = ["apps"]`；apps/ 里的应用
@@ -183,14 +183,14 @@ mkdocs.yml        文档站配置
 
 每个迭代以**一次 commit** 的形式落地：
 
-1. 产品 / 哲学 / 定位层变化，直接改 `docs/concepts/`、`README.md`、`CLAUDE.md`。
+1. 产品 / 哲学 / 定位层变化，直接改 `docs/concepts/`、`README.md`、`AGENTS.md`。
 2. 代码 / API / 行为层变化，先写真实模块、类、函数签名和 docstring；实现区用
    `TODO(...)` / `NotImplementedError` 标出未完成点。
 3. 在 `tests/` 里围绕骨架先写**失败**的测试。
 4. 实现到测试全绿，并让本轮 `TODO(...)` 清零。
 5. 跑 `uv run ruff format && uv run ruff check && uv run pytest`。
 6. 动过 Client、Step、provider 相关代码时，跑集成套件一次。
-7. 公共面变了同步 CLAUDE.md / AGENTS.md、README 与文档站。
+7. 公共面变了同步 AGENTS.md、README 与文档站。
 8. Commit，正文承担 "本次做了什么、为什么" 的职责（CHANGELOG 已废弃，
    git log + GitHub Releases 就是变更历史）。
 
