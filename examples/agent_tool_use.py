@@ -59,9 +59,11 @@ class Decision(BaseModel):
 
 @step(output=Decision, model=MODEL, client=openrouter)
 def decide(question: str, scratch: str) -> str:
-    """你是一个会推理的 agent。先思考，再**恰好**发一次工具调用。
-    拿到答案之后就用 `finish` 工具停止。"""
-    return f"问题：{question}\n\n草稿板（到目前为止）：\n{scratch or '（空）'}"
+    return (
+        "你是一个会推理的 agent。先思考，再恰好发一次工具调用。"
+        "拿到答案之后就用 `finish` 工具停止。\n"
+        f"问题：{question}\n\n草稿板（到目前为止）：\n{scratch or '（空）'}"
+    )
 
 
 # ---- 显式编排：循环就是一个普通 @flow ----

@@ -8,7 +8,7 @@
 |----------------|----------------------------|----------------------------|---------------------------|
 | 核心抽象       | Pydantic schema + Python 函数 | 状态机 + 节点图 DSL        | 声明式 program + teleprompter |
 | 多轮编排       | `@flow`（普通函数）         | `StateGraph.add_node/edge` | 类里的 `forward(...)`     |
-| Prompt 形态    | 函数 docstring             | 字符串 + PromptTemplate    | `Signature` 声明式字段    |
+| Prompt 形态    | Pydantic schema + user input | 字符串 + PromptTemplate    | `Signature` 声明式字段    |
 | 工具调用       | schema 判别式联合 + `.run()`| `ToolNode`、function calling| function calling 协议适配 |
 | 优化目标       | 结构化输出、测试、代码可读性 | 生产级状态机 + 可视化        | prompt 自动调优 |
 | 学习门槛       | 低                         | 中                         | 中                         |
@@ -35,13 +35,11 @@ class Plan(BaseModel):
 
 @step(output=Analysis, model="gpt-4o", client=client)
 def analyze(topic: str) -> str:
-    """你是严谨的分析师。"""
-    return f"主题：{topic}"
+    return f"请严谨分析这个主题：{topic}"
 
 @step(output=Plan, model="gpt-4o", client=client)
 def plan_from(a: Analysis) -> str:
-    """你把分析转成计划。"""
-    return a.model_dump_json()
+    return f"请把这份分析转成计划：\n{a.model_dump_json()}"
 
 @flow
 def research(topic: str) -> Plan:

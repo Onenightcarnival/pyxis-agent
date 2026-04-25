@@ -33,8 +33,8 @@ openrouter = OpenAI(
 # ---- "知识库"：几条关于 pyxis 的事实。真场景换成 vector DB / 文档库 ----
 
 KB: list[str] = [
-    "pyxis 是一个声明式思维链的 Python agent 框架，核心哲学是 code as prompt + schema as workflow。",
-    "pyxis 里一次 LLM 调用叫 Step：docstring 是 system prompt，函数字符串返回是 user message。",
+    "pyxis 是一个声明式思维链的 Python agent 框架，核心哲学是 schema as workflow。",
+    "pyxis 里一次 LLM 调用叫 Step：schema 是主契约，函数体字符串返回是 user message。",
     "pyxis 里 Pydantic 模型的字段顺序就是思维链，LLM 必须自上而下把字段填完。",
     "pyxis 的多轮编排直接用普通 Python 写 if/for/函数组合，不提供 DSL 或 graph。",
     "pyxis 的 Tool 是 BaseModel 子类，带 run() 方法，动作即 schema、run() 即代码。",
@@ -63,9 +63,11 @@ class Answer(BaseModel):
 
 @step(output=Answer, model=MODEL, client=openrouter)
 def answer_with_context(question: str, context: str) -> str:
-    """你是严谨的问答助手。只能基于提供的上下文作答；
-    上下文没说的就承认不知道，不要编。先列引用，再推理，最后给答案。"""
-    return f"上下文：\n{context}\n\n问题：{question}"
+    return (
+        "你是严谨的问答助手。只能基于提供的上下文作答；"
+        "上下文没说的就承认不知道，不要编。先列引用，再推理，最后给答案。\n"
+        f"上下文：\n{context}\n\n问题：{question}"
+    )
 
 
 # ---- Flow：retrieve -> augment -> generate，就是一个普通 Python 函数 ----

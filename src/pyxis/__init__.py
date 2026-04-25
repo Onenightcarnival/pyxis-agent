@@ -1,11 +1,12 @@
 """pyxis：声明式思维链的 Python agent 框架。
 
-核心哲学：`code as prompt + schema as workflow`。
+核心哲学：`schema as workflow`。
 
-- 函数的 docstring 就是 system prompt，字符串返回就是 user message
-  （code-as-prompt）。
+- Pydantic 输出模型、字段说明、函数签名和函数体返回的输入文本共同构成
+  代码化契约。
 - Pydantic 输出模型的字段顺序就是思维链——LLM 必须自上而下把字段
   填完（schema-as-CoT）。
+- 函数 docstring 只用于 Python 文档，不进入 LLM 上下文。
 - 多轮编排直接写普通 Python：`if`、`for`、函数组合。
 
 公共 API：

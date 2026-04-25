@@ -1,4 +1,4 @@
-# Step：code-as-prompt
+# Step：schema-first 的单次调用
 
 `@step` 把 Python 函数包装成一次结构化 LLM 调用。
 
@@ -6,22 +6,20 @@
 
 ```python
 from openai import OpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pyxis import step
 
 client = OpenAI(api_key="sk-...")
 
 class Summary(BaseModel):
-    key_points: list[str]   # 先抽关键点
-    one_liner: str          # 再提炼一句话
+    """简洁摘要。先抽关键点，再提炼一句话。"""
+
+    key_points: list[str] = Field(description="从文章里抽取 3-5 个关键点")
+    one_liner: str = Field(description="基于关键点写一句话摘要，不堆砌修辞")
 
 @step(output=Summary, model="gpt-4o", client=client)
 def summarize(article: str) -> str:
-    """你是一个简洁明了的摘要器。
-
-    先抽关键点，再用一句话概括。不要堆砌修辞。
-    """
-    return article
+    return f"请摘要这篇文章：\n{article}"
 
 s = summarize("Python 3.12 新增 PEP 695 泛型语法...")
 print(s.one_liner)
@@ -29,10 +27,27 @@ print(s.one_liner)
 
 调用时：
 
-- `summarize` 的 docstring 是 **system prompt**
-- `summarize(article)` 的返回值是 **user message**
+- `output=Summary` 是这次调用的结构化契约
+- `Summary` 的字段名、类型、字段说明和字段顺序会进入结构化输出约束
+- 函数体是 input builder，`-> str` 表示它只负责加工本次调用的 `user` message
+- 被 `@step` 装饰后，`summarize` 绑定到 `Step[Summary]`；调用
+  `summarize(article)` 会完成 LLM 调用，返回 `Summary` 实例
+- `summarize` 的 docstring 只用于 Python 文档，不进入 LLM 上下文
 
-输出类型由 `output=Summary` 指定。
+如果要给模型更多任务说明，优先写进 Pydantic schema；与本次输入强相关的上下文，
+写进函数返回的字符串。
+
+## code as contract
+
+pyxis 里的 code-as-contract 不是“把 prompt 藏在 docstring 里”，而是：
+
+- `BaseModel` / `Field(description=...)` 描述输出契约
+- 字段顺序声明单次调用内部的生成步骤
+- 函数签名声明应用层输入
+- input builder 的返回值把这次调用的业务上下文序列化成 `user` message
+- 装饰后的 step callable 返回 Pydantic 实例
+
+这让 LLM 调用契约变成可测试、可审计、可复用的 Python 类型，而不是一段游离的模板文本。
 
 ## 字段顺序
 
@@ -59,7 +74,6 @@ aclient = AsyncOpenAI(api_key="sk-...")
 
 @step(output=Summary, model="gpt-4o", client=aclient)
 async def summarize_async(article: str) -> str:
-    """..."""
     return article
 
 s = await summarize_async("...")
@@ -91,7 +105,6 @@ async for partial in summarize_async.astream(article):
 ```python
 @step(output=Summary, model="gpt-4o", client=client, max_retries=2)
 def summarize(article: str) -> str:
-    """..."""
     return article
 ```
 
@@ -111,7 +124,6 @@ def summarize(article: str) -> str:
     params={"temperature": 0, "max_tokens": 200},
 )
 def route(user_input: str) -> str:
-    """..."""
     return user_input
 ```
 
@@ -154,7 +166,6 @@ fake = FakeClient([Summary(key_points=["a"], one_liner="a one-liner")])
 
 @step(output=Summary, client=fake)
 def summarize(article: str) -> str:
-    """..."""
     return article
 
 assert summarize("任意文本").one_liner == "a one-liner"
@@ -162,7 +173,7 @@ assert len(fake.calls) == 1
 assert fake.calls[0].messages[-1]["content"] == "任意文本"
 ```
 
-- 断言 prompt 内容：`fake.calls[i].messages`
+- 断言输入消息：`fake.calls[i].messages`
 - 断言采样参数：`fake.calls[i].params`
 
 ## 什么时候不用 Step

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 from pydantic import BaseModel
 
@@ -32,7 +34,7 @@ def test_step_returns_schema_instance():
     assert result.next_action == "a"
 
 
-def test_step_builds_system_and_user_messages():
+def test_step_builds_user_message_only():
     fake = FakeClient([Plan(goal="g", next_action="a")])
 
     @step(output=Plan, client=fake)
@@ -42,14 +44,11 @@ def test_step_builds_system_and_user_messages():
 
     plan("build x")
     call = fake.calls[0]
-    assert call.messages == [
-        {"role": "system", "content": "You are a planner."},
-        {"role": "user", "content": "Request: build x"},
-    ]
+    assert call.messages == [{"role": "user", "content": "Request: build x"}]
     assert call.response_model is Plan
 
 
-def test_step_strips_docstring_whitespace():
+def test_step_docstring_does_not_enter_messages():
     fake = FakeClient([Plan(goal="g", next_action="a")])
 
     @step(output=Plan, client=fake)
@@ -60,10 +59,10 @@ def test_step_strips_docstring_whitespace():
         return req
 
     plan("x")
-    assert fake.calls[0].messages[0]["content"] == "You are a planner."
+    assert fake.calls[0].messages == [{"role": "user", "content": "x"}]
 
 
-def test_step_omits_system_when_no_docstring():
+def test_step_without_docstring_also_builds_user_message_only():
     fake = FakeClient([Plan(goal="g", next_action="a")])
 
     @step(output=Plan, client=fake)
@@ -82,6 +81,18 @@ def test_step_preserves_function_metadata():
 
     assert plan.__name__ == "plan"
     assert plan.__doc__ == "Planner docstring."
+
+
+def test_step_public_signature_returns_output_model():
+    @step(output=Plan, client=FakeClient([]))
+    def plan(req: str) -> str:
+        return req
+
+    sig = inspect.signature(plan)
+    assert sig.parameters["req"].annotation == "str"
+    assert sig.return_annotation is Plan
+    assert plan.__annotations__["return"] is Plan
+    assert plan.input_fn.__annotations__["return"] == "str"
 
 
 def test_fake_client_exhausted_raises():

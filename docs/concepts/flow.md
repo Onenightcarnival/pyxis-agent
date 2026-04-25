@@ -9,13 +9,11 @@ from pyxis import flow, step
 
 @step(output=Verdict, model="gpt-4o", client=client)
 def classify(text: str) -> str:
-    """你是情感分类器..."""
-    return text
+    return f"请判断情感：{text}"
 
 @step(output=Reply, model="gpt-4o", client=client)
 def reply(sentiment: str, text: str) -> str:
-    """根据情感生成回复..."""
-    return f"sentiment={sentiment}, text={text}"
+    return f"请根据情感生成回复：sentiment={sentiment}, text={text}"
 
 @flow
 def triage(text: str) -> Reply:

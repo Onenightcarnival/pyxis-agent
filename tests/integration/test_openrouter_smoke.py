@@ -54,8 +54,10 @@ class Summary(BaseModel):
 def test_step_round_trip_produces_valid_schema(openrouter_sync: OpenAI, model: str) -> None:
     @step(output=Classification, model=model, client=openrouter_sync)
     def classify(text: str) -> str:
-        """You classify text. Observe first, then categorize, then score confidence."""
-        return f"Text: {text}"
+        return (
+            "Classify the text. Observe first, then categorize, then score confidence.\n"
+            f"Text: {text}"
+        )
 
     result = classify("Define the Big-O complexity of quicksort.")
     assert isinstance(result, Classification)
@@ -67,13 +69,14 @@ def test_step_round_trip_produces_valid_schema(openrouter_sync: OpenAI, model: s
 def test_flow_multi_step(openrouter_sync: OpenAI, model: str) -> None:
     @step(output=Classification, model=model, client=openrouter_sync)
     def classify(text: str) -> str:
-        """You classify text. Observe, categorize, score."""
-        return text
+        return f"Classify this text. Observe, categorize, score.\n{text}"
 
     @step(output=Summary, model=model, client=openrouter_sync)
     def summarize(c: Classification) -> str:
-        """You summarize classified text into a topic and 3 bullets."""
-        return f"Classified as {c.category} (conf={c.confidence}). Note: {c.observation}"
+        return (
+            "Summarize the classified text into a topic and 3 bullets.\n"
+            f"Classified as {c.category} (conf={c.confidence}). Note: {c.observation}"
+        )
 
     @flow
     def digest(text: str) -> Summary:
@@ -88,8 +91,7 @@ def test_flow_multi_step(openrouter_sync: OpenAI, model: str) -> None:
 def test_async_parallel_steps(openrouter_async: AsyncOpenAI, model: str) -> None:
     @step(output=Classification, model=model, client=openrouter_async)
     async def classify(text: str) -> str:
-        """You classify text. Observe, categorize, score."""
-        return text
+        return f"Classify this text. Observe, categorize, score.\n{text}"
 
     async def fan_out():
         return await asyncio.gather(
@@ -124,9 +126,11 @@ def test_live_tool_decorator_agent(openrouter_sync: OpenAI, model: str) -> None:
 
     @step(output=Decision, model=model, max_retries=3, client=openrouter_sync)
     def decide(question: str, scratch: str) -> str:
-        """你是一个会推理的 agent。先思考，再恰好发一次工具调用，
-        拿到答案用 `finish` 结束。"""
-        return f"问题：{question}\n草稿：\n{scratch or '（空）'}"
+        return (
+            "你是一个会推理的 agent。先思考，再恰好发一次工具调用，"
+            "拿到答案用 `finish` 结束。\n"
+            f"问题：{question}\n草稿：\n{scratch or '（空）'}"
+        )
 
     @flow
     def agent(q: str, max_steps: int = 4) -> str:
@@ -152,8 +156,7 @@ def test_live_stream_yields_progressively(openrouter_sync: OpenAI, model: str) -
 
     @step(output=Analysis, model=model, client=openrouter_sync)
     def analyze(topic: str) -> str:
-        """你是严谨的分析师。观察，推理，结论。"""
-        return f"主题：{topic}"
+        return f"你是严谨的分析师。按观察、推理、结论分析主题：{topic}"
 
     frames: list[Analysis] = []
     for partial in analyze.stream("为什么雨是咸的"):
@@ -180,8 +183,7 @@ def test_live_interrupt_review(openrouter_sync: OpenAI, model: str) -> None:
 
     @step(output=Plan, model=model, client=openrouter_sync)
     def make_plan(q: str) -> str:
-        """你是严谨的规划者。先复述目标，再列 3-5 个具体步骤。"""
-        return f"问题：{q}"
+        return f"你是严谨的规划者。先复述目标，再列 3-5 个具体步骤。\n问题：{q}"
 
     @flow
     def plan_then_review(q: str):
@@ -209,8 +211,7 @@ def test_live_step_with_params(openrouter_sync: OpenAI, model: str) -> None:
         params={"temperature": 0},
     )
     def classify(text: str) -> str:
-        """You classify text. Observe, categorize, score."""
-        return text
+        return f"Classify this text. Observe, categorize, score.\n{text}"
 
     result = classify("What is 2+2?")
     assert isinstance(result, Classification)

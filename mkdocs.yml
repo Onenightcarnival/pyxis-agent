@@ -1,5 +1,5 @@
 site_name: pyxis-agent
-site_description: 声明式思维链 agent 框架：code as prompt, schema as workflow
+site_description: 声明式思维链 agent 框架：schema as workflow
 site_url: https://onenightcarnival.github.io/pyxis-agent/
 repo_url: https://github.com/Onenightcarnival/pyxis-agent
 repo_name: pyxis-agent
@@ -105,7 +105,7 @@ nav:
   - 概念:
       - concepts/index.md
       - 哲学与定位: concepts/philosophy.md
-      - Step：code-as-prompt: concepts/step.md
+      - Step：schema-first 单次调用: concepts/step.md
       - Tool：action 即 schema: concepts/tool.md
       - Flow：显式编排: concepts/flow.md
   - Cookbook:
@@ -135,10 +135,6 @@ nav:
           - ReAct agent + 工具调用: cookbook/agent_tool_use.md
           - Agentic harness: cookbook/coding_harness.md
           - Guardrails：输入/输出校验: cookbook/guardrails.md
-  - Demos:
-      - demos/index.md
-      - chat-demo：schema-as-CoT 可视化: demos/chat-demo.md
-      - mcp-demo：native + MCP 混合: demos/mcp-demo.md
   - API 参考:
       - pyxis.step: api/step.md
       - pyxis.flow: api/flow.md

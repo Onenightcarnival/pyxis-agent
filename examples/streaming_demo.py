@@ -34,8 +34,7 @@ class Analysis(BaseModel):
 
 @step(output=Analysis, model=MODEL, client=openrouter)
 def analyze(topic: str) -> str:
-    """你是严谨的分析师。先观察，再推理，最后下一句话的结论。"""
-    return f"主题：{topic}"
+    return f"你是严谨的分析师。先观察，再推理，最后给一句话结论。\n主题：{topic}"
 
 
 def _render_frame(a: Analysis) -> str:

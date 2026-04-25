@@ -1,7 +1,7 @@
 """Step：一次 LLM 调用 + 结构即思维链（schema-as-CoT）。
 
-- code-as-prompt：函数 docstring 是 system prompt，字符串返回是 user
-  message。
+- code-as-contract：Pydantic 输出模型、字段说明、函数签名和函数体返回的输入文本
+  共同构成代码化契约；函数 docstring 只用于 Python 文档，不进入 LLM 上下文。
 - schema-as-CoT：Pydantic 输出模型的字段顺序就是思维链——LLM 必须
   自上而下把它们填完。
 
@@ -30,7 +30,7 @@ class Step[T: BaseModel]:
 
     def __init__(
         self,
-        prompt_fn: Callable[..., str],
+        input_fn: Callable[..., str],
         output: type[T],
         *,
         client: Any,
@@ -38,18 +38,19 @@ class Step[T: BaseModel]:
         params: dict[str, Any] | None = None,
         max_retries: int = 0,
     ):
-        self.prompt_fn = prompt_fn
+        self.input_fn = input_fn
         self.output = output
         self.model = model
         self.params = params
         self.max_retries = max_retries
-        self.system_prompt: str = _normalize_docstring(prompt_fn.__doc__ or "")
         self._backend = _adapt_sync_client(client)
-        functools.update_wrapper(self, prompt_fn)
+        functools.update_wrapper(self, input_fn)
+        self.__signature__ = _public_signature(input_fn, output)
+        self.__annotations__ = _public_annotations(input_fn, output)
 
     def __call__(self, *args: object, **kwargs: object) -> T:
-        user_content = self.prompt_fn(*args, **kwargs)
-        messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
+        user_content = self.input_fn(*args, **kwargs)
+        messages = _build_messages(self.input_fn, user_content)
         return self._backend.complete(
             messages,
             self.output,
@@ -60,8 +61,8 @@ class Step[T: BaseModel]:
 
     def stream(self, *args: object, **kwargs: object) -> Iterator[T]:
         """按字段逐步 yield partial 实例；最后一帧即完整实例。"""
-        user_content = self.prompt_fn(*args, **kwargs)
-        messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
+        user_content = self.input_fn(*args, **kwargs)
+        messages = _build_messages(self.input_fn, user_content)
         yield from self._backend.stream(
             messages,
             self.output,
@@ -76,7 +77,7 @@ class AsyncStep[T: BaseModel]:
 
     def __init__(
         self,
-        prompt_fn: Callable[..., Awaitable[str] | str],
+        input_fn: Callable[..., Awaitable[str] | str],
         output: type[T],
         *,
         client: Any,
@@ -84,19 +85,20 @@ class AsyncStep[T: BaseModel]:
         params: dict[str, Any] | None = None,
         max_retries: int = 0,
     ):
-        self.prompt_fn = prompt_fn
+        self.input_fn = input_fn
         self.output = output
         self.model = model
         self.params = params
         self.max_retries = max_retries
-        self.system_prompt: str = _normalize_docstring(prompt_fn.__doc__ or "")
         self._backend = _adapt_async_client(client)
-        functools.update_wrapper(self, prompt_fn)
+        functools.update_wrapper(self, input_fn)
+        self.__signature__ = _public_signature(input_fn, output)
+        self.__annotations__ = _public_annotations(input_fn, output)
 
     async def __call__(self, *args: object, **kwargs: object) -> T:
-        ret = self.prompt_fn(*args, **kwargs)
+        ret = self.input_fn(*args, **kwargs)
         user_content = await ret if inspect.isawaitable(ret) else ret
-        messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
+        messages = _build_messages(self.input_fn, user_content)
         return await self._backend.acomplete(
             messages,
             self.output,
@@ -107,9 +109,9 @@ class AsyncStep[T: BaseModel]:
 
     async def astream(self, *args: object, **kwargs: object) -> AsyncIterator[T]:
         """异步流式对偶。"""
-        ret = self.prompt_fn(*args, **kwargs)
+        ret = self.input_fn(*args, **kwargs)
         user_content = await ret if inspect.isawaitable(ret) else ret
-        messages = _build_messages(self.prompt_fn, self.system_prompt, user_content)
+        messages = _build_messages(self.input_fn, user_content)
         async for partial in self._backend.astream(
             messages,
             self.output,
@@ -127,12 +129,16 @@ def step[T: BaseModel](
     model: str = DEFAULT_MODEL,
     params: dict[str, Any] | None = None,
     max_retries: int = 0,
-) -> Callable[[Callable[..., Any]], Step[T] | AsyncStep[T]]:
-    """装饰器：把 prompt 函数变成一个类型化的 Step。
+) -> Callable[[Callable[..., str] | Callable[..., Awaitable[str]]], Step[T] | AsyncStep[T]]:
+    """装饰器：把输入函数变成一个类型化的 Step。
 
     - 同步 `def` 得到 `Step[T]`；异步 `async def` 得到 `AsyncStep[T]`。
-    - docstring 会被解析为 system prompt（会去首尾空白与缩进）。
-    - 函数的返回值必须是 `str`，它就是 user message。
+    - `output` 的 Pydantic schema 是这次调用的结构化契约；字段顺序就是隐式 workflow。
+    - 被装饰的 input builder 必须返回 `str`（异步版 await 后得到 `str`），
+      它就是本次调用的 user message。
+    - 装饰后绑定到原函数名的是 `Step[T]` / `AsyncStep[T]`，调用它会返回
+      `output` 指定的 Pydantic 实例。
+    - 函数 docstring 只用于 Python 文档，不会进入 messages。
     - `client` 必填。吃 `openai.OpenAI` / `openai.AsyncOpenAI` 或已经
       `instructor.from_openai(...)` 的实例；sync / async 不匹配会立即 `TypeError`。
     - `params`：字典，透传给 provider API（`temperature` / `max_tokens`
@@ -140,7 +146,7 @@ def step[T: BaseModel](
     - `max_retries`：instructor 校验失败的重试次数，透传给 instructor。
     """
 
-    def decorator(fn: Callable[..., Any]) -> Step[T] | AsyncStep[T]:
+    def decorator(fn: Callable[..., str] | Callable[..., Awaitable[str]]) -> Step[T] | AsyncStep[T]:
         if inspect.iscoroutinefunction(fn):
             return AsyncStep(
                 fn,
@@ -162,21 +168,21 @@ def step[T: BaseModel](
     return decorator
 
 
-def _build_messages(
-    prompt_fn: Callable[..., Any], system_prompt: str, user_content: object
-) -> list[dict[str, str]]:
+def _build_messages(input_fn: Callable[..., Any], user_content: object) -> list[dict[str, str]]:
     if not isinstance(user_content, str):
         raise TypeError(
-            f"@step 装饰的函数 {prompt_fn.__name__!r} 必须返回 str，"
+            f"@step 装饰的函数 {input_fn.__name__!r} 必须返回 str，"
             f"实际返回 {type(user_content).__name__}"
         )
-    messages: list[dict[str, str]] = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-    messages.append({"role": "user", "content": user_content})
-    return messages
+    return [{"role": "user", "content": user_content}]
 
 
-def _normalize_docstring(doc: str) -> str:
-    """去首尾空白并规范化缩进，得到干净的 system prompt。"""
-    return inspect.cleandoc(doc).strip()
+def _public_signature(input_fn: Callable[..., Any], output: type[BaseModel]) -> inspect.Signature:
+    """公开签名表达装饰后的 callable：调用 step 返回 Pydantic 实例。"""
+    return inspect.signature(input_fn).replace(return_annotation=output)
+
+
+def _public_annotations(input_fn: Callable[..., Any], output: type[BaseModel]) -> dict[str, Any]:
+    annotations = dict(getattr(input_fn, "__annotations__", {}))
+    annotations["return"] = output
+    return annotations

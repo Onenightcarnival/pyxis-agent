@@ -37,8 +37,7 @@ class PlanStep(BaseModel):
 
 @step(output=PlanStep)
 def plan(task: str) -> str:
-    """你是一个执行 agent..."""
-    return task
+    return f"请为这个任务选择下一步动作：{task}"
 
 step_out = plan("今天巴塞罗那天气")
 print(step_out.action.run())   # isinstance / 方法分派

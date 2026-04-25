@@ -6,7 +6,7 @@
 
 | 概念 | 职责 |
 |---|---|
-| [Step](step.md) | 一次结构化 LLM 调用；函数提供 prompt，schema 定义输出 |
+| [Step](step.md) | 一次结构化 LLM 调用；schema 定义隐式 workflow，函数返回本次输入 |
 | [Tool](tool.md) | 动作即 schema；`BaseModel + run()` 让 Python 执行动作 |
 | [Flow](flow.md) | 多次调用之间的显式编排；Python 函数就是工作流 |
 
@@ -16,7 +16,7 @@
 
 按任务找示例：
 
-- 测 prompt 与调用参数：[测试与 FakeClient](../cookbook/testing.md)
+- 测输入消息与调用参数：[测试与 FakeClient](../cookbook/testing.md)
 - 接 Langfuse / OTel / APM：[可观测](../cookbook/observability.md)
 - 接远端 MCP 工具：[MCP](../cookbook/mcp.md)
 - 让 flow 中途等外部输入：[Interrupt](../cookbook/interrupt.md)
@@ -45,4 +45,4 @@ observation = action.run()
 
 ---
 
-读完：[Cookbook](../cookbook/index.md) · [Demos](../demos/index.md) · [API 参考](../api/step.md)
+读完：[Cookbook](../cookbook/index.md) · [API 参考](../api/step.md)

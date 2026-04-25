@@ -1,7 +1,7 @@
 """按用户意图分派到不同 handler。
 
 - `@step route`：输出 `{reasoning, intent}`，`intent` 是 `Literal[...]`。
-- 四个 handler 各是一个 `@step`，专门 prompt + 专门 schema。
+- 四个 handler 各是一个 `@step`，专门输入说明 + 专门 schema。
 - `@flow` 里就是 `match intent:` 四个分支，想加分类、想加预处理、想
   fan-out 多个 handler，都是改这段 Python。
 - router 用 `params={"temperature": 0}` 降低随机性；handler 不强制。
@@ -40,15 +40,16 @@ class Route(BaseModel):
 
 @step(output=Route, model=MODEL, client=openrouter, params={"temperature": 0})
 def route(user_input: str) -> str:
-    """你是意图分类器。先解释一两句再给标签。
-    sql：涉及表、查询、报表、统计；
-    code_debug：贴了报错或代码片段问题；
-    creative：写文案、写诗、起名等开放创作；
-    other：以上都不像的兜底。"""
-    return f"用户输入：{user_input}"
+    return (
+        "你是意图分类器。先解释一两句再给标签。\n"
+        "sql：涉及表、查询、报表、统计；\n"
+        "code_debug：贴了报错或代码片段问题；\n"
+        "creative：写文案、写诗、起名等开放创作；\n"
+        f"other：以上都不像的兜底。\n用户输入：{user_input}"
+    )
 
 
-# ---- 四个 handler：各有自己的 schema 和 prompt ----
+# ---- 四个 handler：各有自己的 schema 和输入说明 ----
 
 
 class SqlAnswer(BaseModel):
@@ -58,9 +59,7 @@ class SqlAnswer(BaseModel):
 
 @step(output=SqlAnswer, model=MODEL, client=openrouter)
 def handle_sql(user_input: str) -> str:
-    """你是数据分析师。为用户需求写一句可执行的 PostgreSQL。
-    未知表就合理假设名字，写完后一句话说明。"""
-    return f"需求：{user_input}"
+    return f"你是数据分析师。为用户需求写一句可执行的 PostgreSQL。未知表就合理假设名字，写完后一句话说明。\n需求：{user_input}"
 
 
 class DebugAnswer(BaseModel):
@@ -70,8 +69,7 @@ class DebugAnswer(BaseModel):
 
 @step(output=DebugAnswer, model=MODEL, client=openrouter)
 def handle_debug(user_input: str) -> str:
-    """你是代码 reviewer。只给最可能的原因和具体修法，不要泛泛而谈。"""
-    return f"问题：{user_input}"
+    return f"你是代码 reviewer。只给最可能的原因和具体修法，不要泛泛而谈。\n问题：{user_input}"
 
 
 class CreativeAnswer(BaseModel):
@@ -81,8 +79,7 @@ class CreativeAnswer(BaseModel):
 
 @step(output=CreativeAnswer, model=MODEL, client=openrouter)
 def handle_creative(user_input: str) -> str:
-    """你是有品味的文案。先点一句核心创意再给成品，不废话。"""
-    return f"需求：{user_input}"
+    return f"你是有品味的文案。先点一句核心创意再给成品，不废话。\n需求：{user_input}"
 
 
 class FallbackAnswer(BaseModel):
@@ -91,9 +88,10 @@ class FallbackAnswer(BaseModel):
 
 @step(output=FallbackAnswer, model=MODEL, client=openrouter)
 def handle_other(user_input: str) -> str:
-    """你是礼貌的助手。用户问题不属于 SQL / 调试 / 创意任何一类，
-    给一句短回应引导他说得更具体。"""
-    return f"用户：{user_input}"
+    return (
+        "你是礼貌的助手。用户问题不属于 SQL / 调试 / 创意任何一类，"
+        f"给一句短回应引导他说得更具体。\n用户：{user_input}"
+    )
 
 
 # ---- 分派：普通 Python match/case ----

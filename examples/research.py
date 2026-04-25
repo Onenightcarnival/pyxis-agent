@@ -45,19 +45,17 @@ openrouter = OpenAI(
 )
 
 
-# ---- Step：docstring = system prompt，返回 = user message ----
+# ---- Step：schema 是主契约，函数体返回 user message，调用返回 Pydantic ----
 
 
 @step(output=Analysis, model=MODEL, client=openrouter)
 def analyze(topic: str) -> str:
-    """你是严谨的分析师。先观察，再推理，最后下结论。"""
-    return f"主题：{topic}"
+    return f"你是严谨的分析师。先观察，再推理，最后下结论。\n主题：{topic}"
 
 
 @step(output=Plan, model=MODEL, client=openrouter)
 def plan_from_analysis(a: Analysis) -> str:
-    """你是一丝不苟的规划者。把分析转成行动计划。"""
-    return f"分析：\n{a.model_dump_json(indent=2)}"
+    return f"你是一丝不苟的规划者。把分析转成行动计划。\n分析：\n{a.model_dump_json(indent=2)}"
 
 
 # ---- Flow：显式编排 = 普通 Python ----

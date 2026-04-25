@@ -29,7 +29,7 @@ assert fake.calls[0].params == {"temperature": 0}
 ## 适合断言什么
 
 - 输出模型：直接 `==` 比较 Pydantic 实例
-- prompt：断言 `fake.calls[i].messages`
+- 输入消息：断言 `fake.calls[i].messages`
 - provider 参数：断言 `fake.calls[i].params`
 - 模型名与重试：断言 `model` / `max_retries`
 - 多步 flow：预置多个响应，再检查调用顺序

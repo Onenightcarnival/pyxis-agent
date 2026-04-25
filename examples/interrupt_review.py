@@ -40,14 +40,13 @@ class ReviewDecision(BaseModel):
 
 @step(output=Plan, model=MODEL, client=openrouter)
 def make_plan(question: str) -> str:
-    """你是严谨的规划者。先复述目标，再列 3-5 个具体可执行步骤。"""
-    return f"问题：{question}"
+    return f"你是严谨的规划者。先复述目标，再列 3-5 个具体可执行步骤。\n问题：{question}"
 
 
 @step(output=Plan, model=MODEL, client=openrouter)
 def refine_plan(question: str, prev: Plan, comments: str) -> str:
-    """你是规划者。上一个计划被审阅者打回，请根据意见改好。"""
     return (
+        "你是规划者。上一个计划被审阅者打回，请根据意见改好。\n"
         f"问题：{question}\n\n上一个计划：{prev.model_dump_json(indent=2)}\n\n审阅意见：{comments}"
     )
 

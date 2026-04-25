@@ -75,10 +75,7 @@ def test_fake_client_stream_records_call():
     list(plan.stream("hello"))
     assert len(fake.calls) == 1
     call = fake.calls[0]
-    assert call.messages == [
-        {"role": "system", "content": "Sys."},
-        {"role": "user", "content": "hello"},
-    ]
+    assert call.messages == [{"role": "user", "content": "hello"}]
 
 
 def test_plain_call_still_works_alongside_stream():

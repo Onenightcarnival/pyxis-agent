@@ -32,7 +32,7 @@ def plan(topic: str) -> str:
     return topic
 ```
 
-每次调用会记录 prompt、response、token、延迟和 schema。
+每次调用会记录 messages、response、token、延迟和 schema。
 
 多 step 流程可以在 `@flow` 外再加 `@observe`。
 
@@ -89,4 +89,4 @@ def plan(topic: str) -> str: ...
 
 ## 测试观测逻辑
 
-单元测试使用 [FakeClient](testing.md)，断言 `.calls` 里的 prompt、model、params 与 retry 设置。
+单元测试使用 [FakeClient](testing.md)，断言 `.calls` 里的 messages、model、params 与 retry 设置。

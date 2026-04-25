@@ -39,20 +39,17 @@ async def test_async_step_returns_schema_instance():
     assert result.observation == "async-o"
 
 
-async def test_async_step_builds_messages_like_sync():
+async def test_async_step_builds_user_message_only_like_sync():
     fake = _fake("o")
 
     @step(output=Analysis, client=fake)
     async def analyze(t: str) -> str:
-        """Sys prompt."""
+        """Ignored docstring."""
         return t
 
     await analyze("hello")
     call = fake.calls[0]
-    assert call.messages == [
-        {"role": "system", "content": "Sys prompt."},
-        {"role": "user", "content": "hello"},
-    ]
+    assert call.messages == [{"role": "user", "content": "hello"}]
     assert call.response_model is Analysis
 
 

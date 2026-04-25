@@ -2,7 +2,7 @@
 
 **用 Python 函数和 Pydantic schema 写 agent。**
 
-> code as prompt · schema as workflow
+> schema as workflow
 
 ---
 
@@ -38,19 +38,20 @@ Python 3.12+。
 
 ```python
 from openai import OpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pyxis import step
 
 client = OpenAI(api_key="sk-...")
 
 class Verdict(BaseModel):
-    sentiment: str     # 先判情感
-    confidence: float  # 再给置信度
+    """情感判定结果。字段顺序就是单次调用内部的生成顺序。"""
+
+    sentiment: str = Field(description="判断文本情感：positive / negative / neutral")
+    confidence: float = Field(description="给出 0-1 之间的置信度")
 
 @step(output=Verdict, model="gpt-4o-mini", client=client)
 def classify(text: str) -> str:
-    """你是一个情感分类器。判断给定文本的情感倾向，给出置信度。"""
-    return text
+    return f"请判断这段文本的情感倾向：{text}"
 
 v = classify("今天简直完美")
 assert v.sentiment == "positive"
@@ -58,9 +59,11 @@ assert v.sentiment == "positive"
 
 这个函数会生成一次结构化 LLM 调用：
 
-- 函数 docstring 是 system prompt
-- 函数返回值是 user message
-- `Verdict` 的字段顺序决定输出顺序
+- `Verdict` 是结构化契约，字段顺序决定输出顺序
+- 函数体是 input builder，`-> str` 表示它只负责加工本次调用的 user message
+- 被 `@step` 装饰后，`classify` 绑定到 `Step[Verdict]`；调用 `classify(...)`
+  会完成 LLM 调用，返回 `Verdict` 实例
+- 函数 docstring 只用于 Python 文档，不进入 LLM 上下文
 
 ---
 
@@ -103,7 +106,6 @@ def triage(text: str) -> str:
 
 | 想做的事 | 去 |
 |---|---|
-| 看浏览器 demo | [Demos](demos/index.md) |
 | 找可运行示例 | [Cookbook](cookbook/index.md) |
 | 了解核心 API | [概念](concepts/index.md) |
 | 看设计边界 | [哲学与定位](concepts/philosophy.md) |

@@ -59,9 +59,10 @@ class Feedback(BaseModel):
 
 @step(output=Feedback, model=MODEL, client=openrouter)
 def extract(text: str) -> str:
-    """你是一位客户反馈分析师。把每条反馈抽成结构化字段。
-    先用一句话还原用户说的是什么，再判断情感、话题与严重度。"""
-    return f"反馈：{text}"
+    return (
+        "你是一位客户反馈分析师。把每条反馈抽成结构化字段。"
+        f"先用一句话还原用户说的是什么，再判断情感、话题与严重度。\n反馈：{text}"
+    )
 
 
 # ---- 批量跑：就是一个 for 循环；失败也不中断 ----

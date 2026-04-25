@@ -62,5 +62,4 @@ async with mcp_toolset(server) as remote_tools:
 ---
 
 - 可跑示例：[examples/mcp_tool_use.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/mcp_tool_use.py) · [examples/_mcp_demo_server.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/_mcp_demo_server.py)
-- 可视化：仓库的 [`apps/mcp-demo/`](https://github.com/Onenightcarnival/pyxis-agent/tree/main/apps/mcp-demo)
 - 完整签名：[API：pyxis.mcp](../api/mcp.md)
