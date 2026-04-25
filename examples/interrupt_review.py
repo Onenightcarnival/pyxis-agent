@@ -1,15 +1,11 @@
-"""Interrupt review：LLM 出计划 → 外部审阅 → 执行或驳回。
+"""Interrupt review：LLM 生成计划，外部审阅后执行或驳回。
 
 - `@flow` 写成生成器函数，中间 `yield ask_interrupt(...)` 挂起等外部输入。
-- `run_flow(gen, on_interrupt=...)` 负责驱动：把请求丢给回调，把答案 send
+- `run_flow(gen, on_interrupt=...)` 负责驱动：把请求交给回调，把答案 send
   回生成器。
 
-渲染给人看的部分由应用层 `_render_plan` 拼字段做，换 Web UI / Slack bot /
-微信机器人只改这个函数，schema / step / flow 不动。
-
-体感说明：必须先把 Plan schema 全填完再渲染给人，不会像 token 流 chat
-那样字蹦出来；换来的是可断言、可回放的 Plan 对象——审核历史入库、批量
-回归都简单。要极致对话流畅度走 Anthropic SDK 原生 tool use 更直。
+渲染给人看的部分由应用层 `_render_plan` 负责。换 Web UI、Slack bot 或
+微信机器人时，通常只需要改这个函数。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/interrupt_review.py
@@ -58,13 +54,13 @@ def refine_plan(question: str, prev: Plan, comments: str) -> str:
 
 @flow
 def plan_with_review(question: str, max_rounds: int = 3):
-    """LLM 写计划 → 人审 → 根据意见迭代。最多三轮。"""
+    """LLM 写计划，人工审阅后根据意见迭代。最多三轮。"""
     plan = make_plan(question)
     for _ in range(max_rounds):
         decision: ReviewDecision = yield ask_interrupt(
             "请审阅这个计划",
             schema=ReviewDecision,
-            plan=plan,  # 直接把 Plan 实例塞进 context，怎么渲染留给回调决定
+            plan=plan,  # 直接把 Plan 实例放进 context，怎么渲染留给回调决定
         )
         if decision.approve:
             return {"status": "approved", "plan": plan}

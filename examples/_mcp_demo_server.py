@@ -1,11 +1,9 @@
-"""示例用的 stdio MCP server——**用 FastMCP 写的正经姿势**，和实际工作流对齐。
+"""示例用的 stdio MCP server。
 
-真场景：你会用 `mcp.server.fastmcp.FastMCP`（或独立包 `fastmcp`）把业务
-函数 `@mcp.tool()` 一装饰，schema / JSON-RPC 分派 / 传输全由 FastMCP 包办。
-然后 pyxis 端用 `MCPServer + StdioMCP(command=..., args=["path/to/server.py"])`
-起一个子进程连上来——这就是你日常的 MCP server ↔ agent 集成方式。
+这个文件用 `mcp.server.fastmcp.FastMCP` 定义几个工具。pyxis 端通过
+`MCPServer + StdioMCP(command=..., args=["path/to/server.py"])` 启动子进程并连接。
 
-跑起来（由 `examples/mcp_tool_use.py` 自动作为子进程启动；也能独跑调试）：
+`examples/mcp_tool_use.py` 会自动把它作为子进程启动，也可以单独运行调试：
 
     uv run python examples/_mcp_demo_server.py
 """

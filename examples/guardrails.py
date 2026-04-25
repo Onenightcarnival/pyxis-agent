@@ -1,9 +1,9 @@
-"""输入前置过滤 + 输出后置校验：两类 guardrail 各一段 Python。
+"""输入前置过滤和输出后置校验。
 
 - 输入侧：在 flow 里调 step 之前用普通 Python 函数 `_prescreen` 扫一遍
   用户输入，命中黑名单（prompt injection、PII 模式）就 raise。
 - 输出侧：在 Pydantic 的 `@field_validator` 里做合规校验，失败
-  instructor 按 `max_retries` 自动重试；连续失败抛出来，flow 决定要
+  instructor 按 `max_retries` 自动重试；连续失败后抛出异常，flow 决定要
   不要降级兜底。
 
 跑起来：

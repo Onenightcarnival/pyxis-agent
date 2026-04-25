@@ -1,7 +1,6 @@
-"""流式输出示例：schema 字段逐个被填完的"活"思维链。
+"""流式输出示例。
 
-每次 LLM 推进一个字段，我们就在终端把到目前为止的状态打印一遍——最直观
-展示"schema 就是思维链"。
+每次 LLM 更新 partial 模型时，终端打印当前状态。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/streaming_demo.py
@@ -26,7 +25,7 @@ openrouter = OpenAI(
 
 
 class Analysis(BaseModel):
-    """schema 即思维链：观察 → 推理 → 结论，字段顺序强制推理顺序。"""
+    """字段顺序为观察、推理、结论。"""
 
     observation: str = Field(description="你注意到什么")
     reasoning: str = Field(description="为什么这重要")
@@ -51,7 +50,7 @@ def _render_frame(a: Analysis) -> str:
 def main() -> None:
     topic = "为什么海水是咸的？"
     print(f"主题：{topic}\n")
-    print("（字段会按 schema 顺序逐个填满；过程是 LLM 推理的真实观察——）\n")
+    print("字段会按 schema 顺序逐个填满。\n")
 
     first = True
     for frame in analyze.stream(topic):
@@ -62,7 +61,7 @@ def main() -> None:
         sys.stdout.write(_render_frame(frame) + "\n")
         sys.stdout.flush()
 
-    print("\n——结束——")
+    print("\n结束")
 
 
 if __name__ == "__main__":

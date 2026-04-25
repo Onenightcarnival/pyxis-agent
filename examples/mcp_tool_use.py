@@ -1,12 +1,12 @@
-"""把 FastMCP 写的 server 和 native pyxis 工具拼进同一个判别式联合。
+"""把 FastMCP server 工具和本地 pyxis 工具放进同一个判别式联合。
 
-- server 端用 `mcp.server.fastmcp.FastMCP` 写（见 `_mcp_demo_server.py`，
-  约 20 行），或直接部署别人的 FastMCP server（`uvx mcp-server-filesystem
+- server 端用 `mcp.server.fastmcp.FastMCP` 写（见 `_mcp_demo_server.py`），
+  也可以直接连接已有 FastMCP server（`uvx mcp-server-filesystem
   /tmp` 之类）。
 - pyxis 端 `MCPServer + StdioMCP(command=..., args=[...])` 起子进程，
   或 `HttpMCP(url=...)` 连远端；`async with mcp_toolset(server) as tools:`
   拿到 `list[type[Tool]]`。
-- 把远端 tools 拼进判别式联合，`@step(output=Decision)` 的 `action` 字段
+- 把远端 tools 放进判别式联合，`@step(output=Decision)` 的 `action` 字段
   就能统一分派，`d.action.run()` 一行调用不区分来源。
 
 换生产 MCP server：`StdioMCP(...)` 指到真 server 的启动命令
@@ -86,7 +86,7 @@ async def agent(question: str, max_steps: int = 10) -> str:
             """你是一个会推理的 agent。规则：
 
             1. **先仔细读"草稿板"。** 草稿板里已经出现过的工具调用和结果，是
-               过去的事实。**不要重复调用**——要基于它推进下一步。
+               过去的事实。不要重复调用，要基于它推进下一步。
             2. 每一轮返回一个 Decision：`thought` 写你基于草稿板的**新推理**
                （不要复述任务），`action` 是接下来要做的**一次**工具调用。
             3. `action` 必须是叶子工具（例如 `{"kind": "reverse", "text": "..."}`），

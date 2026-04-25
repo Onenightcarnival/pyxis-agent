@@ -1,16 +1,14 @@
-"""draft → critique → revise 循环：写一版，挑问题，改，直到达标或超次数。
+"""draft、critique、revise 循环：写一版，检查问题，再修改。
 
 行业里叫 reflection、self-correction、critic-refiner、LLM-as-a-judge loop，
-底层都是这三步 + 一个 while。
+基本结构都是这三步加一个 while。
 
-- 三个 `@step`：`draft` / `critique` / `revise`，各自 schema 承担一段
-  隐式思维链。critique 的字段顺序是 issues → severity → score，顺序
-  反过来会变成"先打分再编理由"。
-- 一个 `@flow` 里的 while 循环做轮次控制，通过条件放宽到"score≥阈值
-  且 severity 不是 high"，严格条件在弱模型上几乎不收敛。
+- 三个 `@step`：`draft` / `critique` / `revise`。critique 的字段顺序是
+  issues、severity、score。
+- 一个 `@flow` 里的 while 循环做轮次控制，通过条件是 score≥阈值且
+  severity != "high"。
 
-这份示例跑在 gpt-5.4-nano 上，分数不会单调下降，这是 LLM-as-judge 本身
-的特性；换更强的模型通常稳得住。flow 里的 print 把每一版都显式打出来。
+示例会打印每一轮草稿、问题和分数。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/reflect_and_revise.py
@@ -55,7 +53,7 @@ class Draft(BaseModel):
 class Critique(BaseModel):
     issues: list[str] = Field(description="列出具体问题（例如超字数多少、漏了哪个关键词、有歧义）")
     severity: Literal["low", "medium", "high"] = Field(
-        description="high：超字数或漏核心关键词；medium：表达不畅；low：鸡蛋里挑骨头"
+        description="high：超字数或漏核心关键词；medium：表达不畅；low：小问题"
     )
     score: int = Field(ge=0, le=10, description="综合打分 0-10")
     must_fix: list[str] = Field(description="下一轮必须解决的点，写成可执行的改写建议")
@@ -72,7 +70,7 @@ class Revision(BaseModel):
 @step(output=Draft, model=MODEL, client=openrouter)
 def draft(source: str) -> str:
     """你在为一段技术描述写首页 tagline 的第一版。先列出原文不能丢的
-    3-5 个关键词；然后写一版**信息完整的初稿，长度可以偏长（60-90 字）**——
+    3-5 个关键词；然后写一版**信息完整的初稿，长度可以偏长（60-90 字）**。
     别急着压缩，后续会有编辑环节负责精简。"""
     return f"原文：\n{source}"
 
@@ -84,14 +82,14 @@ def critique(source: str, text: str) -> str:
     - 核心信息：不能漏 Pydantic schema 字段顺序、普通 Python 编排、
       避开 DSL 这三点里至少两点。
     - 可读：不能出现语病或歧义。
-    **先挑具体问题，再判断严重度，最后才打分**——顺序别倒。"""
+    先列具体问题，再判断严重度，最后打分。"""
     return f"原文：\n{source}\n\n当前 tagline（实际字数 {len(text)}）：\n{text}"
 
 
 @step(output=Revision, model=MODEL, client=openrouter)
 def revise(source: str, text: str, must_fix: list[str]) -> str:
     """你是压缩文案的高手。**≤ 100 字是硬约束**，超一字都算失败。
-    核心策略——优先压缩：**比上一版至少短 10 个字**，宁可只保留 1-2 个最核心
+    优先压缩：**比上一版至少短 10 个字**，宁可只保留 1-2 个最核心
     关键词也要卡死 100 字内。先逐条说明你怎么砍的，再给新文案。"""
     fixes = "\n".join(f"- {x}" for x in must_fix)
     return f"原文：\n{source}\n\n上一版（{len(text)} 字）：\n{text}\n\n必改：\n{fixes}"
@@ -102,8 +100,8 @@ def revise(source: str, text: str, must_fix: list[str]) -> str:
 
 @flow
 def compress_with_reflection(source: str) -> tuple[str, list[int]]:
-    """先写一版，然后 critique → revise 循环。通过条件：score≥目标 且
-    severity 不是 high（即没有超字数/漏关键词这类硬问题）。跑满 MAX_ROUNDS
+    """先写一版，然后做 critique / revise 循环。通过条件：score≥目标 且
+    severity != "high"。跑满 MAX_ROUNDS
     仍不通过时，对最后一版再 critique 一次，让分数轨迹覆盖终稿。"""
     text = draft(source).text
     scores: list[int] = []
@@ -113,7 +111,7 @@ def compress_with_reflection(source: str) -> tuple[str, list[int]]:
         print(f"[轮 {r}] 字数={len(text)} score={c.score} severity={c.severity}")
         for issue in c.issues[:3]:
             print(f"    - {issue}")
-        print(f"    → {text}")
+        print(f"    {text}")
         if c.score >= TARGET_SCORE and c.severity != "high":
             return text, scores
         text = revise(source, text, c.must_fix).text
@@ -128,7 +126,7 @@ def main() -> None:
 
     final_text, scores = compress_with_reflection(SOURCE)
 
-    print(f"\n=== 分数轨迹 ===\n{' → '.join(str(s) for s in scores)}    (目标 ≥ {TARGET_SCORE})")
+    print(f"\n=== 分数轨迹 ===\n{' / '.join(str(s) for s in scores)}    (目标 ≥ {TARGET_SCORE})")
     print(f"\n=== 终稿（{len(final_text)} 字）===\n{final_text}")
 
 

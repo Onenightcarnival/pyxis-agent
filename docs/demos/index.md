@@ -1,19 +1,20 @@
 # Demos
 
-`apps/` 下两个带前端的小应用：
+`apps/` 目录下有两个前端示例：
 
 | demo | 讲什么 |
 |---|---|
-| [chat-demo](chat-demo.md) | 一个开关切换两种前端拼法，看**同一份**后端流 |
-| [mcp-demo](mcp-demo.md)   | native `Tool` + 远端 MCP server 混着跑，工具来源与每步画在界面上 |
+| [chat-demo](chat-demo.md) | 同一份后端流，用 Chat 和 Inspect 两种方式展示 |
+| [mcp-demo](mcp-demo.md)   | 本地 `Tool` 和 MCP 工具一起运行，界面展示工具来源和执行步骤 |
 
 **环境**
 
 - 都跑在 localhost
 - 都要一个 `OPENROUTER_API_KEY`（或别的 OpenAI 兼容 key）
-- 启动命令 · 架构图 · 数据契约 → 各自 `apps/<name>/README.md`
+- 启动命令、架构图、数据契约见各自的 `apps/<name>/README.md`
 
 **定位**
 
-- 不是库本体 — 打包时 exclude；`ruff` / `pytest` 跳过
-- MIT，拿去改成自己的应用没问题
+- 不随库打包
+- `ruff` / `pytest` 默认跳过 `apps/`
+- MIT License

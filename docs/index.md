@@ -1,19 +1,24 @@
 # pyxis-agent
 
-**声明式思维链（declarative chain-of-thought）agent 框架。**
+**用 Python 函数和 Pydantic schema 写 agent。**
 
 > code as prompt · schema as workflow
 
 ---
 
-## 定位：agent-for-machine
+## 适用场景
 
-- LLM = 结构化数据生成器 → 直出 Pydantic 实例
-- 下一段 Python 代码直接消费，给人看的由应用层从字段里拼
-- **适合**：数据 pipeline 的 LLM 节点 · 要回归测试的业务 agent · 多 agent 机器对机器协作 · LLM 产出入库或聚合分析
-- **不适合**：丝滑 chat app（→ Anthropic SDK 原生 tool use）· prompt 自动调优（→ DSPy）· 多 agent 图编排（→ LangGraph）
+pyxis 让 LLM 输出 Pydantic 实例，再交给下一段 Python 代码处理。页面、气泡、报告等给人看的内容，由应用层从字段里渲染。
 
-详见 [与其他框架对比](comparison.md)。
+适合：
+
+- 数据 pipeline 里的 LLM 节点
+- 需要回归测试的业务 agent
+- 多个 agent 之间的结构化协作
+- LLM 产出需要入库、统计或审计的场景
+
+如果主要需求是聊天界面的流畅体验、prompt 自动调优或图式工作流，可以先看 [与其他框架对比](comparison.md)。
+
 
 ---
 
@@ -36,11 +41,11 @@ from openai import OpenAI
 from pydantic import BaseModel
 from pyxis import step
 
-client = OpenAI(api_key="sk-...")   # 就是 OpenAI SDK 你已经熟的那个
+client = OpenAI(api_key="sk-...")
 
 class Verdict(BaseModel):
     sentiment: str     # 先判情感
-    confidence: float  # 再给置信度——字段顺序就是思维链
+    confidence: float  # 再给置信度
 
 @step(output=Verdict, model="gpt-4o-mini", client=client)
 def classify(text: str) -> str:
@@ -51,10 +56,11 @@ v = classify("今天简直完美")
 assert v.sentiment == "positive"
 ```
 
-两件事同时发生：
+这个函数会生成一次结构化 LLM 调用：
 
-- **code as prompt** — 函数 docstring = system prompt；返回值 = user message
-- **schema as workflow** — `Verdict` 字段顺序（`sentiment` 在 `confidence` 前）= LLM 的思维链步骤
+- 函数 docstring 是 system prompt
+- 函数返回值是 user message
+- `Verdict` 的字段顺序决定输出顺序
 
 ---
 
@@ -62,10 +68,10 @@ assert v.sentiment == "positive"
 
 | 范围 | 机制 | 职责 |
 |---|---|---|
-| 隐式（单次 LLM 调用） | `instructor` + Pydantic 字段顺序 | 单次调用内部的思维链 |
-| 显式（多次 LLM 调用） | 纯 Python 代码 | 调用之间的组合、分支、循环 |
+| 单次 LLM 调用 | `@step` + Pydantic schema | 生成结构化输出 |
+| 多次 LLM 调用 | Python 函数 | 组合、分支、循环 |
 
-显式那层直接用 `if` / `for` / 函数组合，不发明 DSL：
+多步逻辑直接写 Python：
 
 ```python
 from pyxis import flow
@@ -78,8 +84,6 @@ def triage(text: str) -> str:
     return auto_reply(v.sentiment, text) # 另一个 @step
 ```
 
-没有 DAG，没有 YAML，没有节点编辑器。
-
 ---
 
 ## 核心概念一览
@@ -87,11 +91,11 @@ def triage(text: str) -> str:
 | 概念 | 做什么 | 详见 |
 |---|---|---|
 | `@step` | 一次 LLM 调用（同步 / 异步 / 流式都有） | [概念](concepts/step.md) · [API](api/step.md) |
-| `@flow` | 把多个 step 拼起来的普通 Python 函数 | [概念](concepts/flow.md) · [API](api/flow.md) |
+| `@flow` | 组合多个 step 的普通 Python 函数 | [概念](concepts/flow.md) · [API](api/flow.md) |
 | `Tool` / `@tool` | 工具 = `BaseModel` + `run() -> str` | [概念](concepts/tool.md) · [API](api/tool.md) |
-| Interrupt / `ask_interrupt` | 生成器挂起，等待外部输入后继续 | [概念](concepts/interrupt.md) · [API](api/interrupt.md) |
-| `mcp_toolset` | MCP 远端工具翻成本地 `Tool` 子类 | [概念](concepts/mcp.md) · [API](api/mcp.md) |
-| 可观测性 | 接 Langfuse / OTel / APM instrument OpenAI SDK 层；测试用 `FakeClient` | [概念](concepts/observability.md) |
+| Interrupt / `ask_interrupt` | 生成器挂起，等待外部输入后继续 | [Cookbook](cookbook/interrupt.md) · [API](api/interrupt.md) |
+| `mcp_toolset` | MCP 远端工具翻成本地 `Tool` 子类 | [Cookbook](cookbook/mcp.md) · [API](api/mcp.md) |
+| 可观测性 | 接 Langfuse / OTel / APM；测试用 `FakeClient` | [Cookbook](cookbook/observability.md) |
 
 ---
 
@@ -99,8 +103,8 @@ def triage(text: str) -> str:
 
 | 想做的事 | 去 |
 |---|---|
-| **先看得见**——浏览器里看 schema 逐字段被填出来、native + MCP 工具混合调度 | [Demos](demos/index.md) |
-| **照着抄**——一个可跑脚本对应一种姿势（研究、流式、ReAct、interrupt review、Langfuse 接入 …） | [Cookbook](cookbook/index.md) |
-| **读进去**——`@step` / `@flow` / `Tool` / `mcp_toolset` 各是什么、为什么长这样 | [概念](concepts/index.md) |
-| **挑毛病**——完整的"故意不做"清单、为什么不发明 DSL / 不对标 ChatGPT 丝滑度 | [哲学与定位](concepts/philosophy.md) |
-| **查签名**——每个公共符号的类型和 docstring | [API 参考](api/step.md) |
+| 看浏览器 demo | [Demos](demos/index.md) |
+| 找可运行示例 | [Cookbook](cookbook/index.md) |
+| 了解核心 API | [概念](concepts/index.md) |
+| 看设计边界 | [哲学与定位](concepts/philosophy.md) |
+| 查类型和签名 | [API 参考](api/step.md) |

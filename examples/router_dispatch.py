@@ -1,7 +1,6 @@
-"""按用户意图分派到不同 handler：schema 出 `Literal` 标签，Python `match` 分派。
+"""按用户意图分派到不同 handler。
 
 - `@step route`：输出 `{reasoning, intent}`，`intent` 是 `Literal[...]`。
-  字段顺序强制先讲理由再定标签，不让 LLM 跳到结论。
 - 四个 handler 各是一个 `@step`，专门 prompt + 专门 schema。
 - `@flow` 里就是 `match intent:` 四个分支，想加分类、想加预处理、想
   fan-out 多个 handler，都是改这段 Python。

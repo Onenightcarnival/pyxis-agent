@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import mkdocs_gen_files
 
-# 顺序就是 CLAUDE.md 里介绍各概念的顺序——读者顺着看下来就是一条自然路径。
+# 顺序沿用 CLAUDE.md 里介绍公共模块的顺序。
 MODULES: list[tuple[str, str]] = [
     ("step", "Step / AsyncStep + @step"),
     ("flow", "Flow / AsyncFlow + @flow"),

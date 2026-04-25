@@ -1,8 +1,7 @@
-"""两个 agent 协作：Researcher 产原料，Editor 改成成稿。
+"""两个 agent 协作：Researcher 生成素材，Editor 改成成稿。
 
-每个 agent 是一个 `@flow`——内部有自己的 step（甚至多步）、自己的 schema、
-自己的 prompt 风格。"协作"就是一个 flow 直接调另一个 flow，和 Python 里
-函数调函数没区别。没有 graph、没有 bus、没有 orchestrator。
+每个 agent 是一个 `@flow`，内部有自己的 step、schema 和 prompt。协作方式是一个
+flow 调用另一个 flow。
 
 拓扑：
 
@@ -10,9 +9,8 @@
                         \\
     editor_agent(topic, brief) -> PublishDraft
 
-想并行拉多份 research 再合并？用 `asyncio.gather`。想让 editor 看完后
-让 researcher 补充？再调一次 `research_agent`，加 while 循环即可——
-仍然是 Python。
+并行多份 research 可以用 `asyncio.gather`。需要补充素材时，可以再调用一次
+`research_agent`，或在外层加 while 循环。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/multi_agent.py
@@ -35,7 +33,7 @@ openrouter = OpenAI(
 )
 
 
-# ---- Agent 1：Researcher（内部两步——找要点 + 挑槽点）----
+# ---- Agent 1：Researcher（内部两步：找要点 + 找风险）----
 
 
 class Angles(BaseModel):
@@ -69,7 +67,7 @@ def research_agent(topic: str) -> ResearchBrief:
     return write_brief(topic, angles)
 
 
-# ---- Agent 2：Editor（单步——把 brief 改成适合发布的段落）----
+# ---- Agent 2：Editor（单步：把 brief 改成适合发布的段落）----
 
 
 class PublishDraft(BaseModel):

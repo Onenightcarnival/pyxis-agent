@@ -1,8 +1,6 @@
-"""端到端示例：声明式思维链。
+"""端到端示例：分析主题并生成计划。
 
-两条轴同时展示：
-- 隐式 CoT：单次 LLM 调用里由 schema 字段顺序驱动推理；
-- 显式 CoT：多步由普通 Python 编排。
+示例包含两个 step：先分析主题，再基于分析生成计划。`@flow` 负责串联这两步。
 
 跑起来：
     OPENROUTER_API_KEY=sk-or-... uv run --env-file .env python examples/research.py

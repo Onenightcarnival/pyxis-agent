@@ -1,13 +1,12 @@
-"""长期记忆：一个 dict 当 KV store，一个 step 抽事实、一个 step 作答。
+"""长期记忆：用 dict 做 KV store，一个 step 抽事实，一个 step 作答。
 
-- 短期记忆不存，每次只看长期记忆快照——强迫 agent 靠 `_MEM` 才能跨轮
-  记起事情。
+- 每次回答只读取长期记忆快照。
 - 长期记忆是一个进程内 dict `_MEM`，换 Redis / SQLite / vec DB 就只改
   这部分。
 - 两个 `@step` 各管一件事：
   - `extract_facts`：从用户这句话抽出值得记的键值对（如果有）。
   - `answer`：基于 `_MEM` 快照作答；需要查的键列在 `recall_keys`。
-- Python 负责执行写入和查询——LLM 只产 schema。
+- Python 负责写入和查询，LLM 只生成 schema。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/memory_kv.py
@@ -52,8 +51,8 @@ def extract_facts(user: str) -> str:
     """你是信息抽取器。只抽**关于用户自身**的事实（姓名、项目、偏好、
     角色、居住地等）并放进 facts 列表。用户提问或闲聊时给空列表。
 
-    例子：用户说"我叫张三" → facts=[{"key":"user_name","value":"张三"}]。
-    例子：用户问"我是谁" → facts=[]。"""
+    例子：用户说"我叫张三"，facts=[{"key":"user_name","value":"张三"}]。
+    例子：用户问"我是谁"，facts=[]。"""
     return f"用户原话：{user}"
 
 
@@ -69,13 +68,13 @@ class Answer(BaseModel):
 
 @step(output=Answer, model=MODEL, max_retries=2, client=openrouter)
 def answer(mem_snapshot: str, user: str) -> str:
-    """你是只靠长期记忆作答的助手——没有对话历史，只有记忆快照。
-    用户问到你之前该记住的东西 → 从快照里挑相关键填 recall_keys，
+    """你是只靠长期记忆作答的助手。没有对话历史，只有记忆快照。
+    用户问到你之前该记住的东西时，从快照里选择相关键填 recall_keys，
     再在 reply 里引用那些键对应的值。快照里没有就诚实说不知道。"""
     return f"=== 记忆快照 ===\n{mem_snapshot or '（空）'}\n\n=== 用户这一轮 ===\n{user}"
 
 
-# ---- Flow：抽事实 → 写入 → 作答 → 可选读取。都是普通 Python ----
+# ---- Flow：抽事实、写入、作答、可选读取。都是普通 Python ----
 
 
 @flow

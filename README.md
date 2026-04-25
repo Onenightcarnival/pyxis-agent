@@ -56,12 +56,11 @@ assert v.sentiment == "positive"
 
 ## 继续读
 
-- [文档站首页](https://onenightcarnival.github.io/pyxis-agent/)——核心概念、
-  可观测性、MCP 接入
+- [文档站首页](https://onenightcarnival.github.io/pyxis-agent/)——核心概念与场景化 Cookbook
 - [哲学与定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——
   完整的"故意不做"清单
 - [Cookbook](https://onenightcarnival.github.io/pyxis-agent/cookbook/)——
-  `examples/` 里每个脚本对应一种使用姿势
+  测试、可观测、MCP、Interrupt 和 agent 模式的使用姿势
 - [Demos](https://onenightcarnival.github.io/pyxis-agent/demos/)——
   `apps/` 里两个带前端的可视化应用
 

@@ -1,16 +1,15 @@
-"""给 agent 一组文件操作工具 + 一个 while 循环，让它多轮自主完成任务。
+"""用文件操作工具和 while 循环完成代码任务。
 
-结构和 `examples/agent_tool_use.py` 同源，只是工具从算数换成了 ls /
-read / write / finish 四个。换任务只改 Tool 定义和 decide 的 prompt。
+结构和 `examples/agent_tool_use.py` 类似，工具换成 ls、read、write、finish。
 
 - `LsFiles / ReadFile / WriteFile / Finish` 是 `Tool` 子类，判别式联合
   作"工具表"。
 - `@step decide` 输出 `Decision(thought, action)`，每轮出一次调用。
-- `@flow harness` 就是 while 循环，带 max_steps 防失控；遇到 `Finish`
+- `@flow harness` 是 while 循环，带 max_steps 防失控；遇到 `Finish`
   就停。
 
-这里的"文件系统"是一个内存 dict，聚焦讲多轮 + 工具 + 自停止这条主线；
-换成真磁盘只要把 `_FS` 的读写换成 `pathlib.Path`，agent loop 不用动。
+示例里的文件系统是内存 dict。换成真实磁盘时，把 `_FS` 的读写换成
+`pathlib.Path` 即可。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/coding_harness.py
@@ -104,15 +103,15 @@ def decide(task: str, history: str) -> str:
 
     严格遵守：
     - 历史区每条的"OBSERVATION"就是工具的实际返回值，视为 ground truth；
-      不要怀疑"还没读到"——读过就是读过。
+      已经读到的内容按历史记录处理。
     - 一个文件**最多 read 一次**；再读一次视为错误。
-    - 修改用 `write`——它会**整体覆盖**，所以 `content` 必须是包含了旧内容
-      在内的**完整新文件**，不是 diff、不是追加片段。
+    - 修改用 `write`。它会整体覆盖文件，所以 `content` 必须是完整新文件，
+      不是 diff，也不是追加片段。
     - 看到 `OK: 已写入 ...` 就**立刻** `finish`，不要再 read 验证。"""
-    return f"任务：{task}\n\n=== 历史 ===\n{history or '（还没开始——先决定第一步）'}"
+    return f"任务：{task}\n\n=== 历史 ===\n{history or '（还没开始，先决定第一步）'}"
 
 
-# ---- harness 的主驱动：就是一个 @flow 包起来的 while 循环 ----
+# ---- harness 的主驱动：@flow 包起来的 while 循环 ----
 
 
 def _format_turn(i: int, d: Decision, obs: str) -> str:

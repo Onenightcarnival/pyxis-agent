@@ -1,7 +1,6 @@
 # Flow：显式编排
 
-`@flow` 是一层很薄的语义标记，套在一个普通 Python 函数外面，按
-`async def` / `def` 分派 `AsyncFlow` / `Flow`。
+`@flow` 标记一个多步流程。函数体仍然是普通 Python 代码。
 
 ## 最小例子
 
@@ -28,11 +27,11 @@ def triage(text: str) -> Reply:
 result = triage("今天糟透了")
 ```
 
-没有 `.run_traced()` 这类糖——就是一个函数调用。
+调用 `triage(...)` 就会按函数体顺序执行。
 
 ## 写一个 agent loop
 
-要做 ReAct 风格的循环，自己 `for` 一下就行：
+ReAct 风格的循环可以直接写 `for`：
 
 ```python
 @flow
@@ -47,7 +46,7 @@ def react(question: str) -> Answer:
     raise RuntimeError("超出最大步数")
 ```
 
-判别式联合用 `isinstance` 分派，超限抛异常，调试打断点看堆栈。
+工具选择用 `isinstance` 或 `.run()` 分派。超过步数时抛异常。
 
 ## 异步
 
@@ -60,22 +59,21 @@ async def triage(text: str) -> Reply:
 result = await triage("...")
 ```
 
-- `@flow` 按函数签名分派同步 / 异步
-- 多 step 并发就裸写 `asyncio.gather(step_a(...), step_b(...))`
+- `@flow` 根据 `def` / `async def` 返回同步或异步 flow
+- 多个 step 并发时直接使用 `asyncio.gather`
 
 ## 观测
 
-- 生产：[可观测性](observability.md) 页——APM / OTel / Langfuse 在
-  OpenAI SDK 层 instrument，自动覆盖每个 `@step` 调用
+- 生产：[可观测](../cookbook/observability.md) 页说明了 Langfuse、OTel 和 APM 的接入方式
 - 测试：`FakeClient` 预置响应 + 断言 `fake.calls`
 - 自定义打点：`@step` 外再套 Python 装饰器
 
 ## 什么时候不用 Flow
 
-- 只调一次 LLM → `@step` 就够
-- loop 要被外部驱动或中断 → 生成器版 `@flow` + `run_flow`（见 [Interrupt](interrupt.md)）
+- 只调一次 LLM：使用 `@step`
+- loop 要被外部驱动或中断：使用生成器版 `@flow` + `run_flow`，见 Cookbook 的 [Interrupt](../cookbook/interrupt.md)
 
 ---
 
 - 可跑示例：[examples/research.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/research.py) · [examples/agent_tool_use.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/agent_tool_use.py)
-- 完整签名：[API → pyxis.flow](../api/flow.md)
+- 完整签名：[API：pyxis.flow](../api/flow.md)

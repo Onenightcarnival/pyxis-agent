@@ -1,4 +1,6 @@
-"""声明式思维链 + 工具调用的 agent 示例。显式循环写在普通 Python 里。
+"""工具调用 agent 示例。
+
+示例用 `Tool` 子类定义工具，用 `@step` 选择动作，用 `@flow` 里的循环执行动作。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/agent_tool_use.py

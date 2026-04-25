@@ -1,12 +1,10 @@
-"""批量把非结构化文本抽成 Pydantic 实例，出一张可以入库 / group by 的表。
+"""批量把非结构化文本抽成 Pydantic 实例。
 
-- 一个 `@step`：schema 字段顺序 summary → sentiment → topic → severity，
-  先还原意思再下标签，避免跳到结论。
+- 一个 `@step`：字段顺序为 summary、sentiment、topic、severity。
 - 一个 `@flow` 裹 for 循环，try/except 兜单条失败，整批不中断。
 - 聚合就是 `Counter`。
 
-这种任务里 LLM 输出直接进 Counter / DataFrame / DB，不再有"解析自然
-语言"这一步——字段顺序即思维链。
+LLM 输出可以直接交给 Counter、DataFrame 或数据库。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/batch_extraction.py
@@ -55,7 +53,7 @@ class Feedback(BaseModel):
         description="反馈集中在哪个话题"
     )
     severity: Literal["low", "medium", "high"] = Field(
-        description="对业务影响的严重度——阻塞下单/封号 high；体验抱怨 medium；一般吐槽 low"
+        description="对业务影响的严重度：阻塞下单/封号 high；体验抱怨 medium；一般吐槽 low"
     )
 
 

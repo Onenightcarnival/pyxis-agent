@@ -176,7 +176,9 @@ mkdocs.yml        文档站配置
 - **apps/ 不是库**：`ruff` 与打包都 `exclude = ["apps"]`；apps/ 里的应用
   有自己的 `pyproject.toml` / `package.json`，依赖库通过本地 path
   link（`tool.uv.sources.pyxis-agent = { path = "../../..", editable = true }`）。
-- **文档站**：`uv run --group docs mkdocs serve` 本地预览；
+- **文档站**：概念栏只放 `Step` / `Tool` / `Flow` 三个核心概念；
+  测试、可观测、MCP、Interrupt 和 agent 模式都归到 Cookbook。
+  `uv run --group docs mkdocs serve` 本地预览；
   `uv run --group docs mkdocs build --strict` 作为验收门槛。改过
   源码 docstring 后最好本地跑一次 strict build。
 
@@ -212,7 +214,7 @@ mkdocs.yml        文档站配置
 
 - **生产**：换 `from langfuse.openai import OpenAI` 接 Langfuse；或
   `opentelemetry-instrumentation-openai`；或 Datadog / New Relic 的
-  Python agent。详见 [docs/concepts/observability.md](docs/concepts/observability.md)。
+  Python agent。详见 [docs/cookbook/observability.md](docs/cookbook/observability.md)。
 - **自定义打点**：`@step` 外套 Python 装饰器。
 - **测试**：`FakeClient([响应, ...])` 预置 Pydantic 实例 + 断言
   `fake.calls`（messages / params / model / max_retries），零网络。

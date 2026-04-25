@@ -1,20 +1,19 @@
 # pyxis 与其他 agent 框架的对比
 
-对标 **LangGraph** 与 **DSPy**——当前 Python agent 生态里定位差异最明显
-的两家。一张横向表 + 几个维度的细对比，帮你挑。
+这里对比 **LangGraph** 和 **DSPy**。三者都能写 agent，但抽象层不同。
 
 ## TL;DR
 
 | 维度           | pyxis                      | LangGraph                  | DSPy                      |
 |----------------|----------------------------|----------------------------|---------------------------|
-| 核心抽象       | schema 即思维链 + 纯 Python | 状态机 + 节点图 DSL        | 声明式 program + teleprompter |
+| 核心抽象       | Pydantic schema + Python 函数 | 状态机 + 节点图 DSL        | 声明式 program + teleprompter |
 | 多轮编排       | `@flow`（普通函数）         | `StateGraph.add_node/edge` | 类里的 `forward(...)`     |
 | Prompt 形态    | 函数 docstring             | 字符串 + PromptTemplate    | `Signature` 声明式字段    |
 | 工具调用       | schema 判别式联合 + `.run()`| `ToolNode`、function calling| function calling 协议适配 |
-| 优化目标       | 开发者体验与代码可读性      | 生产级状态机 + 可视化        | prompt 自动调优（核心卖点）|
-| 学习门槛       | 低（就是写函数）           | 中（要学 graph 语义）       | 中（要学 signature + optimizer）|
+| 优化目标       | 结构化输出、测试、代码可读性 | 生产级状态机 + 可视化        | prompt 自动调优 |
+| 学习门槛       | 低                         | 中                         | 中                         |
 
-## 同一个例子的三套写法：简单的"分析+规划"
+## 同一个例子：分析后生成计划
 
 ### pyxis
 
@@ -51,10 +50,10 @@ def research(topic: str) -> Plan:
 result = research("AI agents")
 ```
 
-**特点**
+说明：
 
-- 思维链在字段顺序里（`observation → reasoning → conclusion`）
-- 多步编排就是普通 Python 函数组合
+- `Analysis` 的字段顺序定义输出顺序
+- `research(...)` 用普通函数组合两个 step
 
 ### LangGraph 的典型写法
 
@@ -85,10 +84,10 @@ graph = workflow.compile()
 result = graph.invoke({"topic": "AI agents"})
 ```
 
-**特点**
+说明：
 
-- State 对象在节点之间传递，图"编译"成可执行对象
-- 结构化输出得自己用 Pydantic + parser 再拼一层
+- `State` 在节点之间传递
+- graph 编译后执行
 
 ### DSPy 的典型写法
 
@@ -120,73 +119,70 @@ class Research(dspy.Module):
 result = Research()(topic="AI agents")
 ```
 
-**特点**
+说明：
 
-- `Signature` 类似 pyxis 的 Pydantic schema，但走自己的字段系统
-- 多步编排在 `forward` 里
-- 核心卖点是 `teleprompter`（prompt 当可训练参数）——pyxis 完全不做
+- `Signature` 定义输入输出字段
+- 多步编排写在 `forward` 里
+- DSPy 提供 teleprompter 做 prompt 优化
 
-## 几个维度的细对比
+## 维度对比
 
-### 1. 编排层：DSL 还是 Python？
+### 1. 编排层
 
-- **LangGraph** — 图 DSL。能可视化状态机；要学"边 + 条件边 + 状态字段"一整套语义
-- **DSPy** — `Module.forward(...)` 是 Python 函数；但 `Signature` 走自己的字段系统
-- **pyxis** — `@flow` 是普通 Python 函数。`for` / `if` / `asyncio.gather`，没有第二层语义
+- **LangGraph**：图 DSL，使用节点、边、条件边和状态字段
+- **DSPy**：`Module.forward(...)` 是 Python 函数，字段由 `Signature` 定义
+- **pyxis**：`@flow` 是普通 Python 函数，直接使用 `for`、`if`、`asyncio.gather`
 
 ### 2. 结构化输出
 
-- **LangGraph** — 不是一等公民，要 `with_structured_output(...)` 或手动解析
-- **DSPy** — `Signature` 输出字段是结构化的，但走自己的字段系统
-- **pyxis** — Pydantic 是**唯一**的数据形状，字段顺序 = 思维链
+- **LangGraph**：通过 `with_structured_output(...)` 或解析器处理
+- **DSPy**：使用 `Signature` 输出字段
+- **pyxis**：使用 Pydantic 输出模型
 
 ### 3. 工具调用
 
-- **LangGraph** — `ToolNode` + provider 的 function calling 协议
-- **DSPy** — `dspy.Tool` 或 function calling
-- **pyxis** — 工具 = `BaseModel + run()`；`Annotated[A | B, Field(discriminator="kind")]` 做判别式联合；LLM 填 JSON 就是"选工具"；Python `isinstance` + `.run()` 派发。不依赖 provider 的 function calling
+- **LangGraph**：`ToolNode` + provider function calling
+- **DSPy**：`dspy.Tool` 或 function calling
+- **pyxis**：`BaseModel + run()`；用 Pydantic 判别式联合选择工具，用 Python 执行工具
 
 ### 4. 可观测性
 
-- **LangGraph** — 原生跑 LangSmith，上线即送 trace 可视化
-- **DSPy** — callback 或 `dspy.inspect_history()`
-- **pyxis** — 接 [Langfuse](concepts/observability.md)（换一行 `import`）/ OpenTelemetry auto-instrument / Datadog / New Relic，都 instrument OpenAI SDK 层覆盖 `@step` 调用。自定义打点用 Python 装饰器叠加
+- **LangGraph**：接 LangSmith
+- **DSPy**：callback 或 `dspy.inspect_history()`
+- **pyxis**：接 [Langfuse](cookbook/observability.md)、OpenTelemetry、Datadog、New Relic，观测位置在 OpenAI SDK 层
 
 ### 5. 测试
 
-- **LangGraph / DSPy** — mock LLM 自己搭；状态机的 assertion 面比函数大
-- **pyxis** — `FakeClient([响应, ...])` + `fake.calls` 全路径可断言。单测零网络是设计目标
+- **LangGraph / DSPy**：需要按项目自行 mock LLM
+- **pyxis**：`FakeClient([响应, ...])` 返回预置模型，`fake.calls` 记录调用参数
 
 ### 6. 学习成本
 
-从零到第一个能跑的 agent：
+从零到第一个示例：
 
-- **pyxis** — README 上手段 + Pydantic 知识 → ~15 分钟
-- **LangGraph** — 要学 `StateGraph` / 节点 / 边 / 条件边 / checkpointer → 1–2 小时
-- **DSPy** — 要学 Signature / Module / Teleprompter → 1–2 小时
+- **pyxis**：README + Pydantic 基础
+- **LangGraph**：`StateGraph`、节点、边、条件边、checkpointer
+- **DSPy**：Signature、Module、Teleprompter
 
-## 什么时候选 pyxis？
+## 适合 pyxis 的场景
 
-- **LLM 作为结构化数据生成器**：数据 pipeline 里的 LLM 节点、业务 agent
-  需要回归测试、LLM 产出入库 / 分析
+- 数据 pipeline 里的 LLM 节点
+- 业务 agent 需要回归测试
+- LLM 产出需要入库或分析
 - 团队已经在用 Pydantic，不想再学一个字段系统
-- 想一眼看懂 agent 做了什么、每步调用什么、每个字段代表哪步推理
 - 希望单测不碰网络
-- 观测想自己配（直接接 Langfuse / OTel / APM，不被框架挟持）
-- 项目规模小到中等（几十个 Step、几个 flow），不需要可视化状态机
+- 项目规模小到中等，不需要可视化状态机
 
-## 什么时候**不**选 pyxis
+## 更适合其他工具的场景
 
-- 图状控制流 / 断点续跑 / checkpointer / 多 agent 协商 → LangGraph
-- 图可视化做 PM / 设计评审 → LangGraph
-- 自动优化 prompt（teleprompter、MIPRO、BootstrapFewShot）→ DSPy
-- 开箱即用的托管 trace UI → LangSmith
-- 极致丝滑的 chat 体感（token 流式打字机）→ Anthropic SDK 原生 tool use
+- 图状控制流、断点续跑、checkpointer、多 agent 协商：LangGraph
+- 图可视化评审：LangGraph
+- prompt 自动优化：DSPy
+- 托管 trace UI：LangSmith
+- 聊天界面体验优先：原生 chat SDK
 
 ## 总结
 
-- **LangGraph** — 状态机表达力 + 生态完善度
-- **DSPy** — prompt 自动调优
-- **pyxis** — 可读性 + 测试友好度
-
-对口了就挑对应的。
+- **LangGraph**：状态机和图编排
+- **DSPy**：prompt 优化
+- **pyxis**：Pydantic 输出、Python 组合、单元测试

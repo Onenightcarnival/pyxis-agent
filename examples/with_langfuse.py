@@ -1,8 +1,7 @@
-"""接入 Langfuse：换一行 import 就开始收集 trace。
+"""接入 Langfuse。
 
 把 `from openai import OpenAI` 换成 `from langfuse.openai import OpenAI`，
-其他代码都不变。跑完去 Langfuse dashboard 看每次 LLM 调用的 prompt /
-response / token / latency。
+Langfuse dashboard 会记录每次 LLM 调用的 prompt、response、token 和 latency。
 
 运行前需要：
     uv add langfuse
@@ -13,7 +12,7 @@ response / token / latency。
 跑起来：
     uv run --env-file .env python examples/with_langfuse.py
 
-详见 [docs/concepts/observability.md](../docs/concepts/observability.md)。
+详见 [docs/cookbook/observability.md](../docs/cookbook/observability.md)。
 """
 
 from __future__ import annotations

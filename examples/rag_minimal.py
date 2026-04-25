@@ -2,11 +2,10 @@
 
 - 检索：一个普通 Python 函数 `_retrieve`，关键词重叠度排序。换 vector DB
   就把函数体换成 `qdrant.search(...)`。
-- 作答：一个 `@step`，schema 字段顺序先 citations 再 reasoning 再 answer，
-  把"先编再找"的幻觉压住。
+- 作答：一个 `@step`，schema 字段顺序为 citations、reasoning、answer。
 - 编排：一个 `@flow` 把前两者串起来。
 
-想让 LLM 自己决定要不要检索，把 `_retrieve` 包成 `Tool` 塞进判别式联合
+想让 LLM 自己决定要不要检索，可以把 `_retrieve` 包成 `Tool` 放进判别式联合
 即可（参考 `examples/agent_tool_use.py`）。
 
 跑起来：
@@ -41,7 +40,7 @@ KB: list[str] = [
     "pyxis 的 Tool 是 BaseModel 子类，带 run() 方法，动作即 schema、run() 即代码。",
     "pyxis 本体不做观测；生产用 Langfuse / OpenTelemetry / APM 直接适配 OpenAI SDK 调用。",
     "pyxis 用 instructor 库调用 OpenAI 兼容的 provider；client 直接传 OpenAI SDK 实例。",
-    "Claude Desktop 追求丝滑 chat 体感，pyxis 对标的是 agent-for-machine——LLM 产结构化数据喂下一段 Python。",
+    "Claude Desktop 面向聊天体验，pyxis 面向结构化输出和后续 Python 处理。",
 ]
 
 

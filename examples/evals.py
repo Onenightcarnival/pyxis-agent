@@ -1,11 +1,10 @@
-"""跑一个小数据集做 eval：准确率、p50/p95 延迟、错例清单、原始调用 log。
+"""跑一个小数据集，记录准确率、延迟、错例和原始调用 log。
 
 组合是 Python list（输入 + 期望）+ 一个 `@step` 出结构化结果 + 一个
 `for` 循环。聚合用 `statistics.mean` / `Counter` / 排序取分位，都是
 几行 Python。原始调用 log 自己 `json.dumps` 落盘。
 
-A/B 两个模型：换 `client` / `MODEL` 跑两遍，diff 两份 JSONL。比两次
-commit 的质量漂移：存两份 JSONL 对照即可。
+A/B 两个模型时，换 `client` / `MODEL` 跑两遍，再比较两份 JSONL。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/evals.py
@@ -55,7 +54,7 @@ DATASET: list[tuple[str, Literal["spam", "ham"], str]] = [
 
 
 class Classification(BaseModel):
-    reasoning: str = Field(description="为什么这样分——一两句")
+    reasoning: str = Field(description="为什么这样分，一两句")
     label: Literal["spam", "ham"] = Field(description="最终分类")
 
 

@@ -1,7 +1,8 @@
-# 可观测性
+# 可观测
 
-`@step(client=...)` 吃 OpenAI SDK 实例；APM / LLM-ops 工具直接
-instrument 这层就覆盖每次调用。框架自己不维护 trace / usage / hook。
+`@step(client=...)` 使用 OpenAI SDK 实例。Langfuse、OpenTelemetry、Datadog、New Relic 等工具可以接在 SDK 层，覆盖每次 step 调用。
+
+pyxis 不提供单独的 trace API。
 
 ## Langfuse
 
@@ -12,7 +13,7 @@ export LANGFUSE_SECRET_KEY=sk-lf-...
 export LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-`langfuse.openai.OpenAI` 是 OpenAI SDK 的 drop-in，直接塞给 `client=`：
+`langfuse.openai.OpenAI` 可以直接传给 `client=`：
 
 ```python
 import os
@@ -31,9 +32,9 @@ def plan(topic: str) -> str:
     return topic
 ```
 
-每次调用写一条 trace：prompt / response / token / 延迟 / schema。
+每次调用会记录 prompt、response、token、延迟和 schema。
 
-把多 step 合并成一棵 trace：`@flow` 外再套 `@observe`。
+多 step 流程可以在 `@flow` 外再加 `@observe`。
 
 ```python
 from langfuse.decorators import observe
@@ -59,11 +60,11 @@ from opentelemetry.instrumentation.openai import OpenAIInstrumentor
 OpenAIInstrumentor().instrument()
 ```
 
-之后 `@step` 调用进 OTel collector。
+之后 `@step` 调用会进入 OTel collector。
 
 ## Datadog / New Relic / 其他 APM
 
-按各厂商文档装 Python agent，OpenAI auto-instrumentation 自动覆盖。
+按各厂商文档安装 Python agent，OpenAI auto-instrumentation 会覆盖 step 调用。
 
 ## 自定义打点：装饰器叠加
 
@@ -86,22 +87,6 @@ def timed(step_fn):
 def plan(topic: str) -> str: ...
 ```
 
-## 测试：`FakeClient`
+## 测试观测逻辑
 
-零网络。按队列吐预置 Pydantic 实例，`.calls` 记录每次调用：
-
-```python
-from pyxis import FakeClient, step
-
-fake = FakeClient([Plan(goal="g", next_action="a")])
-
-@step(output=Plan, client=fake)
-def plan(topic: str) -> str:
-    """..."""
-    return topic
-
-result = plan("build x")
-assert result == Plan(goal="g", next_action="a")
-assert fake.calls[0].messages[-1]["content"] == "build x"
-assert fake.calls[0].params == {"temperature": 0}
-```
+单元测试使用 [FakeClient](testing.md)，断言 `.calls` 里的 prompt、model、params 与 retry 设置。

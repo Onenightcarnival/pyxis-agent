@@ -1,10 +1,9 @@
 """Plan-then-execute 示例：先让 LLM 产出计划，再让另一个 Step 执行每一步。
 
 展示两件事：
-1. 两个 Step 用不同的 schema，各自承担隐式思维链——规划时先想目标再拆步骤；
+1. 两个 Step 用不同的 schema：规划时先想目标再拆步骤；
    执行时先想要做什么、再给结果。
 2. 显式编排是一个普通 for 循环，想中断、想跳步、想加日志，直接改 Python。
-   没有 DSL、没有 graph。
 
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/plan_then_execute.py

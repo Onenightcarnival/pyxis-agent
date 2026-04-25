@@ -1,6 +1,6 @@
 # Tool：action 即 schema
 
-pyxis 的工具 = 带 `run()` 的 Pydantic 模型。参数 = 字段，动作 = `run()`。
+pyxis 的工具是带 `run()` 方法的 Pydantic 模型。字段是参数，`run()` 执行动作。
 
 ## 最小例子
 
@@ -23,7 +23,7 @@ class ReadFile(Tool):
         return open(self.path).read()
 ```
 
-一个 `BaseModel` 子类就是一个工具。
+每个 `Tool` 子类对应一个动作。
 
 ## 在 @step 里用
 
@@ -44,13 +44,13 @@ step_out = plan("今天巴塞罗那天气")
 print(step_out.action.run())   # isinstance / 方法分派
 ```
 
-- LLM 在判别式联合里选一个工具（填 `kind`）
-- Python 用 `isinstance` 或直接 `action.run()` 分派
-- 没有工具注册表 — 注册 = `import`
+- LLM 通过 `kind` 选择工具
+- Python 调用 `action.run()` 执行动作
+- 工具通过普通 Python import 使用
 
 ## `@tool` 装饰器：省样板
 
-手写 `class` + `kind` + 字段嫌啰嗦时用它：
+简单函数可以用 `@tool` 转成工具类：
 
 ```python
 from pyxis import tool
@@ -63,15 +63,15 @@ def search_web(query: str) -> str:
 # search_web 已是 Tool 子类：kind = "search_web"，字段 = (query: str)
 ```
 
-拿到的 `search_web` 可直接塞进判别式联合。
+生成的 `search_web` 可以直接放进判别式联合。
 
 ## 工具来自哪里
 
 - 本地 `Tool` 子类
 - `@tool` 装饰的
-- [MCP 远端工具](mcp.md) — `mcp_toolset` 把远端 schema 翻成本地 `Tool` 子类
+- [MCP 远端工具](../cookbook/mcp.md) — `mcp_toolset` 把远端 schema 翻成本地 `Tool` 子类
 
-混合注册 = 拼 list：
+本地工具和 MCP 工具可以放在同一个联合类型里：
 
 ```python
 class Action(BaseModel):
@@ -81,9 +81,9 @@ class Action(BaseModel):
     ]
 ```
 
-传给 `@step(output=...)` 就完事。
+然后传给 `@step(output=...)`。
 
 ---
 
 - 可跑示例：[examples/agent_tool_use.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/agent_tool_use.py) · [examples/plan_then_execute.py](https://github.com/Onenightcarnival/pyxis-agent/blob/main/examples/plan_then_execute.py)
-- 完整签名：[API → pyxis.tool](../api/tool.md)
+- 完整签名：[API：pyxis.tool](../api/tool.md)
