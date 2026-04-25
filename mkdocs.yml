@@ -105,12 +105,14 @@ nav:
   - 概念:
       - concepts/index.md
       - 哲学与定位: concepts/philosophy.md
-      - Step：code-as-prompt: concepts/step.md
-      - Flow：显式编排: concepts/flow.md
-      - Tool：action 即 schema: concepts/tool.md
-      - human-in-the-loop: concepts/human.md
-      - MCP 适配: concepts/mcp.md
-      - 可观测性: concepts/observability.md
+      - Core Primitives:
+          - Step：code-as-prompt: concepts/step.md
+          - Flow：显式编排: concepts/flow.md
+          - Tool：action 即 schema: concepts/tool.md
+      - Runtime Patterns:
+          - Interrupt：外部输入点: concepts/interrupt.md
+          - MCP 适配: concepts/mcp.md
+          - 可观测性: concepts/observability.md
   - Cookbook:
       - cookbook/index.md
       - 端到端：分析 + 规划: cookbook/research.md
@@ -125,7 +127,7 @@ nav:
       - ReAct agent + 工具调用: cookbook/agent_tool_use.md
       - Agentic harness: cookbook/coding_harness.md
       - MCP 混合注册: cookbook/mcp_tool_use.md
-      - Human-in-the-loop: cookbook/human_review.md
+      - Interrupt review: cookbook/interrupt_review.md
       - Guardrails：输入/输出校验: cookbook/guardrails.md
       - 接入 Langfuse: cookbook/with_langfuse.md
       - Evals 一把梭: cookbook/evals.md
@@ -138,6 +140,5 @@ nav:
       - pyxis.flow: api/flow.md
       - pyxis.tool: api/tool.md
       - pyxis.client: api/client.md
-      - pyxis.human: api/human.md
+      - pyxis.interrupt: api/interrupt.md
       - pyxis.mcp: api/mcp.md
-

@@ -14,17 +14,17 @@
 - `@flow` / `Flow` / `AsyncFlow`：多步 flow 的语义标记。
 - `Tool` / `@tool`：动作即 schema，`run()` 即代码。
 - `FakeClient` / `FakeCall`：测试用的确定性后端，零网络。
-- `ask_human` / `finish` / `run_flow` / `run_aflow` / `HumanQuestion` /
-  `FlowResult`：人工介入的生成器驱动。
+- `ask_interrupt` / `finish` / `run_flow` / `run_aflow` / `InterruptRequest` /
+  `FlowResult`：外部输入点的生成器驱动。
 - `mcp.*`：MCP 适配层。
 """
 
 from .client import FakeCall, FakeClient
 from .flow import AsyncFlow, Flow, flow
-from .human import (
+from .interrupt import (
     FlowResult,
-    HumanQuestion,
-    ask_human,
+    InterruptRequest,
+    ask_interrupt,
     finish,
     run_aflow,
     run_flow,
@@ -41,10 +41,10 @@ __all__ = [
     "FakeClient",
     "Flow",
     "FlowResult",
-    "HumanQuestion",
+    "InterruptRequest",
     "Step",
     "Tool",
-    "ask_human",
+    "ask_interrupt",
     "finish",
     "flow",
     "run_aflow",

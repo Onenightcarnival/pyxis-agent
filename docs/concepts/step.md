@@ -170,7 +170,7 @@ assert fake.calls[0].messages[-1]["content"] == "任意文本"
 
 - 不走 LLM 的普通动作 → `Tool` 或普通函数
 - 多次 LLM 调用的编排 → `@flow`
-- 中途要等人类回应 → `ask_human` + 生成器版 `@flow`
+- 中途要等外部输入 → Interrupt：`ask_interrupt` + 生成器版 `@flow`
 
 ---
 

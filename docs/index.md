@@ -89,7 +89,7 @@ def triage(text: str) -> str:
 | `@step` | 一次 LLM 调用（同步 / 异步 / 流式都有） | [概念](concepts/step.md) · [API](api/step.md) |
 | `@flow` | 把多个 step 拼起来的普通 Python 函数 | [概念](concepts/flow.md) · [API](api/flow.md) |
 | `Tool` / `@tool` | 工具 = `BaseModel` + `run() -> str` | [概念](concepts/tool.md) · [API](api/tool.md) |
-| `ask_human` / `run_flow` | 生成器挂起等人类回应 | [概念](concepts/human.md) · [API](api/human.md) |
+| Interrupt / `ask_interrupt` | 生成器挂起，等待外部输入后继续 | [概念](concepts/interrupt.md) · [API](api/interrupt.md) |
 | `mcp_toolset` | MCP 远端工具翻成本地 `Tool` 子类 | [概念](concepts/mcp.md) · [API](api/mcp.md) |
 | 可观测性 | 接 Langfuse / OTel / APM instrument OpenAI SDK 层；测试用 `FakeClient` | [概念](concepts/observability.md) |
 
@@ -100,7 +100,7 @@ def triage(text: str) -> str:
 | 想做的事 | 去 |
 |---|---|
 | **先看得见**——浏览器里看 schema 逐字段被填出来、native + MCP 工具混合调度 | [Demos](demos/index.md) |
-| **照着抄**——一个可跑脚本对应一种姿势（研究、流式、ReAct、human-in-the-loop、Langfuse 接入 …） | [Cookbook](cookbook/index.md) |
+| **照着抄**——一个可跑脚本对应一种姿势（研究、流式、ReAct、interrupt review、Langfuse 接入 …） | [Cookbook](cookbook/index.md) |
 | **读进去**——`@step` / `@flow` / `Tool` / `mcp_toolset` 各是什么、为什么长这样 | [概念](concepts/index.md) |
 | **挑毛病**——完整的"故意不做"清单、为什么不发明 DSL / 不对标 ChatGPT 丝滑度 | [哲学与定位](concepts/philosophy.md) |
 | **查签名**——每个公共符号的类型和 docstring | [API 参考](api/step.md) |

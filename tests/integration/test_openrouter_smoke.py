@@ -166,9 +166,9 @@ def test_live_stream_yields_progressively(openrouter_sync: OpenAI, model: str) -
     assert final.conclusion
 
 
-def test_live_human_in_the_loop_review(openrouter_sync: OpenAI, model: str) -> None:
+def test_live_interrupt_review(openrouter_sync: OpenAI, model: str) -> None:
     """真实 LLM 出计划 → 模拟人工审核后继续。"""
-    from pyxis import ask_human, flow, run_flow
+    from pyxis import ask_interrupt, flow, run_flow
 
     class Plan(BaseModel):
         goal: str = Field(description="一行复述目标")
@@ -186,14 +186,14 @@ def test_live_human_in_the_loop_review(openrouter_sync: OpenAI, model: str) -> N
     @flow
     def plan_then_review(q: str):
         plan = make_plan(q)
-        decision: Decision = yield ask_human("审核", schema=Decision, plan=plan.goal)
+        decision: Decision = yield ask_interrupt("审核", schema=Decision, plan=plan.goal)
         if not decision.approve:
             return {"status": "rejected"}
         return {"status": "done", "plan_goal": plan.goal}
 
     result = run_flow(
         plan_then_review("怎么演示声明式 CoT 框架？"),
-        on_ask=lambda q: Decision(approve=True),
+        on_interrupt=lambda q: Decision(approve=True),
     )
     assert result["status"] == "done"
     assert result["plan_goal"]

@@ -1,7 +1,7 @@
-"""Human-in-the-loop：LLM 出计划 → 人拍板 → 执行或驳回。
+"""Interrupt review：LLM 出计划 → 外部审阅 → 执行或驳回。
 
-- `@flow` 写成生成器函数，中间 `yield ask_human(...)` 挂起等人回应。
-- `run_flow(gen, on_ask=...)` 负责驱动：把问题丢给回调，把答案 send
+- `@flow` 写成生成器函数，中间 `yield ask_interrupt(...)` 挂起等外部输入。
+- `run_flow(gen, on_interrupt=...)` 负责驱动：把请求丢给回调，把答案 send
   回生成器。
 
 渲染给人看的部分由应用层 `_render_plan` 拼字段做，换 Web UI / Slack bot /
@@ -12,7 +12,7 @@
 回归都简单。要极致对话流畅度走 Anthropic SDK 原生 tool use 更直。
 
 跑起来：
-    OPENROUTER_API_KEY=... uv run --env-file .env python examples/human_review.py
+    OPENROUTER_API_KEY=... uv run --env-file .env python examples/interrupt_review.py
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ import os
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import ask_human, flow, run_flow, step
+from pyxis import ask_interrupt, flow, run_flow, step
 
 MODEL = "openai/gpt-5.4-nano"
 
@@ -61,10 +61,10 @@ def plan_with_review(question: str, max_rounds: int = 3):
     """LLM 写计划 → 人审 → 根据意见迭代。最多三轮。"""
     plan = make_plan(question)
     for _ in range(max_rounds):
-        decision: ReviewDecision = yield ask_human(
+        decision: ReviewDecision = yield ask_interrupt(
             "请审阅这个计划",
             schema=ReviewDecision,
-            plan=plan,  # 直接把 Plan 实例塞进 context，怎么渲染留给 on_ask 决定
+            plan=plan,  # 直接把 Plan 实例塞进 context，怎么渲染留给回调决定
         )
         if decision.approve:
             return {"status": "approved", "plan": plan}
@@ -88,10 +88,10 @@ def render_plan(plan: Plan) -> str:
     return "\n".join(lines)
 
 
-def terminal_on_ask(q) -> ReviewDecision:
+def terminal_on_interrupt(q) -> ReviewDecision:
     """终端前端：渲染自然语言，接收 y/N + 意见。
 
-    on_ask 拿到 HumanQuestion 之后怎么展示、怎么收答案，完全是这一层
+    on_interrupt 拿到 InterruptRequest 之后怎么展示、怎么收答案，完全是这一层
     的自由。框架管的只是"把问题交给你、把你的答案送回生成器"。
     """
     print("\n=======  人工审核点  =======")
@@ -109,7 +109,7 @@ def terminal_on_ask(q) -> ReviewDecision:
 def main() -> None:
     result = run_flow(
         plan_with_review("如何用 30 分钟做一个 agent 框架的演示？"),
-        on_ask=terminal_on_ask,
+        on_interrupt=terminal_on_interrupt,
     )
 
     print("\n=======  结果  =======")

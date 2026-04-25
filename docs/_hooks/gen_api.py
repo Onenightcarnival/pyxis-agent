@@ -14,7 +14,7 @@ MODULES: list[tuple[str, str]] = [
     ("flow", "Flow / AsyncFlow + @flow"),
     ("tool", "Tool 基类 + @tool 装饰器"),
     ("client", "FakeClient / FakeCall：测试用的确定性后端"),
-    ("human", "human-in-the-loop：让 agent 停下来等人回应"),
+    ("interrupt", "Interrupt：让 flow 停下来等外部输入"),
     ("mcp", "MCP 适配层"),
 ]
 

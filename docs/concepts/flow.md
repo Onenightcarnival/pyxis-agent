@@ -73,7 +73,7 @@ result = await triage("...")
 ## 什么时候不用 Flow
 
 - 只调一次 LLM → `@step` 就够
-- loop 要被外部驱动或中断 → 生成器版 `@flow` + `run_flow`（见 [human-in-the-loop](human.md)）
+- loop 要被外部驱动或中断 → 生成器版 `@flow` + `run_flow`（见 [Interrupt](interrupt.md)）
 
 ---
 

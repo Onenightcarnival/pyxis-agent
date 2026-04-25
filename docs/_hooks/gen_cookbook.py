@@ -82,9 +82,9 @@ RECIPES: list[tuple[str, str, str]] = [
     ),
     # --- 工程化：人机协作 + 观测 + 评测 + 合规 ---
     (
-        "human_review",
-        "Human-in-the-loop",
-        "生成器 flow + `ask_human` 挂起等人回应。",
+        "interrupt_review",
+        "Interrupt review",
+        "生成器 flow + `ask_interrupt` 挂起；人工审阅是 interrupt 的一种来源。",
     ),
     (
         "guardrails",
