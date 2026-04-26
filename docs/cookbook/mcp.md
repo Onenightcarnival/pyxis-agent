@@ -1,4 +1,4 @@
-# MCP
+# MCP 接入说明
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 可以把工具部署成独立服务。`mcp_toolset` 会把远端工具翻成本地 `Tool` 子类。
 
 ## 最小例子

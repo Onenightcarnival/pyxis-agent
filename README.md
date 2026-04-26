@@ -70,10 +70,10 @@ assert v.sentiment == "positive"
 ## 继续读
 
 - [文档站首页](https://onenightcarnival.github.io/pyxis-agent/)——核心概念与场景化 Cookbook
-- [定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——pyxis 做什么、不做什么
+- [项目定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——pyxis 做什么、不做什么
 
 - [Cookbook](https://onenightcarnival.github.io/pyxis-agent/cookbook/)——
-  测试、可观测、MCP、Interrupt 和 agent 模式的用法
+  入门、多步编排、数据状态、工具接入和工程化用法
 
 ## 仓库结构 ↔ 文档站
 

@@ -140,15 +140,11 @@ src/pyxis/        库代码
   mcp.py          MCPServer / StdioMCP / HttpMCP / mcp_toolset MCP 适配层
 tests/            pytest（用 FakeClient，零网络）
 tests/integration/ 真实 LLM 烟雾测试，需要 OPENROUTER_API_KEY
-examples/         跑得起来的单文件 demo（用 OpenRouter OpenAI SDK 实例）——三类：
-                  ① 入门（research / streaming_demo / plan_then_execute）
-                  ② 热词翻译（rag_minimal / batch_extraction /
-                    router_dispatch / memory_kv / multi_agent /
-                    reflect_and_revise / coding_harness / evals）
-                  ③ 工具 + 工程化（agent_tool_use / mcp_tool_use /
-                    interrupt_review / guardrails / with_langfuse）
+examples/         跑得起来的单文件 demo（用 OpenRouter OpenAI SDK 实例）——
+                  文档站按五类编排：入门、多步编排、数据和状态、
+                  工具和外部系统、工程化
 docs/             MkDocs Material 文档站源
-  concepts/       定位与每个概念的说明 + observability.md（Langfuse 接入）
+  concepts/       项目定位与 Step / Tool 两个核心概念
   _hooks/         构建期钩子：
                     gen_api.py      每个模块翻成 API 页
                     gen_cookbook.py examples/*.py 渲染成 Cookbook 页
@@ -175,7 +171,8 @@ mkdocs.yml        文档站配置
   对应页面。变更历史由 git log + GitHub Releases 承担，不再维护
   `CHANGELOG.md`。
 - **文档站**：概念栏只放 `Step` / `Tool` 两个核心概念；
-  测试、可观测、MCP、Interrupt 和 agent 模式都归到 Cookbook。
+  Cookbook 用案例矩阵组织入门、多步编排、数据和状态、工具和外部系统、
+  工程化。
   `uv run --group docs mkdocs serve` 本地预览；
   `uv run --group docs mkdocs build --strict` 作为验收门槛。改过
   源码 docstring 后最好本地跑一次 strict build。

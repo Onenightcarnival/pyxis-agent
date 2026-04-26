@@ -1,4 +1,4 @@
-# 可观测
+# 可观测接入说明
 `@step(client=...)` 使用 OpenAI SDK 实例。Langfuse、OpenTelemetry、Datadog、New Relic 等工具可以接在 SDK 层，覆盖每次 step 调用。
 pyxis 不提供单独的 trace API。
 

@@ -1,4 +1,4 @@
-# Interrupt
+# Interrupt 接入说明
 
 Interrupt 用生成器流程表达外部输入点。流程运行到某一步时 `yield ask_interrupt(...)`，应用层收集答案后再把答案送回生成器。
 

@@ -1,4 +1,4 @@
-# 测试与 FakeClient
+# 单元测试
 单元测试使用 `FakeClient`，不访问真实 LLM。`FakeClient` 按队列顺序返回预置的 Pydantic 实例，并把每次调用记录到 `.calls`。
 
 ## 最小例子

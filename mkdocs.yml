@@ -104,36 +104,36 @@ nav:
       - 对比其他框架: comparison.md
   - 概念:
       - concepts/index.md
-      - 定位: concepts/philosophy.md
-      - Step：schema-first 单次调用: concepts/step.md
-      - Tool：action 即 schema: concepts/tool.md
+      - 项目定位: concepts/philosophy.md
+      - Step：结构化调用: concepts/step.md
+      - Tool：结构化动作: concepts/tool.md
   - Cookbook:
       - cookbook/index.md
-      - 测试:
-          - FakeClient 与断言: cookbook/testing.md
-          - Evals 一把梭: cookbook/evals.md
-      - 可观测:
-          - 可观测总览: cookbook/observability.md
-          - 接入 Langfuse: cookbook/with_langfuse.md
-      - MCP:
-          - MCP 总览: cookbook/mcp.md
-          - MCP 混合注册: cookbook/mcp_tool_use.md
-      - Interrupt:
-          - Interrupt 总览: cookbook/interrupt.md
-          - Interrupt review: cookbook/interrupt_review.md
-      - Agent 模式:
-          - 端到端：分析 + 规划: cookbook/research.md
-          - 流式输出: cookbook/streaming_demo.md
-          - Plan-then-execute: cookbook/plan_then_execute.md
-          - RAG 最小版: cookbook/rag_minimal.md
+      - 入门:
+          - 两步结构化调用: cookbook/research.md
+          - 字段流式输出: cookbook/streaming_demo.md
           - 批量结构化抽取: cookbook/batch_extraction.md
-          - Router / 意图分派: cookbook/router_dispatch.md
-          - 长期记忆 KV: cookbook/memory_kv.md
-          - 两个 agent 协作: cookbook/multi_agent.md
-          - Reflection / critic-refiner: cookbook/reflect_and_revise.md
-          - ReAct agent + 工具调用: cookbook/agent_tool_use.md
-          - Agentic harness: cookbook/coding_harness.md
-          - Guardrails：输入/输出校验: cookbook/guardrails.md
+      - 多步编排:
+          - 计划后执行: cookbook/plan_then_execute.md
+          - 意图路由: cookbook/router_dispatch.md
+          - 自我检查与改写: cookbook/reflect_and_revise.md
+          - 人工审阅节点: cookbook/interrupt_review.md
+          - Interrupt 接入说明: cookbook/interrupt.md
+      - 数据和状态:
+          - 检索增强问答: cookbook/rag_minimal.md
+          - 轻量记忆: cookbook/memory_kv.md
+          - 双 agent 协作: cookbook/multi_agent.md
+      - 工具和外部系统:
+          - 本地工具调用循环: cookbook/agent_tool_use.md
+          - 文件工具任务循环: cookbook/coding_harness.md
+          - MCP 接入说明: cookbook/mcp.md
+          - MCP 工具接入: cookbook/mcp_tool_use.md
+      - 工程化:
+          - 单元测试: cookbook/testing.md
+          - 小数据集评测: cookbook/evals.md
+          - 可观测接入说明: cookbook/observability.md
+          - Langfuse 接入: cookbook/with_langfuse.md
+          - 输入输出护栏: cookbook/guardrails.md
   - API 参考:
       - pyxis.step: api/step.md
       - pyxis.tool: api/tool.md

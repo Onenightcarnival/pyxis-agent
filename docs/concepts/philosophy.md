@@ -1,4 +1,4 @@
-# 定位
+# 项目定位
 
 ## 基本设定
 pyxis 把一次 LLM 调用包装成函数：输入是一段任务说明，输出是一个 Pydantic 实例。后续逻辑继续用 Python 处理这个实例。
@@ -71,6 +71,6 @@ LLM 的不确定性留在 step 里；step 之外还是普通 Python。
 - client 封装。`@step(client=...)` 使用 `openai.OpenAI` / `AsyncOpenAI`
   或 `instructor.from_openai(...)` 的实例
 - 观测体系（trace / usage / hook）。接 Langfuse / OpenTelemetry / APM，
-  见 [可观测](../cookbook/observability.md)
+  见 [可观测接入说明](../cookbook/observability.md)
 
 多轮对话、assistant 轮次控制、图式编排、长期状态管理，可以使用 OpenAI SDK、LangGraph、Temporal 或业务系统。

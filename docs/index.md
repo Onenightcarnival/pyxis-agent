@@ -100,5 +100,5 @@ def triage(text: str) -> str:
 |---|---|
 | 找可运行示例 | [Cookbook](cookbook/index.md) |
 | 了解核心 API | [概念](concepts/index.md) |
-| 看设计边界 | [定位](concepts/philosophy.md) |
+| 看设计边界 | [项目定位](concepts/philosophy.md) |
 | 查类型和签名 | [API 参考](api/step.md) |
