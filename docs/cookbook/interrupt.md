@@ -14,6 +14,7 @@ Interrupt 用生成器流程表达外部输入点。流程运行到某一步时 
 ```python
 from pyxis import ask_interrupt, run_flow
 
+
 def booking():
     destination = yield ask_interrupt("你要去哪？")
     budget = yield ask_interrupt(f"去 {destination} 的预算？")
@@ -26,9 +27,9 @@ def booking():
 手动驱动：
 ```python
 gen = booking()
-q = next(gen)                     # 拿到第一个 InterruptRequest
+q = next(gen)  # 拿到第一个 InterruptRequest
 answer = input(q.question)
-q = gen.send(answer)              # 把答案送回生成器
+q = gen.send(answer)  # 把答案送回生成器
 ...
 ```
 
@@ -46,7 +47,7 @@ result = run_flow(booking(), on_interrupt=lambda q: input(q.question))
 async def booking():
     destination = yield ask_interrupt("你要去哪？")
     ...
-    yield finish(result)   # async gen 禁用 return 值，用 finish 代替
+    yield finish(result)  # async gen 禁用 return 值，用 finish 代替
 ```
 ```python
 result = await run_aflow(booking(), on_interrupt=some_async_fn)

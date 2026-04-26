@@ -164,6 +164,9 @@ mkdocs.yml        文档站配置
 
 - 包管理器：**uv**（`uv sync`、`uv run`）。禁止直接 pip。
 - Lint/格式化：**ruff**（`uv run ruff check`、`uv run ruff format`）。
+  Markdown 里的 Python fenced code block 也按 ruff 格式整理；ruff 不直接改
+  `.md`，就把代码块抽出来用 `ruff format --stdin-filename snippet.py -`
+  格式化后写回。
 - 测试：**pytest**（`uv run pytest`）。单元测试必须零网络通过。
 - 集成测试：`uv run --env-file .env pytest tests/integration/`，需要
   `OPENROUTER_API_KEY`。
@@ -193,7 +196,8 @@ mkdocs.yml        文档站配置
 6. 动过 Client、Step、provider 相关代码时，跑集成套件一次。
 7. 公共面变了同步 CLAUDE.md / AGENTS.md、README 与文档站。
 8. Commit，正文承担 "本次做了什么、为什么" 的职责（CHANGELOG 已废弃，
-   git log + GitHub Releases 就是变更历史）。
+   git log + GitHub Releases 就是变更历史）。由 Codex 提交时，commit
+   message 末尾固定加 `Co-authored-by: Codex <codex@openai.com>`。
 
 临时规格不长期留在仓库里。当前事实放在代码、测试、docstring 和正式文档；
 历史解释交给 commit message。

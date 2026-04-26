@@ -5,14 +5,22 @@
 ```python
 from pydantic import BaseModel
 from pyxis import FakeClient, step
+
+
 class Plan(BaseModel):
     goal: str
     next_action: str
+
+
 fake = FakeClient([Plan(goal="g", next_action="a")])
+
+
 @step(output=Plan, client=fake, params={"temperature": 0})
 def plan(topic: str) -> str:
     """根据主题生成计划。"""
     return topic
+
+
 result = plan("build x")
 assert result == Plan(goal="g", next_action="a")
 assert fake.calls[0].messages[-1]["content"] == "build x"

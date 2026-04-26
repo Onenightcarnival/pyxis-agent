@@ -6,14 +6,22 @@
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from pyxis import step
+
 client = OpenAI(api_key="sk-...")
+
+
 class Summary(BaseModel):
     """简洁摘要。先抽关键点，再提炼一句话。"""
+
     key_points: list[str] = Field(description="从文章里抽取 3-5 个关键点")
     one_liner: str = Field(description="基于关键点写一句话摘要，不堆砌修辞")
+
+
 @step(output=Summary, model="gpt-4o", client=client)
 def summarize(article: str) -> str:
     return f"请摘要这篇文章：\n{article}"
+
+
 s = summarize("Python 3.12 新增 PEP 695 泛型语法...")
 print(s.one_liner)
 ```
@@ -44,8 +52,8 @@ Pydantic 字段顺序会影响结构化输出的生成顺序。下面的 `Summar
 颠倒顺序：
 ```python
 class SummaryReversed(BaseModel):
-    one_liner: str          # 先一句话
-    key_points: list[str]   # 再补关键点
+    one_liner: str  # 先一句话
+    key_points: list[str]  # 再补关键点
 ```
 这会让模型先写一句话，再补关键点。需要先收集材料再下结论时，不要这样排。
 
@@ -53,10 +61,15 @@ class SummaryReversed(BaseModel):
 `@step` 根据函数类型返回同步或异步 step。client 要匹配函数类型：
 ```python
 from openai import AsyncOpenAI
+
 aclient = AsyncOpenAI(api_key="sk-...")
+
+
 @step(output=Summary, model="gpt-4o", client=aclient)
 async def summarize_async(article: str) -> str:
     return article
+
+
 s = await summarize_async("...")
 ```
 
@@ -67,7 +80,7 @@ s = await summarize_async("...")
 ## 流式输出
 ```python
 for partial in summarize.stream(article):
-    print(partial)   # Summary 实例，字段从 None 逐步填满
+    print(partial)  # Summary 实例，字段从 None 逐步填满
 ```
 
 - 底层使用 instructor 的 `create_partial`
@@ -108,10 +121,12 @@ def route(user_input: str) -> str:
 ```python
 # ① 原生 OpenAI SDK
 from openai import OpenAI, AsyncOpenAI
+
 sync_client = OpenAI(base_url="...", api_key="...")
 async_client = AsyncOpenAI(base_url="...", api_key="...")
 # ② instructor 已 patch 的实例（例如接 Langfuse）
 import instructor
+
 traced_client = instructor.from_openai(some_langfuse_openai)
 ```
 原生实例会在第一次调用时转换成 instructor client。`def` / `async def` 与 client 类型不匹配时会抛 `TypeError`。
@@ -127,10 +142,15 @@ openrouter = OpenAI(
 `FakeClient` 按队列顺序返回预置的 Pydantic 实例，单元测试不需要访问真实 LLM：
 ```python
 from pyxis import FakeClient
+
 fake = FakeClient([Summary(key_points=["a"], one_liner="a one-liner")])
+
+
 @step(output=Summary, client=fake)
 def summarize(article: str) -> str:
     return article
+
+
 assert summarize("任意文本").one_liner == "a one-liner"
 assert len(fake.calls) == 1
 assert fake.calls[0].messages[-1]["content"] == "任意文本"

@@ -14,10 +14,13 @@ export LANGFUSE_HOST=https://cloud.langfuse.com
 import os
 from langfuse.openai import OpenAI
 from pyxis import step
+
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ["OPENROUTER_API_KEY"],
 )
+
+
 @step(output=Plan, model="gpt-4o", client=client)
 def plan(topic: str) -> str:
     """..."""
@@ -27,6 +30,8 @@ def plan(topic: str) -> str:
 多 step 流程可以在普通编排函数外再加 `@observe`。
 ```python
 from langfuse.decorators import observe
+
+
 @observe()
 def research(topic: str):
     return plan_from(analyze(topic))
@@ -39,6 +44,7 @@ uv add opentelemetry-instrumentation-openai
 ```
 ```python
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
+
 OpenAIInstrumentor().instrument()
 ```
 之后 `@step` 调用会进入 OTel collector。
@@ -50,6 +56,8 @@ OpenAIInstrumentor().instrument()
 ```python
 import functools
 import time
+
+
 def timed(step_fn):
     @functools.wraps(step_fn)
     def wrapper(*args, **kwargs):
@@ -58,7 +66,10 @@ def timed(step_fn):
             return step_fn(*args, **kwargs)
         finally:
             print(f"{step_fn.__name__} 用了 {(time.perf_counter() - t0) * 1000:.0f}ms")
+
     return wrapper
+
+
 @timed
 @step(output=Plan, model="gpt-4o", client=my_client)
 def plan(topic: str) -> str: ...

@@ -5,6 +5,7 @@
 ```python
 from pyxis import mcp_toolset
 from pyxis.mcp import MCPServer, StdioMCP, HttpMCP
+
 server = MCPServer(
     name="fs",
     transport=StdioMCP(command="python", args=["-m", "my_mcp_server"]),
@@ -23,6 +24,7 @@ async with mcp_toolset(server) as tools:
 ```python
 async with mcp_toolset(server) as remote_tools:
     Tools = Union[LocalTool, *remote_tools]
+
     class Action(BaseModel):
         action: Annotated[Tools, Field(discriminator="kind")]
 ```
@@ -33,15 +35,13 @@ async with mcp_toolset(server) as remote_tools:
 
   ```python
   StdioMCP(command="npx", args=["-y", "@modelcontextprotocol/server-filesystem", "/tmp"])
-
-  ```
+```
 
 - **Streamable HTTP**（MCP 2024-11-05）：走 HTTP，兼容 JSON / SSE 响应体，使用 `Mcp-Session-Id` 追踪会话
 
   ```python
   HttpMCP(url="https://mcp.example.com/")
-
-  ```
+```
 两种传输都配置在 `MCPServer` 里，由 `mcp_toolset` 建立连接。
 
 ## 对接 FastMCP

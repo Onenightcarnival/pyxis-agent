@@ -19,22 +19,35 @@
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from pyxis import step
+
 client = OpenAI(api_key="...")
+
+
 class Analysis(BaseModel):
     observation: str = Field(description="你注意到什么")
     reasoning: str = Field(description="为什么重要")
     conclusion: str = Field(description="一句话结论")
+
+
 class Plan(BaseModel):
     goal: str
     steps: list[str]
+
+
 @step(output=Analysis, model="gpt-4o", client=client)
 def analyze(topic: str) -> str:
     return f"请严谨分析这个主题：{topic}"
+
+
 @step(output=Plan, model="gpt-4o", client=client)
 def plan_from(a: Analysis) -> str:
     return f"请把这份分析转成计划：\n{a.model_dump_json()}"
+
+
 def research(topic: str) -> Plan:
     return plan_from(analyze(topic))
+
+
 result = research("AI agents")
 ```
 说明：
@@ -46,16 +59,24 @@ result = research("AI agents")
 ```python
 from langgraph.graph import StateGraph, END
 from typing import TypedDict
+
+
 class State(TypedDict):
     topic: str
     analysis: str | None
     plan: str | None
+
+
 def analyze_node(state: State) -> State:
     response = llm.invoke(f"分析主题：{state['topic']}")
     return {"analysis": response.content}
+
+
 def plan_node(state: State) -> State:
     response = llm.invoke(f"基于分析：{state['analysis']}\n做计划")
     return {"plan": response.content}
+
+
 workflow = StateGraph(State)
 workflow.add_node("analyze", analyze_node)
 workflow.add_node("plan", plan_node)
@@ -73,24 +94,35 @@ result = graph.invoke({"topic": "AI agents"})
 ### DSPy 的典型写法
 ```python
 import dspy
+
+
 class Analyze(dspy.Signature):
     """你是严谨的分析师。"""
+
     topic: str = dspy.InputField()
     observation: str = dspy.OutputField(desc="你注意到什么")
     reasoning: str = dspy.OutputField(desc="为什么重要")
     conclusion: str = dspy.OutputField(desc="一句话结论")
+
+
 class PlanFrom(dspy.Signature):
     """你把分析转成计划。"""
+
     analysis: str = dspy.InputField()
     goal: str = dspy.OutputField()
     steps: list[str] = dspy.OutputField()
+
+
 class Research(dspy.Module):
     def __init__(self):
         self.analyze = dspy.ChainOfThought(Analyze)
         self.plan = dspy.ChainOfThought(PlanFrom)
+
     def forward(self, topic):
         a = self.analyze(topic=topic)
         return self.plan(analysis=str(a))
+
+
 result = Research()(topic="AI agents")
 ```
 说明：

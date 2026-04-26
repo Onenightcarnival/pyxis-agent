@@ -31,14 +31,22 @@ Python 3.12+。
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from pyxis import step
+
 client = OpenAI(api_key="sk-...")
+
+
 class Verdict(BaseModel):
     """情感判定结果。字段顺序就是单次调用内部的生成顺序。"""
+
     sentiment: str = Field(description="判断文本情感：positive / negative / neutral")
     confidence: float = Field(description="给出 0-1 之间的置信度")
+
+
 @step(output=Verdict, model="gpt-4o-mini", client=client)
 def classify(text: str) -> str:
     return f"请判断这段文本的情感倾向：{text}"
+
+
 v = classify("今天简直完美")
 assert v.sentiment == "positive"
 ```
@@ -64,8 +72,8 @@ assert v.sentiment == "positive"
 def triage(text: str) -> str:
     v = classify(text)
     if v.confidence < 0.6:
-        return escalate(text)            # 另一个 @step
-    return auto_reply(v.sentiment, text) # 另一个 @step
+        return escalate(text)  # 另一个 @step
+    return auto_reply(v.sentiment, text)  # 另一个 @step
 ```
 
 ---
