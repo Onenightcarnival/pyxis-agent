@@ -47,7 +47,7 @@ class Verdict(BaseModel):
 
 @step(output=Verdict, model="gpt-4o-mini", client=client)
 def classify(text: str) -> str:
-    return f"请判断这段文本的情感倾向：{text}"
+    return f"用户原文：{text}"
 
 
 v = classify("今天简直完美")
@@ -58,6 +58,9 @@ assert v.sentiment == "positive"
 
 - **schema as workflow** — `Verdict` 字段顺序（`sentiment` 在 `confidence` 前）= LLM 的思维链
 - **code as contract** — Pydantic 字段、函数签名和函数体返回的输入文本共同定义这次调用；docstring 不进入 LLM 上下文
+
+`sentiment` 和 `confidence` 怎么判断，写在 schema 里；函数返回值只放本次调用的材料。
+不要把 response model 再用自然语言复述成一段 prompt。
 
 注意这里有两层类型：`classify` 的函数体是 input builder，`-> str` 表示它
 只负责把参数加工成本次调用的 `user` message；经过 `@step` 装饰后，名字

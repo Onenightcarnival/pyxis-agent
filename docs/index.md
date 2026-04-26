@@ -46,7 +46,7 @@ class Verdict(BaseModel):
 
 @step(output=Verdict, model="gpt-4o-mini", client=client)
 def classify(text: str) -> str:
-    return f"请判断这段文本的情感倾向：{text}"
+    return f"用户原文：{text}"
 
 
 v = classify("今天简直完美")
@@ -59,6 +59,9 @@ assert v.sentiment == "positive"
 - 被 `@step` 装饰后，`classify` 绑定到 `Step[Verdict]`；调用 `classify(...)`
   会完成 LLM 调用，返回 `Verdict` 实例
 - 函数 docstring 只用于 Python 文档，不进入 LLM 上下文
+
+稳定的判断规则放进 schema；函数返回值只放本次输入材料。不要把 response model
+再翻译成一段自然语言 prompt。
 
 ---
 

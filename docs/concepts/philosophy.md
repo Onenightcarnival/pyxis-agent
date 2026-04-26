@@ -11,6 +11,29 @@ pyxis 从函数式思想的视角看待 LLM 调用：把大模型视为一个带
 - Pydantic schema 是单次调用的主契约，字段顺序表示输出步骤
 - 被装饰函数是 input builder，返回值是本次调用的输入消息；装饰后的 step callable 返回 Pydantic 实例；函数 docstring 不进入 LLM 上下文
 
+## schema 不是 prompt 的翻译稿
+不要把一段口水 prompt 换个地方放。输出契约应该写成代码。
+
+字段名、字段类型、`Field(description=...)` 和字段顺序，已经说明了要产出什么、先产出什么、可选值是什么。input builder 只放本次调用才有的内容，比如用户原文、业务背景、少量角色设定。不要再用自然语言把 response model 复述一遍：
+
+```python
+class Feedback(BaseModel):
+    summary: str = Field(description="一句话还原用户说的是什么")
+    sentiment: Literal["positive", "neutral", "negative"] = Field(description="用户的情感倾向")
+    topic: Literal["shipping", "quality", "app_bug", "price", "service", "other"]
+    severity: Literal["low", "medium", "high"] = Field(
+        description="阻塞下单/封号 high；体验抱怨 medium；一般吐槽 low"
+    )
+```
+
+```python
+@step(output=Feedback, model=MODEL, client=openrouter)
+def extract(text: str) -> str:
+    return f"客户反馈原文：{text}"
+```
+
+`summary -> sentiment -> topic -> severity` 这条顺序由 schema 声明，不需要在 prompt 里再写“先总结，再判断情感、话题和严重度”。长期生效的规则放字段定义；本次输入的材料放函数返回值。
+
 ## 函数式视角
 在 pyxis 里，一次 LLM 调用被写成一个函数调用。这个函数边界可组合、可替换，也方便测试。
 

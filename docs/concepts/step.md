@@ -19,7 +19,7 @@ class Summary(BaseModel):
 
 @step(output=Summary, model="gpt-4o", client=client)
 def summarize(article: str) -> str:
-    return f"请摘要这篇文章：\n{article}"
+    return f"文章原文：\n{article}"
 
 
 s = summarize("Python 3.12 新增 PEP 695 泛型语法...")
@@ -34,8 +34,8 @@ print(s.one_liner)
   `summarize(article)` 会完成 LLM 调用，返回 `Summary` 实例
 - `summarize` 的 docstring 只用于 Python 文档，不进入 LLM 上下文
 
-如果要给模型更多任务说明，优先写进 Pydantic schema；与本次输入强相关的上下文，
-写进函数返回的字符串。
+更多任务要求优先写进 Pydantic schema；本次输入相关的上下文，写进函数返回的字符串。
+不要在 input builder 里把 response model 用自然语言重讲一遍。
 
 ## code as contract
 pyxis 里的 code-as-contract 指的是：一次 LLM 调用的约定写在 Python 类型和函数里。
@@ -47,6 +47,28 @@ pyxis 里的 code-as-contract 指的是：一次 LLM 调用的约定写在 Pytho
 - 装饰后的 step callable 返回 Pydantic 实例
 
 prompt 不藏在 docstring 里。函数 docstring 只给 Python 文档使用，不进入 LLM 上下文。
+
+## 少写口水 prompt
+`output=...` 已经把返回结构交给 Pydantic。input builder 不要再写：
+
+```python
+def summarize(article: str) -> str:
+    return f"""
+    你是一位摘要专家。请先抽取 3-5 个关键点，再基于关键点写一句话摘要。
+    输出字段包括 key_points 和 one_liner。
+
+    文章：{article}
+    """
+```
+
+这段话只有文章是新信息，其余都在重复 `Summary`。直接写：
+
+```python
+def summarize(article: str) -> str:
+    return f"文章原文：\n{article}"
+```
+
+规则放 schema，材料放 input builder。只有本次调用才知道的信息，才放进函数返回值；稳定的输出要求、枚举边界和生成顺序，都留在 Pydantic 模型里。
 
 ## 字段顺序
 Pydantic 字段顺序会影响结构化输出的生成顺序。下面的 `Summary` 会先生成 `key_points`，再生成 `one_liner`。

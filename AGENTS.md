@@ -36,6 +36,13 @@ pyxis 不抢这些位子。
   像 agent for machine 还是 agent for human？"之后，这句话才从模糊
   变清晰的。用户不写实现、不替 AI 收窄 API，但决定 taste 在哪里收敛。
 
+### 写作约定
+
+- 不写 AI 味儿、翻译腔。
+- 少做概念掰扯，少用中文语境里不地道的说法。
+- 平铺直叙表达观点。
+- 避免自证式口吻；不要为了证明自己合理而绕一圈。
+
 ### 自知之明（给未来读这份文档的 Codex）
 
 1. **训练偏置**是真实的。RLHF 倾向让模型保守、折衷、讨好、不冒险。
@@ -63,6 +70,9 @@ pyxis 不抢这些位子。
   不进入 LLM 上下文。
 - **schema as workflow**：Pydantic 输出模型的**字段顺序**就是思维链——
   LLM 必须自上而下把它们填完，于是 schema 直接声明了推理步骤。
+- **schema 不是 prompt 的翻译稿**：稳定的输出要求、枚举边界、字段顺序
+  放进 Pydantic；input builder 只补本次调用独有的材料和少量上下文。不要
+  把 response model 再用自然语言复述成一段口水 prompt。
 - **functional boundary**：pyxis 从函数式思想的视角看待 LLM 调用——把
   大模型视为一个带自然语言理解能力的函数，输入是一段任务说明，输出是
   一个 Pydantic 实例。
