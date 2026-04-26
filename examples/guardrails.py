@@ -1,11 +1,9 @@
 """输入前置过滤和输出后置校验。
-
-- 输入侧：在 flow 里调 step 之前用普通 Python 函数 `_prescreen` 扫一遍
+- 输入侧：在普通函数里调 step 之前用普通 Python 函数 `_prescreen` 扫一遍
   用户输入，命中黑名单（prompt injection、PII 模式）就 raise。
 - 输出侧：在 Pydantic 的 `@field_validator` 里做合规校验，失败
-  instructor 按 `max_retries` 自动重试；连续失败后抛出异常，flow 决定要
+  instructor 按 `max_retries` 自动重试；连续失败后抛出异常，普通函数决定要
   不要降级兜底。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/guardrails.py
 """
@@ -18,18 +16,14 @@ import re
 from openai import OpenAI
 from pydantic import BaseModel, Field, field_validator
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
 )
-
-
 # ---- 输入 gate：黑名单就是一组正则 ----
-
 INPUT_BLOCKLIST: list[tuple[re.Pattern, str]] = [
     (re.compile(r"(?i)ignore.*(previous|all).*(instruction|rule)"), "prompt_injection_en"),
     (re.compile(r"忽略.{0,6}(之前|以上|上面).{0,4}(指令|规则|要求|设定)"), "prompt_injection_zh"),
@@ -49,7 +43,6 @@ def _prescreen(user_input: str) -> None:
 
 
 # ---- 输出 validator：写在 schema 里，Instructor 会按它自动重试 ----
-
 OUTPUT_BLOCKLIST: list[tuple[re.Pattern, str]] = [
     (re.compile(r"(?i)\bAPI[_ -]?KEY\s*[:=]"), "api_key_leak"),
     (re.compile(r"(?i)\bDROP\s+TABLE\b"), "destructive_sql"),
@@ -78,10 +71,7 @@ def answer(user_input: str) -> str:
     )
 
 
-# ---- Flow：输入 gate → step（含输出 validator） ----
-
-
-@flow
+# ---- 显式编排：输入 gate → step（含输出 validator） ----
 def ask(user_input: str) -> str:
     _prescreen(user_input)
     return answer(user_input).reply

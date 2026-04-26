@@ -1,11 +1,9 @@
 """按用户意图分派到不同 handler。
-
 - `@step route`：输出 `{reasoning, intent}`，`intent` 是 `Literal[...]`。
 - 四个 handler 各是一个 `@step`，专门输入说明 + 专门 schema。
-- `@flow` 里就是 `match intent:` 四个分支，想加分类、想加预处理、想
+- 普通函数里就是 `match intent:` 四个分支，想加分类、想加预处理、想
   fan-out 多个 handler，都是改这段 Python。
 - router 用 `params={"temperature": 0}` 降低随机性；handler 不强制。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/router_dispatch.py
 """
@@ -18,10 +16,9 @@ from typing import Literal
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
@@ -29,8 +26,6 @@ openrouter = OpenAI(
 
 
 # ---- Router：Literal 标签即分派键 ----
-
-
 class Route(BaseModel):
     reasoning: str = Field(description="为什么选这个意图，一两句")
     intent: Literal["sql", "code_debug", "creative", "other"] = Field(
@@ -50,8 +45,6 @@ def route(user_input: str) -> str:
 
 
 # ---- 四个 handler：各有自己的 schema 和输入说明 ----
-
-
 class SqlAnswer(BaseModel):
     sql: str = Field(description="一句可执行的 SQL")
     note: str = Field(description="一句话解释这段 SQL 做了什么")
@@ -95,9 +88,6 @@ def handle_other(user_input: str) -> str:
 
 
 # ---- 分派：普通 Python match/case ----
-
-
-@flow
 def dispatch(user_input: str) -> tuple[str, BaseModel]:
     r = route(user_input)
     match r.intent:

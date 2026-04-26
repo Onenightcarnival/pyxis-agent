@@ -1,13 +1,10 @@
 """RAG 最小版：检索 + 作答各一份代码。
-
 - 检索：一个普通 Python 函数 `_retrieve`，关键词重叠度排序。换 vector DB
   就把函数体换成 `qdrant.search(...)`。
 - 作答：一个 `@step`，schema 字段顺序为 citations、reasoning、answer。
-- 编排：一个 `@flow` 把前两者串起来。
-
+- 编排：一个普通函数把前两者串起来。
 想让 LLM 自己决定要不要检索，可以把 `_retrieve` 包成 `Tool` 放进判别式联合
 即可（参考 `examples/agent_tool_use.py`）。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/rag_minimal.py
 """
@@ -20,18 +17,14 @@ import re
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
 )
-
-
 # ---- "知识库"：几条关于 pyxis 的事实。真场景换成 vector DB / 文档库 ----
-
 KB: list[str] = [
     "pyxis 是一个声明式思维链的 Python agent 框架，核心哲学是 schema as workflow。",
     "pyxis 里一次 LLM 调用叫 Step：schema 是主契约，函数体字符串返回是 user message。",
@@ -53,8 +46,6 @@ def _retrieve(query: str, k: int = 3) -> list[str]:
 
 
 # ---- Generation：字段顺序 = 先引用再作答，防止"先编后找"的幻觉 ----
-
-
 class Answer(BaseModel):
     citations: list[str] = Field(description="你用到了哪几条上下文（原文复制）")
     reasoning: str = Field(description="基于引用的推理过程")
@@ -70,10 +61,7 @@ def answer_with_context(question: str, context: str) -> str:
     )
 
 
-# ---- Flow：retrieve -> augment -> generate，就是一个普通 Python 函数 ----
-
-
-@flow
+# ---- 显式编排：retrieve -> augment -> generate，就是一个普通 Python 函数 ----
 def rag(question: str) -> Answer:
     chunks = _retrieve(question)
     context = "\n".join(f"- {c}" for c in chunks) if chunks else "（无相关资料）"
@@ -83,9 +71,7 @@ def rag(question: str) -> Answer:
 def main() -> None:
     question = "pyxis 里的 schema-as-workflow 是什么意思？"
     print(f"问题：{question}\n")
-
     ans = rag(question)
-
     print("=== 检索到的片段 ===")
     for c in _retrieve(question):
         print(f"  - {c}")

@@ -1,5 +1,4 @@
 """长期记忆：用 dict 做 KV store，一个 step 抽事实，一个 step 作答。
-
 - 每次回答只读取长期记忆快照。
 - 长期记忆是一个进程内 dict `_MEM`，换 Redis / SQLite / vec DB 就只改
   这部分。
@@ -7,7 +6,6 @@
   - `extract_facts`：从用户这句话抽出值得记的键值对（如果有）。
   - `answer`：基于 `_MEM` 快照作答；需要查的键列在 `recall_keys`。
 - Python 负责写入和查询，LLM 只生成 schema。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/memory_kv.py
 """
@@ -19,24 +17,18 @@ import os
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
 )
-
-
 # ---- 长期记忆 = 一个 dict，换存储只动这里 ----
-
 _MEM: dict[str, str] = {}
 
 
 # ---- Step 1：抽事实。字段就一个 dict，任务单一，nano 能稳定给 ----
-
-
 class Fact(BaseModel):
     key: str = Field(description="snake_case，如 user_name / user_project / user_favorite_design")
     value: str = Field(description="事实内容，尽量短")
@@ -57,8 +49,6 @@ def extract_facts(user: str) -> str:
 
 
 # ---- Step 2：作答。字段顺序：先列要查的键，再给 reply ----
-
-
 class Answer(BaseModel):
     recall_keys: list[str] = Field(
         description="你需要从记忆快照取哪些键来回答？只列快照里实际存在的键。"
@@ -76,20 +66,15 @@ def answer(mem_snapshot: str, user: str) -> str:
     )
 
 
-# ---- Flow：抽事实、写入、作答、可选读取。都是普通 Python ----
-
-
-@flow
+# ---- 显式编排：抽事实、写入、作答、可选读取。都是普通 Python ----
 def chat(turns: list[str]) -> list[str]:
     replies: list[str] = []
     for user_msg in turns:
         print(f"\n用户：{user_msg}")
-
         new = extract_facts(user_msg).facts
         for f in new:
             _MEM[f.key] = f.value
             print(f"  [mem_write] {f.key} = {f.value}")
-
         snapshot = "\n".join(f"  {k} = {v}" for k, v in _MEM.items())
         a = answer(snapshot, user_msg)
         if a.recall_keys:

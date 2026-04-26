@@ -1,10 +1,7 @@
 """示例用的 stdio MCP server。
-
 这个文件用 `mcp.server.fastmcp.FastMCP` 定义几个工具。pyxis 端通过
 `MCPServer + StdioMCP(command=..., args=["path/to/server.py"])` 启动子进程并连接。
-
 `examples/mcp_tool_use.py` 会自动把它作为子进程启动，也可以单独运行调试：
-
     uv run python examples/_mcp_demo_server.py
 """
 

@@ -1,9 +1,9 @@
-"""Interrupt：用生成器 flow 在中间挂起等外部输入。
+"""Interrupt：用生成器函数在中间挂起等外部输入。
 
-核心：`@flow` 本来就能接受生成器函数（`yield` + `return value`）。围着
-它加三样东西——`InterruptRequest`（需要什么外部输入）、`FlowResult`
-（终态哨兵）、`run_flow` / `run_aflow`（把生成器驱动起来并把外部答案
-send 回去）。
+核心：普通生成器函数用 `yield ask_interrupt(...)` 声明外部输入点。
+`InterruptRequest` 描述需要什么外部输入，`FlowResult` 是异步生成器的
+终态哨兵，`run_flow` / `run_aflow` 把生成器驱动起来并把外部答案 send
+回去。
 
 没有 checkpoint、没有 state 快照、没有特殊语法——生成器本身就是活的
 状态。外部参与者在中间就是一段普通 Python 控制流。
@@ -30,7 +30,7 @@ class InterruptRequest:
 
 @dataclass(frozen=True)
 class FlowResult:
-    """生成器 flow 的终态哨兵。异步生成器不能写 `return value`，用它替代。"""
+    """生成器流程的终态哨兵。异步生成器不能写 `return value`，用它替代。"""
 
     value: Any
 
@@ -41,7 +41,7 @@ def ask_interrupt(
     schema: type[BaseModel] | None = None,
     **context: Any,
 ) -> InterruptRequest:
-    """构造一个 `InterruptRequest`。约定在 `@flow` 生成器里以 `yield` 发出。
+    """构造一个 `InterruptRequest`。约定在生成器函数里以 `yield` 发出。
 
     - `schema` 非 None 时，驱动器会把 `on_interrupt` 的返回值先 validate
       成对应 Pydantic 实例再 send 回生成器。
@@ -52,7 +52,7 @@ def ask_interrupt(
 
 
 def finish(value: Any) -> FlowResult:
-    """构造一个终态哨兵。建议作为 async 生成器 flow 的最后一个 yield。"""
+    """构造一个终态哨兵。建议作为 async 生成器流程的最后一个 yield。"""
     return FlowResult(value=value)
 
 
@@ -71,7 +71,7 @@ def run_flow(
     *,
     on_interrupt: Callable[[InterruptRequest], Any],
 ) -> Any:
-    """同步驱动一个 `@flow` 生成器。"""
+    """同步驱动一个生成器流程。"""
     try:
         req = next(gen)
     except StopIteration as stop:

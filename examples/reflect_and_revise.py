@@ -1,15 +1,11 @@
 """draft、critique、revise 循环：写一版，检查问题，再修改。
-
 行业里叫 reflection、self-correction、critic-refiner、LLM-as-a-judge loop，
 基本结构都是这三步加一个 while。
-
 - 三个 `@step`：`draft` / `critique` / `revise`。critique 的字段顺序是
   issues、severity、score。
-- 一个 `@flow` 里的 while 循环做轮次控制，通过条件是 score≥阈值且
+- 一个普通函数里的 while 循环做轮次控制，通过条件是 score≥阈值且
   severity != "high"。
-
 示例会打印每一轮草稿、问题和分数。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/reflect_and_revise.py
 """
@@ -22,18 +18,16 @@ from typing import Literal
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
 MAX_CHARS = 100
 TARGET_SCORE = 8
 MAX_ROUNDS = 4
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
 )
-
 SOURCE = (
     "pyxis-agent 是一个 Python 语言实现的 agent 开发框架，它的核心理念是"
     "把原本用自然语言描述的多步推理过程改写成 Pydantic schema 定义的字段"
@@ -43,8 +37,6 @@ SOURCE = (
 
 
 # ---- 三个 schema，三段隐式思维链 ----
-
-
 class Draft(BaseModel):
     keywords: list[str] = Field(description="原文里不能丢的 3-5 个关键信息点")
     text: str = Field(description="信息完整的第一版 tagline，允许偏长（60-90 字）")
@@ -65,8 +57,6 @@ class Revision(BaseModel):
 
 
 # ---- 三个 step：schema 是主契约，函数体返回 user message ----
-
-
 @step(output=Draft, model=MODEL, client=openrouter)
 def draft(source: str) -> str:
     return (
@@ -101,9 +91,6 @@ def revise(source: str, text: str, must_fix: list[str]) -> str:
 
 
 # ---- 显式编排：while 循环就是 reflection loop ----
-
-
-@flow
 def compress_with_reflection(source: str) -> tuple[str, list[int]]:
     """先写一版，然后做 critique / revise 循环。通过条件：score≥目标 且
     severity != "high"。跑满 MAX_ROUNDS
@@ -128,9 +115,7 @@ def compress_with_reflection(source: str) -> tuple[str, list[int]]:
 
 def main() -> None:
     print(f"原文（{len(SOURCE)} 字）：\n{SOURCE}\n")
-
     final_text, scores = compress_with_reflection(SOURCE)
-
     print(f"\n=== 分数轨迹 ===\n{' / '.join(str(s) for s in scores)}    (目标 ≥ {TARGET_SCORE})")
     print(f"\n=== 终稿（{len(final_text)} 字）===\n{final_text}")
 

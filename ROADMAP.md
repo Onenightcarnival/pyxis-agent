@@ -11,16 +11,16 @@
 
 ## 中期候选
 
-- **并行 step 工具** — `@flow` 的 fan-out / gather 糖，超越裸 `asyncio.gather`
-- **对话式记忆** — 历史记录 helper（仍只通过参数传，不藏隐式状态）；多轮对话已可用生成器 flow 写，helper 再看需求
-- **CLI** — `pyxis run path/to/flow.py`，支持 env-file / dry-run
+- **并行 step 工具** — 可选的 fan-out / gather helper；默认仍推荐裸 `asyncio.gather`
+- **对话式记忆** — 历史记录 helper（仍只通过参数传，不藏隐式状态）；多轮对话已可用生成器流程写，helper 再看需求
+- **CLI** — `pyxis run path/to/script.py`，支持 env-file / dry-run
 
 ## 故意不做
 
 违反核心哲学，**永远不加**：
 
 - **图 / DAG DSL、YAML pipeline 配置** — Python 已经能组合函数。图状控制流用 LangGraph
-- **内置 agent loop helper**（ReAct / Plan-and-Execute 模板）— loop 是用户自己的 `@flow`；要模板走 LangGraph
+- **内置 agent loop helper**（ReAct / Plan-and-Execute 模板）— loop 是用户自己的普通 Python 函数；要模板走 LangGraph
 - **function-calling 协议适配层** — 输出 schema 就是接口；要用 provider 的 function-calling 直接用 instructor
 - **响应式状态 / 全局可变 agent context** — 显式传参
 - **对标 Claude Desktop / ChatGPT 的对话丝滑度** — pyxis 是 agent-for-machine，LLM 直出 Pydantic 给代码用；要聊天顺滑用 Anthropic SDK 原生 tool use
@@ -36,7 +36,8 @@
 4. 先写失败的测试
 5. 写实现，直到本轮 `TODO(...)` 清零
 6. `uv run ruff format && uv run ruff check && uv run pytest`
-7. 动到 Client / Step / Flow 连线 → 跑
+7. 动到 Client / Step / provider 连线 → 跑
    `uv run --env-file .env pytest tests/integration/`
+
 8. 公共面变了 → 同步 `CLAUDE.md` / `AGENTS.md` + 文档站
 9. 一次迭代 = 一次 commit，正文解释本次做了什么、为什么

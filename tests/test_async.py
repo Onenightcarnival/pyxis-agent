@@ -7,8 +7,7 @@ import asyncio
 import pytest
 from pydantic import BaseModel
 
-from pyxis import FakeClient, flow, step
-from pyxis.flow import AsyncFlow, Flow
+from pyxis import FakeClient, step
 from pyxis.step import AsyncStep, Step
 
 
@@ -78,40 +77,35 @@ async def test_sync_step_still_works_after_async_added():
     assert result.observation == "sync-o"
 
 
-async def test_async_flow_preserves_metadata_and_calls():
+async def test_async_python_composition_preserves_metadata_and_calls():
     fake = _fake("o", "p")
 
     @step(output=Analysis, client=fake)
     async def analyze(t: str) -> str:
         return t
 
-    @flow
     async def research(topic: str) -> Analysis:
         """Async research."""
         a = await analyze(topic)
         return await analyze(a.observation)
 
-    assert isinstance(research, AsyncFlow)
     assert research.__name__ == "research"
     assert research.__doc__ == "Async research."
-
     result = await research("topic")
     assert isinstance(result, Analysis)
+    assert len(fake.calls) == 2
 
 
-async def test_sync_flow_still_works_after_async_added():
+async def test_sync_python_composition_still_works_after_async_added():
     fake = FakeClient([Analysis(observation="sync", conclusion="c")])
 
     @step(output=Analysis, client=fake)
     def analyze(t: str) -> str:
         return t
 
-    @flow
     def research(topic: str) -> Analysis:
         return analyze(topic)
 
-    assert isinstance(research, Flow)
-    assert not isinstance(research, AsyncFlow)
     assert research("x").observation == "sync"
 
 

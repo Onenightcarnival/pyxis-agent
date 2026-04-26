@@ -1,17 +1,13 @@
 """接入 Langfuse。
-
 把 `from openai import OpenAI` 换成 `from langfuse.openai import OpenAI`，
 Langfuse dashboard 会记录每次 LLM 调用的 prompt、response、token 和 latency。
-
 运行前需要：
     uv add langfuse
     export LANGFUSE_PUBLIC_KEY=pk-lf-...
     export LANGFUSE_SECRET_KEY=sk-lf-...
     export LANGFUSE_HOST=https://cloud.langfuse.com   # 或自托管
-
 跑起来：
     uv run --env-file .env python examples/with_langfuse.py
-
 详见 [docs/cookbook/observability.md](../docs/cookbook/observability.md)。
 """
 
@@ -22,7 +18,7 @@ import sys
 
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
 
@@ -37,7 +33,6 @@ def _make_langfuse_client():
             file=sys.stderr,
         )
         sys.exit(1)
-
     return OpenAI(
         base_url=os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
         api_key=os.environ["OPENROUTER_API_KEY"],
@@ -55,7 +50,7 @@ class Plan(BaseModel):
     steps: list[str]
 
 
-def _build_flow(client):
+def _build_research(client):
     @step(output=Analysis, model=MODEL, client=client)
     def analyze(topic: str) -> str:
         return f"你是严谨的分析师。观察、推理、结论。\n主题：{topic}"
@@ -64,7 +59,6 @@ def _build_flow(client):
     def plan_from(a: Analysis) -> str:
         return f"你把分析转成行动计划。\n分析：{a.model_dump_json()}"
 
-    @flow
     def research(topic: str) -> Plan:
         return plan_from(analyze(topic))
 
@@ -73,9 +67,8 @@ def _build_flow(client):
 
 def main() -> None:
     client = _make_langfuse_client()
-    research = _build_flow(client)
+    research = _build_research(client)
     result = research("声明式思维链的 agent 框架")
-
     print("=== 最终计划 ===")
     print(result.model_dump_json(indent=2))
     print("\n=== Langfuse ===")

@@ -1,6 +1,6 @@
 # Interrupt
 
-Interrupt 用生成器 flow 表达外部输入点。flow 运行到某一步时 `yield ask_interrupt(...)`，应用层收集答案后再把答案送回生成器。
+Interrupt 用生成器流程表达外部输入点。流程运行到某一步时 `yield ask_interrupt(...)`，应用层收集答案后再把答案送回生成器。
 
 外部输入可以来自人、另一个 agent、审批服务或 webhook。展示方式和持久化策略由应用层处理。
 
@@ -11,11 +11,9 @@ Interrupt 用生成器 flow 表达外部输入点。flow 运行到某一步时 `
 - 不做外部持久化
 
 ## 核心写法
-
 ```python
-from pyxis import ask_interrupt, flow, run_flow
+from pyxis import ask_interrupt, run_flow
 
-@flow
 def booking():
     destination = yield ask_interrupt("你要去哪？")
     budget = yield ask_interrupt(f"去 {destination} 的预算？")
@@ -26,7 +24,6 @@ def booking():
 ```
 
 手动驱动：
-
 ```python
 gen = booking()
 q = next(gen)                     # 拿到第一个 InterruptRequest
@@ -36,7 +33,6 @@ q = gen.send(answer)              # 把答案送回生成器
 ```
 
 或者用封装好的驱动器：
-
 ```python
 result = run_flow(booking(), on_interrupt=lambda q: input(q.question))
 ```
@@ -46,15 +42,12 @@ result = run_flow(booking(), on_interrupt=lambda q: input(q.question))
 如果输入来自另一个 agent，`on_interrupt` 可以转发请求；如果输入来自 webhook，应用层可以先保存请求，再在回调里恢复流程。
 
 ## 异步版
-
 ```python
-@flow
 async def booking():
     destination = yield ask_interrupt("你要去哪？")
     ...
     yield finish(result)   # async gen 禁用 return 值，用 finish 代替
 ```
-
 ```python
 result = await run_aflow(booking(), on_interrupt=some_async_fn)
 ```
@@ -72,7 +65,7 @@ result = await run_aflow(booking(), on_interrupt=some_async_fn)
 
 ## 什么时候不用
 
-- 纯自动流程：普通 `@flow`
+- 纯自动流程：普通 Python 函数
 - 跨服务、跨进程、长期挂起的工作流：工作流引擎（Temporal / Cadence）
 - checkpoint、resume token、多 pending interrupt 管理：业务 runtime 或工作流系统
 

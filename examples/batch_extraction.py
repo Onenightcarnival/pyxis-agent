@@ -1,11 +1,8 @@
 """批量把非结构化文本抽成 Pydantic 实例。
-
 - 一个 `@step`：字段顺序为 summary、sentiment、topic、severity。
-- 一个 `@flow` 裹 for 循环，try/except 兜单条失败，整批不中断。
+- 一个普通函数裹 for 循环，try/except 兜单条失败，整批不中断。
 - 聚合就是 `Counter`。
-
 LLM 输出可以直接交给 Counter、DataFrame 或数据库。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/batch_extraction.py
 """
@@ -19,18 +16,14 @@ from typing import Literal
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
 )
-
-
 # ---- 一批模拟的客户反馈 ----
-
 FEEDBACKS: list[str] = [
     "下单后一周还没发货，客服也联系不上，非常失望。",
     "包装非常精美，质量也超出预期，给朋友做礼物很合适。",
@@ -44,8 +37,6 @@ FEEDBACKS: list[str] = [
 
 
 # ---- Schema：字段顺序 = 先还原意思再下判断，不让 LLM 跳到标签 ----
-
-
 class Feedback(BaseModel):
     summary: str = Field(description="一句话还原用户说的是什么")
     sentiment: Literal["positive", "neutral", "negative"] = Field(description="用户的情感倾向")
@@ -66,9 +57,6 @@ def extract(text: str) -> str:
 
 
 # ---- 批量跑：就是一个 for 循环；失败也不中断 ----
-
-
-@flow
 def extract_many(texts: list[str]) -> list[Feedback | None]:
     out: list[Feedback | None] = []
     for t in texts:
@@ -83,7 +71,6 @@ def extract_many(texts: list[str]) -> list[Feedback | None]:
 def main() -> None:
     print(f"共 {len(FEEDBACKS)} 条反馈待抽取...\n")
     results = extract_many(FEEDBACKS)
-
     # ---- 聚合：就是普通 Python 统计 ----
     ok = [r for r in results if r is not None]
     print("\n=== 明细 ===")
@@ -92,11 +79,9 @@ def main() -> None:
             print(f"  [失败] {raw[:40]}...")
             continue
         print(f"  [{r.sentiment:8} / {r.topic:8} / {r.severity:6}] {r.summary}")
-
     sentiments = Counter(r.sentiment for r in ok)
     topics = Counter(r.topic for r in ok)
     high_severity = [r for r in ok if r.severity == "high"]
-
     print("\n=== 聚合 ===")
     print(f"成功率：{len(ok)}/{len(FEEDBACKS)}")
     print(f"情感分布：{dict(sentiments)}")

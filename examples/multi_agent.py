@@ -1,17 +1,12 @@
 """两个 agent 协作：Researcher 生成素材，Editor 改成成稿。
-
-每个 agent 是一个 `@flow`，内部有自己的 step、schema 和输入说明。协作方式是一个
-flow 调用另一个 flow。
-
+每个 agent 是一个普通 Python 函数，内部有自己的 step、schema 和输入说明。协作方式是一个
+函数调用另一个函数。
 拓扑：
-
     research_agent(topic) -> ResearchBrief
                         \\
     editor_agent(topic, brief) -> PublishDraft
-
 并行多份 research 可以用 `asyncio.gather`。需要补充素材时，可以再调用一次
 `research_agent`，或在外层加 while 循环。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/multi_agent.py
 """
@@ -23,10 +18,9 @@ import os
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
@@ -34,8 +28,6 @@ openrouter = OpenAI(
 
 
 # ---- Agent 1：Researcher（内部两步：找要点 + 找风险）----
-
-
 class Angles(BaseModel):
     angles: list[str] = Field(description="这个话题值得展开的 3-5 个角度，短句")
 
@@ -60,7 +52,6 @@ def write_brief(topic: str, angles: list[str]) -> str:
     )
 
 
-@flow
 def research_agent(topic: str) -> ResearchBrief:
     """Researcher agent：先想切入角度，再写 brief。"""
     angles = find_angles(topic).angles
@@ -68,8 +59,6 @@ def research_agent(topic: str) -> ResearchBrief:
 
 
 # ---- Agent 2：Editor（单步：把 brief 改成适合发布的段落）----
-
-
 class PublishDraft(BaseModel):
     headline: str = Field(description="一句抓人的标题，不要 clickbait")
     body: str = Field(description="一段 150-220 字的正文，有起承转合")
@@ -89,16 +78,12 @@ def polish(topic: str, brief: ResearchBrief) -> str:
     )
 
 
-@flow
 def editor_agent(topic: str, brief: ResearchBrief) -> PublishDraft:
     """Editor agent：把 brief 加工成发布稿。"""
     return polish(topic, brief)
 
 
-# ---- 顶层 flow：两个 agent 串联；就是函数调函数 ----
-
-
-@flow
+# ---- 顶层函数：两个 agent 串联；就是函数调函数 ----
 def pipeline(topic: str) -> PublishDraft:
     brief = research_agent(topic)
     return editor_agent(topic, brief)
@@ -107,9 +92,7 @@ def pipeline(topic: str) -> PublishDraft:
 def main() -> None:
     topic = "schema-as-CoT：用结构化字段顺序把 LLM 的推理步骤声明出来"
     print(f"话题：{topic}\n")
-
     draft = pipeline(topic)
-
     print(f"=== 标题 ===\n{draft.headline}")
     print(f"\n=== 正文 ===\n{draft.body}")
     print(f"\n=== 主编基调说明 ===\n{draft.tone_notes}")

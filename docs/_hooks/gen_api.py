@@ -11,10 +11,9 @@ import mkdocs_gen_files
 # 顺序沿用 CLAUDE.md 里介绍公共模块的顺序。
 MODULES: list[tuple[str, str]] = [
     ("step", "Step / AsyncStep + @step"),
-    ("flow", "Flow / AsyncFlow + @flow"),
     ("tool", "Tool 基类 + @tool 装饰器"),
     ("client", "FakeClient / FakeCall：测试用的确定性后端"),
-    ("interrupt", "Interrupt：让 flow 停下来等外部输入"),
+    ("interrupt", "Interrupt：让生成器流程停下来等外部输入"),
     ("mcp", "MCP 适配层"),
 ]
 

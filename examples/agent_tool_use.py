@@ -1,7 +1,5 @@
 """工具调用 agent 示例。
-
-示例用 `Tool` 子类定义工具，用 `@step` 选择动作，用 `@flow` 里的循环执行动作。
-
+示例用 `Tool` 子类定义工具，用 `@step` 选择动作，用普通函数里的循环执行动作。
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/agent_tool_use.py
 """
@@ -14,10 +12,9 @@ from typing import Annotated, Literal
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import Tool, flow, step
+from pyxis import Tool, step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
@@ -25,8 +22,6 @@ openrouter = OpenAI(
 
 
 # ---- 工具：用 schema 声明，用 run() 实现 ----
-
-
 class Calculate(Tool):
     """计算一个简单的算术表达式，返回数值结果。"""
 
@@ -66,10 +61,7 @@ def decide(question: str, scratch: str) -> str:
     )
 
 
-# ---- 显式编排：循环就是一个普通 @flow ----
-
-
-@flow
+# ---- 显式编排：循环就是一个普通函数 ----
 def agent(question: str, max_steps: int = 6) -> str:
     scratch: list[str] = []
     for _ in range(max_steps):

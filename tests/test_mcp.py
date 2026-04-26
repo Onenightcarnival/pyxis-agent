@@ -1,5 +1,4 @@
 """MCP 适配层的测试 —— 规格 013。
-
 测试策略：
 - 所有测试零网络、零外部 MCP server。
 - HTTP 传输：用 `httpx.MockTransport` 模拟 JSON-RPC 服务器。
@@ -26,15 +25,13 @@ from pyxis.mcp import (
     mcp_toolset,
 )
 
+
 # ------------------------- schema models -------------------------
-
-
 def test_stdio_and_http_transports_are_discriminated_by_kind():
     s = MCPServer(name="fs", transport=StdioMCP(command="echo"))
     assert s.transport.kind == "stdio"
     h = MCPServer(name="web", transport=HttpMCP(url="http://x"))
     assert h.transport.kind == "http"
-
     # 判别式联合应当能从 dict 反序列化
     s2 = MCPServer.model_validate(
         {"name": "fs", "transport": {"kind": "stdio", "command": "echo", "args": ["-n"]}}
@@ -57,18 +54,13 @@ def test_transport_without_kind_fails():
 
 
 # ------------------------- JSON Schema → Pydantic field -------------------------
-
-
 def test_jsonschema_translates_primitive_types():
     ty, default = jsonschema_to_field({"type": "string"}, required=True)
     assert ty is str and default is ...
-
     ty, default = jsonschema_to_field({"type": "integer"}, required=True)
     assert ty is int
-
     ty, default = jsonschema_to_field({"type": "number"}, required=True)
     assert ty is float
-
     ty, default = jsonschema_to_field({"type": "boolean"}, required=True)
     assert ty is bool
 
@@ -76,7 +68,6 @@ def test_jsonschema_translates_primitive_types():
 def test_jsonschema_translates_list_and_dict():
     ty, _ = jsonschema_to_field({"type": "array", "items": {"type": "string"}}, required=True)
     assert ty == list[str]
-
     ty, _ = jsonschema_to_field({"type": "object"}, required=True)
     assert ty == dict[str, object]
 
@@ -93,7 +84,6 @@ def test_jsonschema_unknown_type_raises():
 
 
 # ------------------------- HTTP transport（httpx.MockTransport） -------------------------
-
 SAMPLE_TOOLS = [
     {
         "name": "echo",
@@ -164,23 +154,18 @@ async def test_http_toolset_discovers_and_invokes_tools():
     handler, state = _http_handler()
     transport = httpx.MockTransport(handler)
     server = MCPServer(name="web", transport=HttpMCP(url="http://fake/mcp"))
-
     async with mcp_toolset(server, _http_transport=transport) as tools:
         assert len(tools) == 2
         names = [t.model_fields["kind"].default for t in tools]
         assert set(names) == {"echo", "add"}
-
         echo_cls = next(t for t in tools if t.model_fields["kind"].default == "echo")
         assert echo_cls.__name__ == "Echo"
         assert "text" in echo_cls.model_fields
-
         echo = echo_cls(text="你好")  # type: ignore[call-arg]
         assert echo.run() == "echoed:你好"
-
         add_cls = next(t for t in tools if t.model_fields["kind"].default == "add")
         add = add_cls(a=2, b=3)  # type: ignore[call-arg]
         assert add.run() == "5"
-
     methods = [c["method"] for c in state["calls"]]
     assert methods[:3] == ["initialize", "notifications/initialized", "tools/list"]
     assert "tools/call" in methods
@@ -189,7 +174,6 @@ async def test_http_toolset_discovers_and_invokes_tools():
 async def test_http_toolset_filters_with_include_exclude():
     handler, _ = _http_handler()
     transport = httpx.MockTransport(handler)
-
     server = MCPServer(
         name="web",
         transport=HttpMCP(url="http://fake/mcp"),
@@ -216,7 +200,6 @@ async def test_http_toolset_include_unknown_name_raises():
 
 async def test_http_toolset_handles_sse_response_and_session_id():
     """FastMCP 等真实 server 默认用 text/event-stream 回响应；pyxis 必须能解析。
-
     同时验证 `Mcp-Session-Id` 头在 initialize 里分配、后续请求回写。
     """
     SESSION_ID = "sess-abcd"
@@ -234,11 +217,9 @@ async def test_http_toolset_handles_sse_response_and_session_id():
         )
         method = body["method"]
         rid = body.get("id")
-
         # notification 按规范返回 202 空响应
         if rid is None:
             return httpx.Response(202)
-
         if method == "initialize":
             result = {"protocolVersion": "2024-11-05", "capabilities": {}}
             sse_body = f"event: message\ndata: {json.dumps({'jsonrpc': '2.0', 'id': rid, 'result': result})}\n\n"
@@ -280,11 +261,9 @@ async def test_http_toolset_handles_sse_response_and_session_id():
 
     transport = httpx.MockTransport(handler)
     server = MCPServer(name="web", transport=HttpMCP(url="http://fake/mcp"))
-
     async with mcp_toolset(server, _http_transport=transport) as tools:
         echo_cls = next(t for t in tools if t.model_fields["kind"].default == "echo")
         assert echo_cls(text="x").run() == "sse-ok"  # type: ignore[call-arg]
-
     # 第一条请求无 session id；initialize 之后所有请求必须带上 SESSION_ID
     assert calls[0]["method"] == "initialize"
     assert calls[0]["sid"] is None
@@ -308,7 +287,6 @@ async def test_http_toolset_duplicate_tool_names_raise():
 
 
 # ------------------------- stdio transport（真子进程） -------------------------
-
 STDIO_SERVER_SCRIPT = r"""
 import sys, json
 def reply(mid, result):
@@ -350,8 +328,6 @@ async def test_stdio_toolset_discovers_and_invokes_tools():
 
 
 # ------------------------- 混合注册：native + MCP 共进一个判别式联合 -------------------------
-
-
 class Finish(Tool):
     kind: Literal["finish"] = "finish"
     answer: str
@@ -368,7 +344,6 @@ async def test_mcp_tools_mix_with_native_tools_in_union():
         transport=HttpMCP(url="http://fake/mcp"),
         include=["echo"],
     )
-
     async with mcp_toolset(server, _http_transport=transport) as mcp_tools:
         Action = Annotated[Union[tuple([*mcp_tools, Finish])], Field(discriminator="kind")]  # type: ignore  # noqa: UP007
 

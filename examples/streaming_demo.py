@@ -1,7 +1,5 @@
 """流式输出示例。
-
 每次 LLM 更新 partial 模型时，终端打印当前状态。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/streaming_demo.py
 """
@@ -17,7 +15,6 @@ from pydantic import BaseModel, Field
 from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
@@ -50,7 +47,6 @@ def main() -> None:
     topic = "为什么海水是咸的？"
     print(f"主题：{topic}\n")
     print("字段会按 schema 顺序逐个填满。\n")
-
     first = True
     for frame in analyze.stream(topic):
         # 把之前的三行清掉再重绘，像一个简单的"活"面板
@@ -59,7 +55,6 @@ def main() -> None:
         first = False
         sys.stdout.write(_render_frame(frame) + "\n")
         sys.stdout.flush()
-
     print("\n结束")
 
 

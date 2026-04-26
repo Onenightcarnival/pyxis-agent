@@ -1,16 +1,12 @@
 """用文件操作工具和 while 循环完成代码任务。
-
 结构和 `examples/agent_tool_use.py` 类似，工具换成 ls、read、write、finish。
-
 - `LsFiles / ReadFile / WriteFile / Finish` 是 `Tool` 子类，判别式联合
   作"工具表"。
 - `@step decide` 输出 `Decision(thought, action)`，每轮出一次调用。
-- `@flow harness` 是 while 循环，带 max_steps 防失控；遇到 `Finish`
+- harness 是普通 Python while 循环，带 max_steps 防失控；遇到 `Finish`
   就停。
-
 示例里的文件系统是内存 dict。换成真实磁盘时，把 `_FS` 的读写换成
 `pathlib.Path` 即可。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/coding_harness.py
 """
@@ -23,18 +19,14 @@ from typing import Annotated, Literal
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import Tool, flow, step
+from pyxis import Tool, step
 
 MODEL = "openai/gpt-5.4-nano"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
 )
-
-
 # ---- "虚拟磁盘"：就是一个 dict，换成真磁盘只改这里 ----
-
 _FS: dict[str, str] = {
     "todo.txt": "- buy milk\n- walk dog\n- write email\n",
     "readme.md": "# My Project\n\n这是一个实验性的待办清单工具。\n",
@@ -42,8 +34,6 @@ _FS: dict[str, str] = {
 
 
 # ---- 工具：每个都是 Tool 子类，schema 里就告诉 LLM 怎么用 ----
-
-
 class LsFiles(Tool):
     """列出当前目录下所有文件名。没有入参。"""
 
@@ -112,9 +102,7 @@ def decide(task: str, history: str) -> str:
     )
 
 
-# ---- harness 的主驱动：@flow 包起来的 while 循环 ----
-
-
+# ---- harness 的主驱动：普通函数写成的 while 循环 ----
 def _format_turn(i: int, d: Decision, obs: str) -> str:
     args = d.action.model_dump(exclude={"kind"})
     call = f"{d.action.kind}({', '.join(f'{k}={v!r}' for k, v in args.items())})"
@@ -126,7 +114,6 @@ def _format_turn(i: int, d: Decision, obs: str) -> str:
     )
 
 
-@flow
 def harness(task: str, max_steps: int = 10) -> tuple[str, list[str]]:
     history: list[str] = []
     for step_i in range(1, max_steps + 1):
@@ -141,10 +128,8 @@ def harness(task: str, max_steps: int = 10) -> tuple[str, list[str]]:
 def main() -> None:
     task = "打开 todo.txt，在末尾追加一行 '- check PR #42'，保存，然后结束。"
     print(f"任务：{task}\n")
-
     before = _FS["todo.txt"]
     result, history = harness(task)
-
     print("=== 轮次详情 ===")
     for line in history:
         print(line)

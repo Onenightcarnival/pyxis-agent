@@ -107,7 +107,6 @@ nav:
       - 哲学与定位: concepts/philosophy.md
       - Step：schema-first 单次调用: concepts/step.md
       - Tool：action 即 schema: concepts/tool.md
-      - Flow：显式编排: concepts/flow.md
   - Cookbook:
       - cookbook/index.md
       - 测试:
@@ -137,7 +136,6 @@ nav:
           - Guardrails：输入/输出校验: cookbook/guardrails.md
   - API 参考:
       - pyxis.step: api/step.md
-      - pyxis.flow: api/flow.md
       - pyxis.tool: api/tool.md
       - pyxis.client: api/client.md
       - pyxis.interrupt: api/interrupt.md

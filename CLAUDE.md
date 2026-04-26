@@ -87,7 +87,8 @@ pyxis 不抢这些位子。
   builder，返回值必须是本次调用的 user message；装饰后绑定到原函数名的是
   `Step[T]` / `AsyncStep[T]`，调用它返回 Pydantic 实例；docstring 不进入
   messages。
-- `@flow`：多步函数的薄包装；一个语义标记 + `async def` / `def` 分派。
+- 多步显式编排：直接写普通 Python 函数。pyxis 不再为 flow 提供核心
+  装饰器；`if` / `for` / 函数组合就是工作流边界。
 - `Tool`：`BaseModel` 子类，带 `run() -> str`。动作即 schema，`run()` 即代码。
   LLM 在 schema 的判别式联合 `action` 字段里选一个工具；Python 用
   `isinstance` / `action.run()` 分派。
@@ -100,9 +101,9 @@ pyxis 不抢这些位子。
 - `Step.stream(...)` / `AsyncStep.astream(...)`：按字段逐步 yield partial
   实例，把 schema-as-CoT 的"字段被逐个填完"过程完整暴露。底层借
   instructor `create_partial`。
-- `Interrupt`：flow 运行中的外部输入点。核心 API 是
+- `Interrupt`：生成器流程运行中的外部输入点。核心 API 是
   `ask_interrupt` / `finish` / `run_flow` / `run_aflow`：
-  `@flow` 写成生成器函数，中间 `yield ask_interrupt(...)` 挂起；驱动器把
+  普通生成器函数中间 `yield ask_interrupt(...)` 挂起；驱动器把
   外部答案 `.send()` 回生成器。没有 checkpoint、没有状态快照——生成器
   本身就是活的状态。异步生成器里用 `yield finish(value)` 作终态哨兵
   （Python 禁用 async gen 的值返回）。
@@ -134,7 +135,6 @@ Python 函数**。几条硬边界：
 ```
 src/pyxis/        库代码
   step.py         Step / AsyncStep + @step 装饰器（client 必填、params 透传）
-  flow.py         Flow / AsyncFlow + @flow 装饰器
   tool.py         Tool 基类
   client.py       FakeClient / FakeCall（公共）+ 内部 adapter 把
                   OpenAI / instructor 实例规范化成 _SyncBackend / _AsyncBackend
@@ -174,7 +174,7 @@ mkdocs.yml        文档站配置
 - **文档必须与代码同步**：公共面变了就改 CLAUDE.md / README / 文档站
   对应页面。变更历史由 git log + GitHub Releases 承担，不再维护
   `CHANGELOG.md`。
-- **文档站**：概念栏只放 `Step` / `Tool` / `Flow` 三个核心概念；
+- **文档站**：概念栏只放 `Step` / `Tool` 两个核心概念；
   测试、可观测、MCP、Interrupt 和 agent 模式都归到 Cookbook。
   `uv run --group docs mkdocs serve` 本地预览；
   `uv run --group docs mkdocs build --strict` 作为验收门槛。改过

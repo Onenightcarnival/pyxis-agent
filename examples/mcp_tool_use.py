@@ -1,5 +1,4 @@
 """把 FastMCP server 工具和本地 pyxis 工具放进同一个判别式联合。
-
 - server 端用 `mcp.server.fastmcp.FastMCP` 写（见 `_mcp_demo_server.py`），
   也可以直接连接已有 FastMCP server（`uvx mcp-server-filesystem
   /tmp` 之类）。
@@ -8,14 +7,11 @@
   拿到 `list[type[Tool]]`。
 - 把远端 tools 放进判别式联合，`@step(output=Decision)` 的 `action` 字段
   就能统一分派，`d.action.run()` 一行调用不区分来源。
-
 换生产 MCP server：`StdioMCP(...)` 指到真 server 的启动命令
 （`StdioMCP(command="uvx", args=["mcp-server-filesystem", "/tmp"])`），
 或 `HttpMCP(url="https://your.host/mcp", headers={"Authorization": "..."})`。
 本文件其他代码不用动。
-
 跑起来（demo 会自动 Popen `_mcp_demo_server.py` 做 stdio 子进程）：
-
     OPENROUTER_API_KEY=... uv run --env-file .env \\
         python examples/mcp_tool_use.py
 """
@@ -32,12 +28,11 @@ from typing import Annotated, Literal
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import Tool, flow, step
+from pyxis import Tool, step
 from pyxis.mcp import MCPServer, StdioMCP, mcp_toolset
 
 MODEL = "openai/gpt-5.4-nano"
 DEMO_SERVER = Path(__file__).parent / "_mcp_demo_server.py"
-
 openrouter = AsyncOpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
@@ -45,8 +40,6 @@ openrouter = AsyncOpenAI(
 
 
 # ---- native 工具：一个用 @tool 都嫌重的就手写 ----
-
-
 class Finish(Tool):
     """停止并给出最终答案。"""
 
@@ -58,20 +51,15 @@ class Finish(Tool):
 
 
 # ---- agent loop：和 agent_tool_use.py 如出一辙，只是 tool_classes 是动态拼的 ----
-
-
-@flow
 async def agent(question: str, max_steps: int = 10) -> str:
     # 声明 MCP server：这里指向同目录的 demo server；换成任何 stdio MCP 都行
     server = MCPServer(
         name="demo",
         transport=StdioMCP(command=sys.executable, args=[str(DEMO_SERVER)]),
     )
-
     async with mcp_toolset(server) as mcp_tools:
         # 混合注册 = 拼 list。MCP 生成的和 native 的，都是 type[Tool]
         tool_classes: list[type[Tool]] = [*mcp_tools, Finish]
-
         # 动态判别式联合：`reduce(or_, tool_classes)` 相当于 T1 | T2 | T3 ...
         Action = Annotated[reduce(or_, tool_classes), Field(discriminator="kind")]
 

@@ -1,5 +1,4 @@
 """对 OpenRouter 的端到端烟雾测试。
-
 没有设置 `OPENROUTER_API_KEY` 时整体跳过。
 通过 `uv run --env-file .env pytest tests/integration/` 加载环境变量运行。
 """
@@ -14,7 +13,7 @@ import pytest
 from openai import AsyncOpenAI, OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step, tool
+from pyxis import step, tool
 
 
 @pytest.fixture(scope="module")
@@ -66,7 +65,7 @@ def test_step_round_trip_produces_valid_schema(openrouter_sync: OpenAI, model: s
     assert 0.0 <= result.confidence <= 1.0
 
 
-def test_flow_multi_step(openrouter_sync: OpenAI, model: str) -> None:
+def test_python_multi_step(openrouter_sync: OpenAI, model: str) -> None:
     @step(output=Classification, model=model, client=openrouter_sync)
     def classify(text: str) -> str:
         return f"Classify this text. Observe, categorize, score.\n{text}"
@@ -78,12 +77,10 @@ def test_flow_multi_step(openrouter_sync: OpenAI, model: str) -> None:
             f"Classified as {c.category} (conf={c.confidence}). Note: {c.observation}"
         )
 
-    @flow
     def digest(text: str) -> Summary:
         return summarize(classify(text))
 
     s = digest("Claude Opus 4.7 supports a 1M token context window.")
-
     assert isinstance(s, Summary)
     assert len(s.bullets) >= 1
 
@@ -132,7 +129,6 @@ def test_live_tool_decorator_agent(openrouter_sync: OpenAI, model: str) -> None:
             f"问题：{question}\n草稿：\n{scratch or '（空）'}"
         )
 
-    @flow
     def agent(q: str, max_steps: int = 4) -> str:
         scratch: list[str] = []
         for _ in range(max_steps):
@@ -161,7 +157,6 @@ def test_live_stream_yields_progressively(openrouter_sync: OpenAI, model: str) -
     frames: list[Analysis] = []
     for partial in analyze.stream("为什么雨是咸的"):
         frames.append(partial)
-
     assert len(frames) >= 1
     final = frames[-1]
     assert final.observation
@@ -171,7 +166,7 @@ def test_live_stream_yields_progressively(openrouter_sync: OpenAI, model: str) -
 
 def test_live_interrupt_review(openrouter_sync: OpenAI, model: str) -> None:
     """真实 LLM 出计划 → 模拟人工审核后继续。"""
-    from pyxis import ask_interrupt, flow, run_flow
+    from pyxis import ask_interrupt, run_flow
 
     class Plan(BaseModel):
         goal: str = Field(description="一行复述目标")
@@ -185,7 +180,6 @@ def test_live_interrupt_review(openrouter_sync: OpenAI, model: str) -> None:
     def make_plan(q: str) -> str:
         return f"你是严谨的规划者。先复述目标，再列 3-5 个具体步骤。\n问题：{q}"
 
-    @flow
     def plan_then_review(q: str):
         plan = make_plan(q)
         decision: Decision = yield ask_interrupt("审核", schema=Decision, plan=plan.goal)

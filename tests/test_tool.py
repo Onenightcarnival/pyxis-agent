@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 import pytest
 from pydantic import BaseModel, Field
 
-from pyxis import FakeClient, Tool, flow, step
+from pyxis import FakeClient, Tool, step
 
 
 class SearchWeb(Tool):
@@ -83,7 +83,6 @@ def test_tool_discriminated_union_dispatch_via_isinstance():
         results.append(d.action.run())
         if isinstance(d.action, Finish):
             break
-
     assert results == ["RESULTS(x)", "done"]
 
 
@@ -100,7 +99,6 @@ def test_tool_in_agent_loop_stops_on_finish():
         """Pick a tool."""
         return scratch
 
-    @flow
     def agent(question: str, max_steps: int = 5) -> str:
         scratch: list[str] = [question]
         for _ in range(max_steps):
@@ -113,6 +111,5 @@ def test_tool_in_agent_loop_stops_on_finish():
         raise RuntimeError("max_steps exhausted")
 
     answer = agent("what is foo?")
-
     assert answer == "final"
     assert len(fake.calls) == 2

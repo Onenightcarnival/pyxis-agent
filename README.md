@@ -13,13 +13,14 @@
 - LLM = 带自然语言理解能力的**结构化数据生成器**
 - 每次调用直出一个 Pydantic 实例，下一段 Python 代码直接消费
 - `@step` 把一次 LLM 调用收束成可组合、可替换、可测试的 **AI 函数**
+- `Tool` / `@tool` 把外部动作表达成可被 LLM 选择、可由 Python 执行的 schema
+- 多步编排直接写普通 Python 函数
 - 给人看的内容由应用层从字段里拼
 
 **适合**：数据 pipeline 里的 LLM 节点 · 要回归测试的业务 agent · 多 agent 机器对机器协作。
 **不适合**：丝滑聊天 UI（用 Claude Desktop / ChatGPT 更顺手）。
 
 ## 安装
-
 ```bash
 uv add pyxis-agent
 # 或
@@ -29,7 +30,6 @@ pip install pyxis-agent
 Python 3.12+。
 
 ## 30 秒上手
-
 ```python
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -66,6 +66,7 @@ assert v.sentiment == "positive"
 - [文档站首页](https://onenightcarnival.github.io/pyxis-agent/)——核心概念与场景化 Cookbook
 - [哲学与定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——
   函数式思想、agent-for-machine 定位与完整的"故意不做"清单
+
 - [Cookbook](https://onenightcarnival.github.io/pyxis-agent/cookbook/)——
   测试、可观测、MCP、Interrupt 和 agent 模式的使用姿势
 
@@ -81,7 +82,6 @@ assert v.sentiment == "positive"
 | `ROADMAP.md`    | "已做 / 近期候选 / 故意不做"                   | **不上站** |
 
 ## 开发
-
 ```bash
 uv sync
 uv run ruff format && uv run ruff check
@@ -92,6 +92,7 @@ uv run --group docs mkdocs build --strict            # 文档站验收
 
 - 迭代方法：**概念设计改文档，代码设计走 TODO-driven skeleton**；先写真实模块、
   类型、函数签名、docstring 与失败测试，再填实现，迭代结束前清空本轮 TODO
+
 - 变更历史：`git log` + [GitHub Releases](https://github.com/Onenightcarnival/pyxis-agent/releases)
 - 待办与"故意不做"：[ROADMAP.md](ROADMAP.md)
 - 设计依据：[CLAUDE.md](CLAUDE.md)

@@ -10,7 +10,6 @@ from pyxis import (
     InterruptRequest,
     ask_interrupt,
     finish,
-    flow,
     run_aflow,
     run_flow,
     step,
@@ -58,7 +57,6 @@ def test_run_flow_drives_generator_with_on_interrupt():
     def make_plan(topic: str) -> str:
         return topic
 
-    @flow
     def review(topic: str):
         plan = make_plan(topic)
         decision: Decision = yield ask_interrupt("审核", schema=Decision, plan=plan.goal)
@@ -71,7 +69,6 @@ def test_run_flow_drives_generator_with_on_interrupt():
 
 
 def test_run_flow_schema_validates_plain_dict_answer():
-    @flow
     def review(_q):
         ans: Decision = yield ask_interrupt("?", schema=Decision)
         return ans.approve
@@ -81,7 +78,6 @@ def test_run_flow_schema_validates_plain_dict_answer():
 
 
 def test_run_flow_passes_non_model_answer_through():
-    @flow
     def ask_twice():
         a = yield ask_interrupt("your name?")
         b = yield ask_interrupt("and your team?")
@@ -92,7 +88,6 @@ def test_run_flow_passes_non_model_answer_through():
 
 
 def test_run_flow_rejects_non_interrupt_request_yield():
-    @flow
     def bad():
         yield "不是 InterruptRequest"
 
@@ -100,8 +95,7 @@ def test_run_flow_rejects_non_interrupt_request_yield():
         run_flow(bad(), on_interrupt=lambda q: None)
 
 
-def test_run_flow_generator_with_no_yield_works_like_plain_flow():
-    @flow
+def test_run_flow_generator_with_no_yield_works_like_plain_function():
     def trivial():
         yield from ()  # 这里纯粹声明这是生成器，但从不 yield
         return 42
@@ -111,7 +105,6 @@ def test_run_flow_generator_with_no_yield_works_like_plain_flow():
 
 
 def test_run_flow_exception_in_generator_propagates():
-    @flow
     def boom():
         yield ask_interrupt("q")
         raise ValueError("炸了")
@@ -121,7 +114,6 @@ def test_run_flow_exception_in_generator_propagates():
 
 
 def test_multi_turn_conversation_via_interrupt():
-    @flow
     def chat():
         history: list[tuple[str, str]] = []
         for _ in range(3):
@@ -150,7 +142,6 @@ def test_step_calls_across_yields_are_captured_by_fake_client():
     def plan(x: str) -> str:
         return x
 
-    @flow
     def interactive():
         first = plan("1")
         _ = yield ask_interrupt("审第一步", plan=first.goal)
@@ -159,13 +150,11 @@ def test_step_calls_across_yields_are_captured_by_fake_client():
         return (first.goal, second.goal)
 
     result = run_flow(interactive(), on_interrupt=_queued([True, True]))
-
     assert result == ("g1", "g2")
     assert len(fake.calls) == 2
 
 
 async def test_run_aflow_with_sync_generator_and_sync_on_interrupt():
-    @flow
     def review(_q):
         a = yield ask_interrupt("?")
         return a
@@ -175,7 +164,6 @@ async def test_run_aflow_with_sync_generator_and_sync_on_interrupt():
 
 
 async def test_run_aflow_with_async_generator_and_sync_on_interrupt():
-    @flow
     async def review(_q):
         a = yield ask_interrupt("?")
         yield finish(a)
@@ -188,7 +176,6 @@ async def test_run_aflow_awaits_async_on_interrupt():
     async def on_interrupt(q):
         return "async-answer"
 
-    @flow
     async def review(_q):
         a = yield ask_interrupt("?")
         yield finish(a)
@@ -198,7 +185,6 @@ async def test_run_aflow_awaits_async_on_interrupt():
 
 
 async def test_run_aflow_schema_validates_answer():
-    @flow
     async def review():
         d: Decision = yield ask_interrupt("?", schema=Decision)
         yield finish(d.approve)
@@ -208,7 +194,6 @@ async def test_run_aflow_schema_validates_answer():
 
 
 async def test_run_aflow_propagates_exception_from_generator():
-    @flow
     async def boom():
         yield ask_interrupt("?")
         raise RuntimeError("aboom")
@@ -218,7 +203,6 @@ async def test_run_aflow_propagates_exception_from_generator():
 
 
 def test_run_flow_accepts_finish_sentinel_in_sync_gen():
-    @flow
     def review():
         a = yield ask_interrupt("?")
         yield finish({"chosen": a})
@@ -229,7 +213,6 @@ def test_run_flow_accepts_finish_sentinel_in_sync_gen():
 
 
 async def test_run_aflow_finish_without_answer_question():
-    @flow
     async def immediate():
         yield finish(42)
 
@@ -237,12 +220,11 @@ async def test_run_aflow_finish_without_answer_question():
     assert result == 42
 
 
-def test_generator_flow_preserves_metadata():
-    @flow
+def test_generator_function_preserves_metadata():
     def interactive(x: str):
-        """互动式的 flow。"""
+        """互动式生成器。"""
         yield ask_interrupt("?")
         return x
 
     assert interactive.__name__ == "interactive"
-    assert interactive.__doc__ == "互动式的 flow。"
+    assert interactive.__doc__ == "互动式生成器。"

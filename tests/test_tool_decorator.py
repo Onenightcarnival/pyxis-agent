@@ -28,7 +28,6 @@ def test_tool_decorator_auto_kind_literal():
 
     t = search_web(query="猫")
     assert t.kind == "search_web"
-
     # kind 字段是 Literal["search_web"]
     field = search_web.model_fields["kind"]
     origin = get_origin(field.annotation)
@@ -45,10 +44,8 @@ def test_tool_decorator_required_and_default_fields():
     required = fetch(url="https://x")
     assert required.url == "https://x"
     assert required.timeout == 30
-
     with_override = fetch(url="https://y", timeout=5)
     assert with_override.timeout == 5
-
     # 缺必选字段应失败
     from pydantic import ValidationError
 
@@ -98,11 +95,9 @@ def test_tool_decorator_participates_in_discriminated_union():
 
     Action = Annotated[search_web | finish, Field(discriminator="kind")]
     adapter = TypeAdapter(Action)
-
     a = adapter.validate_python({"kind": "search_web", "query": "猫"})
     assert isinstance(a, search_web)
     assert a.run() == "R:猫"
-
     b = adapter.validate_python({"kind": "finish", "answer": "完成"})
     assert isinstance(b, finish)
     assert b.run() == "完成"
@@ -136,7 +131,6 @@ def test_tool_decorator_end_to_end_with_step():
 
     d1 = decide("算 6*7")
     d2 = decide("下一步")
-
     assert d1.action.run() == "42"
     assert d2.action.run() == "42"
     assert len(fake.calls) == 2

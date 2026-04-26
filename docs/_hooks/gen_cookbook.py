@@ -55,7 +55,7 @@ RECIPES: list[tuple[str, str, str]] = [
     (
         "multi_agent",
         "两个 agent 协作",
-        "Researcher flow 调用 Editor flow。",
+        "Researcher 函数调用 Editor 函数。",
     ),
     (
         "reflect_and_revise",
@@ -82,7 +82,7 @@ RECIPES: list[tuple[str, str, str]] = [
     (
         "interrupt_review",
         "Interrupt review",
-        "用 `ask_interrupt` 在 flow 中等待审阅结果。",
+        "用 `ask_interrupt` 在生成器流程中等待审阅结果。",
     ),
     (
         "guardrails",
@@ -137,7 +137,7 @@ CATEGORIES: list[tuple[str, list[tuple[str, str, str]]]] = [
             (
                 "interrupt",
                 "Interrupt 总览",
-                "用生成器 flow 等待外部输入。",
+                "用生成器流程等待外部输入。",
             ),
             next(item for item in RECIPES if item[0] == "interrupt_review"),
         ],

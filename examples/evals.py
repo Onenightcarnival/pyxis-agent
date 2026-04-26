@@ -1,14 +1,10 @@
 """跑一个小数据集，记录准确率、延迟、错例和原始调用 log。
-
 组合是 Python list（输入 + 期望）+ 一个 `@step` 出结构化结果 + 一个
 `for` 循环。聚合用 `statistics.mean` / `Counter` / 排序取分位，都是
 几行 Python。原始调用 log 自己 `json.dumps` 落盘。
-
 A/B 两个模型时，换 `client` / `MODEL` 跑两遍，再比较两份 JSONL。
-
 跑起来：
     OPENROUTER_API_KEY=... uv run --env-file .env python examples/evals.py
-
     # 跑完会在 runs/ 下生成原始调用 log：
     #   runs/eval_latest.jsonl
 """
@@ -25,19 +21,15 @@ from typing import Literal
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from pyxis import flow, step
+from pyxis import step
 
 MODEL = "openai/gpt-5.4-nano"
 LOG_DIR = Path(__file__).parent / "runs"
-
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPENROUTER_API_KEY", ""),
 )
-
-
 # ---- Eval dataset：输入 + 期望 label + 可选备注 ----
-
 DATASET: list[tuple[str, Literal["spam", "ham"], str]] = [
     ("【紧急】您的账户已被冻结，请点击下方链接立即核实身份", "spam", "钓鱼典型"),
     ("本周技术分享会周四下午 3 点，会议室 3B，主题 LLM 评测", "ham", "公司日常"),
@@ -51,8 +43,6 @@ DATASET: list[tuple[str, Literal["spam", "ham"], str]] = [
 
 
 # ---- Schema：先给理由再给标签（防止"先定结论再编理由"） ----
-
-
 class Classification(BaseModel):
     reasoning: str = Field(description="为什么这样分，一两句")
     label: Literal["spam", "ham"] = Field(description="最终分类")
@@ -68,9 +58,6 @@ def classify(subject: str) -> str:
 
 
 # ---- eval 主体：跑 + 收指标；失败不中断 ----
-
-
-@flow
 def run_eval(
     dataset: list[tuple[str, str, str]],
 ) -> list[dict]:
@@ -113,7 +100,6 @@ def _percentile(xs: list[float], p: float) -> float:
 def main() -> None:
     print(f"跑 {len(DATASET)} 条 eval 样本（模型 {MODEL}）...\n")
     records = run_eval(DATASET)
-
     # ---- 明细 ----
     print("=== 明细 ===")
     correct = 0
@@ -125,7 +111,6 @@ def main() -> None:
         print(
             f"  [{mark}] [{r['latency_ms']:6.0f}ms] {r['expected']:4} -> {actual_s:4}  | {r['text'][:30]}"
         )
-
     # ---- 聚合 ----
     n = len(records)
     latencies = [r["latency_ms"] for r in records]
@@ -138,13 +123,11 @@ def main() -> None:
         f"mean={statistics.mean(latencies):.0f}ms"
     )
     print(f"失败（含 schema 校验错）：{len(errors)}")
-
     mistakes = [r for r in records if not r["error"] and r["actual"] != r["expected"]]
     if mistakes:
         print("\n=== 错例（要人审的地方）===")
         for r in mistakes:
             print(f"  期望 {r['expected']} / 实际 {r['actual']}：{r['text']}")
-
     # ---- 存 JSONL：普通 Python 一把梭 ----
     LOG_DIR.mkdir(exist_ok=True)
     log_path = LOG_DIR / "eval_latest.jsonl"
