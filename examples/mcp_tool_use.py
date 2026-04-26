@@ -25,6 +25,7 @@ from __future__ import annotations
 import os
 import sys
 from functools import reduce
+from inspect import cleandoc
 from operator import or_
 from pathlib import Path
 from typing import Annotated, Literal
@@ -75,18 +76,24 @@ async def agent(question: str, max_steps: int = 10) -> str:
 
         @step(output=Decision, model=MODEL, max_retries=2, client=openrouter)
         async def decide(question: str, scratch: str) -> str:
-            return (
-                "你是一个会推理的 agent。规则：\n"
-                "1. 先仔细读草稿板。草稿板里已经出现过的工具调用和结果，"
-                "是过去的事实。不要重复调用，要基于它推进下一步。\n"
-                "2. 每一轮返回一个 Decision：`thought` 写你基于草稿板的新推理"
-                "（不要复述任务），`action` 是接下来要做的一次工具调用。\n"
-                "3. `action` 必须是叶子工具（例如 "
-                '`{"kind": "reverse", "text": "..."}`），不要嵌套 Decision。\n'
-                "4. 当你已经能从草稿板上的结果回答问题时，立刻用 "
-                '`{"kind": "finish", "answer": "..."}` 停止。\n'
-                f"问题：{question}\n\n草稿板（到目前为止）：\n{scratch or '（空）'}"
-            )
+            return cleandoc(
+                """
+                你是一个会推理的 agent。规则：
+                1. 先仔细读草稿板。草稿板里已经出现过的工具调用和结果，
+                   是过去的事实。不要重复调用，要基于它推进下一步。
+                2. 每一轮返回一个 Decision：`thought` 写你基于草稿板的新推理
+                   （不要复述任务），`action` 是接下来要做的一次工具调用。
+                3. `action` 必须是叶子工具（例如 `{{"kind": "reverse", "text": "..."}}`），
+                   不要嵌套 Decision。
+                4. 当你已经能从草稿板上的结果回答问题时，立刻用
+                   `{{"kind": "finish", "answer": "..."}}` 停止。
+
+                问题：{question}
+
+                草稿板（到目前为止）：
+                {scratch}
+                """
+            ).format(question=question, scratch=scratch or "（空）")
 
         scratch: list[str] = []
         for i in range(max_steps):

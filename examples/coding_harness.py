@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+from inspect import cleandoc
 from typing import Annotated, Literal
 
 from openai import OpenAI
@@ -89,17 +90,24 @@ class Decision(BaseModel):
 
 @step(output=Decision, model=MODEL, client=openrouter)
 def decide(task: str, history: str) -> str:
-    return (
-        "你是一个能读写文件的编码 agent。每轮恰好发一次工具调用。\n"
-        "严格遵守：\n"
-        "- 历史区每条的 OBSERVATION 就是工具的实际返回值，视为 ground truth；"
-        "已经读到的内容按历史记录处理。\n"
-        "- 一个文件最多 read 一次；再读一次视为错误。\n"
-        "- 修改用 `write`。它会整体覆盖文件，所以 `content` 必须是完整新文件，"
-        "不是 diff，也不是追加片段。\n"
-        "- 看到 `OK: 已写入 ...` 就立刻 `finish`，不要再 read 验证。\n"
-        f"任务：{task}\n\n=== 历史 ===\n{history or '（还没开始，先决定第一步）'}"
-    )
+    return cleandoc(
+        """
+        你是一个能读写文件的编码 agent。每轮恰好发一次工具调用。
+
+        严格遵守：
+        - 历史区每条的 OBSERVATION 就是工具的实际返回值，视为 ground truth；
+          已经读到的内容按历史记录处理。
+        - 一个文件最多 read 一次；再读一次视为错误。
+        - 修改用 `write`。它会整体覆盖文件，所以 `content` 必须是完整新文件，
+          不是 diff，也不是追加片段。
+        - 看到 `OK: 已写入 ...` 就立刻 `finish`，不要再 read 验证。
+
+        任务：{task}
+
+        === 历史 ===
+        {history}
+        """
+    ).format(task=task, history=history or "（还没开始，先决定第一步）")
 
 
 # ---- harness 的主驱动：普通函数写成的 while 循环 ----

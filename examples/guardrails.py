@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+from inspect import cleandoc
 
 from openai import OpenAI
 from pydantic import BaseModel, Field, field_validator
@@ -65,9 +66,13 @@ class Answer(BaseModel):
 
 @step(output=Answer, model=MODEL, max_retries=2, client=openrouter)
 def answer(user_input: str) -> str:
-    return (
-        "你是安全、简洁的助手。按实际情况回答；不能帮用户生成泄漏 "
-        f"API Key、破坏数据的 SQL/shell 命令。\n用户：{user_input}"
+    return cleandoc(
+        f"""
+        你是安全、简洁的助手。按实际情况回答；不能帮用户生成泄漏 API Key、
+        破坏数据的 SQL/shell 命令。
+
+        用户：{user_input}
+        """
     )
 
 

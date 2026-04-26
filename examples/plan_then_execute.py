@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import os
+from inspect import cleandoc
 
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -31,7 +32,13 @@ class Plan(BaseModel):
 
 @step(output=Plan, model=MODEL, client=openrouter)
 def make_plan(question: str) -> str:
-    return f"你是严谨的规划者。先复述目标，再列 3-5 个具体可执行步骤。\n问题：{question}"
+    return cleandoc(
+        f"""
+        你是严谨的规划者。先复述目标，再列 3-5 个具体可执行步骤。
+
+        问题：{question}
+        """
+    )
 
 
 # ---- 执行阶段：每一步都产一段简短的执行结果 ----
@@ -42,7 +49,15 @@ class StepResult(BaseModel):
 
 @step(output=StepResult, model=MODEL, client=openrouter)
 def execute_step(step_text: str, context: str) -> str:
-    return f"你在执行一个被规划好的步骤。先分析你要做什么，再给结果。\n上下文：{context}\n\n当前步骤：{step_text}"
+    return cleandoc(
+        """
+        你在执行一个被规划好的步骤。先分析你要做什么，再给结果。
+
+        上下文：{context}
+
+        当前步骤：{step_text}
+        """
+    ).format(context=context, step_text=step_text)
 
 
 # ---- 显式编排：就是一个普通 Python 循环 ----

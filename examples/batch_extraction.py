@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 from collections import Counter
+from inspect import cleandoc
 from typing import Literal
 
 from openai import OpenAI
@@ -50,9 +51,13 @@ class Feedback(BaseModel):
 
 @step(output=Feedback, model=MODEL, client=openrouter)
 def extract(text: str) -> str:
-    return (
-        "你是一位客户反馈分析师。把每条反馈抽成结构化字段。"
-        f"先用一句话还原用户说的是什么，再判断情感、话题与严重度。\n反馈：{text}"
+    return cleandoc(
+        f"""
+        你是一位客户反馈分析师。把每条反馈抽成结构化字段。
+        先用一句话还原用户说的是什么，再判断情感、话题与严重度。
+
+        反馈：{text}
+        """
     )
 
 

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import os
+from inspect import cleandoc
 from typing import Annotated, Literal
 
 from openai import OpenAI
@@ -54,11 +55,17 @@ class Decision(BaseModel):
 
 @step(output=Decision, model=MODEL, client=openrouter)
 def decide(question: str, scratch: str) -> str:
-    return (
-        "你是一个会推理的 agent。先思考，再恰好发一次工具调用。"
-        "拿到答案之后就用 `finish` 工具停止。\n"
-        f"问题：{question}\n\n草稿板（到目前为止）：\n{scratch or '（空）'}"
-    )
+    return cleandoc(
+        """
+        你是一个会推理的 agent。先思考，再恰好发一次工具调用。
+        拿到答案之后就用 `finish` 工具停止。
+
+        问题：{question}
+
+        草稿板（到目前为止）：
+        {scratch}
+        """
+    ).format(question=question, scratch=scratch or "（空）")
 
 
 # ---- 显式编排：循环就是一个普通函数 ----

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+from inspect import cleandoc
 
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -31,7 +32,13 @@ class Analysis(BaseModel):
 
 @step(output=Analysis, model=MODEL, client=openrouter)
 def analyze(topic: str) -> str:
-    return f"你是严谨的分析师。先观察，再推理，最后给一句话结论。\n主题：{topic}"
+    return cleandoc(
+        f"""
+        你是严谨的分析师。先观察，再推理，最后给一句话结论。
+
+        主题：{topic}
+        """
+    )
 
 
 def _render_frame(a: Analysis) -> str:

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import sys
+from inspect import cleandoc
 
 from pydantic import BaseModel, Field
 
@@ -53,11 +54,23 @@ class Plan(BaseModel):
 def _build_research(client):
     @step(output=Analysis, model=MODEL, client=client)
     def analyze(topic: str) -> str:
-        return f"你是严谨的分析师。观察、推理、结论。\n主题：{topic}"
+        return cleandoc(
+            f"""
+            你是严谨的分析师。观察、推理、结论。
+
+            主题：{topic}
+            """
+        )
 
     @step(output=Plan, model=MODEL, client=client)
     def plan_from(a: Analysis) -> str:
-        return f"你把分析转成行动计划。\n分析：{a.model_dump_json()}"
+        return cleandoc(
+            """
+            你把分析转成行动计划。
+
+            分析：{analysis_json}
+            """
+        ).format(analysis_json=a.model_dump_json())
 
     def research(topic: str) -> Plan:
         return plan_from(analyze(topic))

@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import os
+from inspect import cleandoc
 
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -40,11 +41,16 @@ class Facts(BaseModel):
 
 @step(output=Facts, model=MODEL, max_retries=3, client=openrouter)
 def extract_facts(user: str) -> str:
-    return (
-        "你是信息抽取器。只抽关于用户自身的事实（姓名、项目、偏好、"
-        "角色、居住地等）并放进 facts 列表。用户提问或闲聊时给空列表。\n"
-        '例子：用户说"我叫张三"，facts=[{"key":"user_name","value":"张三"}]。\n'
-        f'例子：用户问"我是谁"，facts=[]。\n用户原话：{user}'
+    return cleandoc(
+        f"""
+        你是信息抽取器。只抽关于用户自身的事实（姓名、项目、偏好、角色、居住地等）
+        并放进 facts 列表。用户提问或闲聊时给空列表。
+
+        例子：用户说"我叫张三"，facts=[{{"key":"user_name","value":"张三"}}]。
+        例子：用户问"我是谁"，facts=[]。
+
+        用户原话：{user}
+        """
     )
 
 
@@ -58,12 +64,19 @@ class Answer(BaseModel):
 
 @step(output=Answer, model=MODEL, max_retries=2, client=openrouter)
 def answer(mem_snapshot: str, user: str) -> str:
-    return (
-        "你是只靠长期记忆作答的助手。没有对话历史，只有记忆快照。"
-        "用户问到你之前该记住的东西时，从快照里选择相关键填 recall_keys，"
-        "再在 reply 里引用那些键对应的值。快照里没有就诚实说不知道。\n"
-        f"=== 记忆快照 ===\n{mem_snapshot or '（空）'}\n\n=== 用户这一轮 ===\n{user}"
-    )
+    return cleandoc(
+        """
+        你是只靠长期记忆作答的助手。没有对话历史，只有记忆快照。
+        用户问到你之前该记住的东西时，从快照里选择相关键填 recall_keys，
+        再在 reply 里引用那些键对应的值。快照里没有就诚实说不知道。
+
+        === 记忆快照 ===
+        {mem_snapshot}
+
+        === 用户这一轮 ===
+        {user}
+        """
+    ).format(mem_snapshot=mem_snapshot or "（空）", user=user)
 
 
 # ---- 显式编排：抽事实、写入、作答、可选读取。都是普通 Python ----

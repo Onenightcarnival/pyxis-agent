@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import re
+from inspect import cleandoc
 
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -54,11 +55,17 @@ class Answer(BaseModel):
 
 @step(output=Answer, model=MODEL, client=openrouter)
 def answer_with_context(question: str, context: str) -> str:
-    return (
-        "你是严谨的问答助手。只能基于提供的上下文作答；"
-        "上下文没说的就承认不知道，不要编。先列引用，再推理，最后给答案。\n"
-        f"上下文：\n{context}\n\n问题：{question}"
-    )
+    return cleandoc(
+        """
+        你是严谨的问答助手。只能基于提供的上下文作答；上下文没说的就承认不知道，
+        不要编。先列引用，再推理，最后给答案。
+
+        上下文：
+        {context}
+
+        问题：{question}
+        """
+    ).format(context=context, question=question)
 
 
 # ---- 显式编排：retrieve -> augment -> generate，就是一个普通 Python 函数 ----

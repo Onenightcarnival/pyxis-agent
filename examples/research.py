@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import os
+from inspect import cleandoc
 
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -43,12 +44,25 @@ openrouter = OpenAI(
 # ---- Step：schema 是主契约，函数体返回 user message，调用返回 Pydantic ----
 @step(output=Analysis, model=MODEL, client=openrouter)
 def analyze(topic: str) -> str:
-    return f"你是严谨的分析师。先观察，再推理，最后下结论。\n主题：{topic}"
+    return cleandoc(
+        f"""
+        你是严谨的分析师。先观察，再推理，最后下结论。
+
+        主题：{topic}
+        """
+    )
 
 
 @step(output=Plan, model=MODEL, client=openrouter)
 def plan_from_analysis(a: Analysis) -> str:
-    return f"你是一丝不苟的规划者。把分析转成行动计划。\n分析：\n{a.model_dump_json(indent=2)}"
+    return cleandoc(
+        """
+        你是一丝不苟的规划者。把分析转成行动计划。
+
+        分析：
+        {analysis_json}
+        """
+    ).format(analysis_json=a.model_dump_json(indent=2))
 
 
 # ---- 显式编排：普通 Python 函数 ----

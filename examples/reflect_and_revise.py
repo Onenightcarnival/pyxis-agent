@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import os
+from inspect import cleandoc
 from typing import Literal
 
 from openai import OpenAI
@@ -59,35 +60,58 @@ class Revision(BaseModel):
 # ---- 三个 step：schema 是主契约，函数体返回 user message ----
 @step(output=Draft, model=MODEL, client=openrouter)
 def draft(source: str) -> str:
-    return (
-        "你在为一段技术描述写首页 tagline 的第一版。先列出原文不能丢的"
-        "3-5 个关键词；然后写一版信息完整的初稿，长度可以偏长（60-90 字）。"
-        f"别急着压缩，后续会有编辑环节负责精简。\n原文：\n{source}"
-    )
+    return cleandoc(
+        """
+        你在为一段技术描述写首页 tagline 的第一版。先列出原文不能丢的
+        3-5 个关键词；然后写一版信息完整的初稿，长度可以偏长（60-90 字）。
+        别急着压缩，后续会有编辑环节负责精简。
+
+        原文：
+        {source}
+        """
+    ).format(source=source)
 
 
 @step(output=Critique, model=MODEL, client=openrouter)
 def critique(source: str, text: str) -> str:
-    return (
-        "你是严格但务实的编辑，按硬标准评判：\n"
-        "- 长度：严格 ≤ 100 个字；超过即 high severity。\n"
-        "- 核心信息：不能漏 Pydantic schema 字段顺序、普通 Python 编排、"
-        "避开 DSL 这三点里至少两点。\n"
-        "- 可读：不能出现语病或歧义。\n"
-        "先列具体问题，再判断严重度，最后打分。\n"
-        f"原文：\n{source}\n\n当前 tagline（实际字数 {len(text)}）：\n{text}"
-    )
+    return cleandoc(
+        """
+        你是严格但务实的编辑，按硬标准评判：
+        - 长度：严格 ≤ 100 个字；超过即 high severity。
+        - 核心信息：不能漏 Pydantic schema 字段顺序、普通 Python 编排、
+          避开 DSL 这三点里至少两点。
+        - 可读：不能出现语病或歧义。
+
+        先列具体问题，再判断严重度，最后打分。
+
+        原文：
+        {source}
+
+        当前 tagline（实际字数 {text_len}）：
+        {text}
+        """
+    ).format(source=source, text=text, text_len=len(text))
 
 
 @step(output=Revision, model=MODEL, client=openrouter)
 def revise(source: str, text: str, must_fix: list[str]) -> str:
     fixes = "\n".join(f"- {x}" for x in must_fix)
-    return (
-        "你是压缩文案的高手。≤ 100 字是硬约束，超一字都算失败。"
-        "优先压缩：比上一版至少短 10 个字，宁可只保留 1-2 个最核心"
-        "关键词也要卡死 100 字内。先逐条说明你怎么砍的，再给新文案。\n"
-        f"原文：\n{source}\n\n上一版（{len(text)} 字）：\n{text}\n\n必改：\n{fixes}"
-    )
+    return cleandoc(
+        """
+        你是压缩文案的高手。≤ 100 字是硬约束，超一字都算失败。
+        优先压缩：比上一版至少短 10 个字，宁可只保留 1-2 个最核心关键词
+        也要卡死 100 字内。先逐条说明你怎么砍的，再给新文案。
+
+        原文：
+        {source}
+
+        上一版（{text_len} 字）：
+        {text}
+
+        必改：
+        {fixes}
+        """
+    ).format(source=source, text=text, text_len=len(text), fixes=fixes)
 
 
 # ---- 显式编排：while 循环就是 reflection loop ----

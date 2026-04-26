@@ -15,6 +15,7 @@ import json
 import os
 import statistics
 import time
+from inspect import cleandoc
 from pathlib import Path
 from typing import Literal
 
@@ -50,10 +51,15 @@ class Classification(BaseModel):
 
 @step(output=Classification, model=MODEL, client=openrouter, params={"temperature": 0})
 def classify(subject: str) -> str:
-    return (
-        "你是垃圾邮件分类器。先用一两句话说理由，再给最终标签。\n"
-        "spam：钓鱼、推广奖品、违规广告、荐股等骚扰邮件。\n"
-        f"ham：工作、个人、交易通知等合规邮件。\n邮件主题：{subject}"
+    return cleandoc(
+        f"""
+        你是垃圾邮件分类器。先用一两句话说理由，再给最终标签。
+
+        spam：钓鱼、推广奖品、违规广告、荐股等骚扰邮件。
+        ham：工作、个人、交易通知等合规邮件。
+
+        邮件主题：{subject}
+        """
     )
 
 

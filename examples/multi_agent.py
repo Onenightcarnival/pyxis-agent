@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+from inspect import cleandoc
 
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -39,17 +40,29 @@ class ResearchBrief(BaseModel):
 
 @step(output=Angles, model=MODEL, client=openrouter)
 def find_angles(topic: str) -> str:
-    return f"你是资深分析师。为下面的话题列 3-5 个值得展开的切入角度，不用长句。\n话题：{topic}"
+    return cleandoc(
+        f"""
+        你是资深分析师。为下面的话题列 3-5 个值得展开的切入角度，不用长句。
+
+        话题：{topic}
+        """
+    )
 
 
 @step(output=ResearchBrief, model=MODEL, client=openrouter)
 def write_brief(topic: str, angles: list[str]) -> str:
     lines = "\n".join(f"- {a}" for a in angles)
-    return (
-        "你是研究员。基于给你的角度，先列 3-5 条具体事实 / 主张做成要点，"
-        "再列 2-3 条容易被误解或有争议的地方（caveats）。中立口吻、不带营销腔。\n"
-        f"话题：{topic}\n\n参考角度：\n{lines}"
-    )
+    return cleandoc(
+        """
+        你是研究员。基于给你的角度，先列 3-5 条具体事实 / 主张做成要点，
+        再列 2-3 条容易被误解或有争议的地方（caveats）。中立口吻、不带营销腔。
+
+        话题：{topic}
+
+        参考角度：
+        {lines}
+        """
+    ).format(topic=topic, lines=lines)
 
 
 def research_agent(topic: str) -> ResearchBrief:
@@ -67,15 +80,24 @@ class PublishDraft(BaseModel):
 
 @step(output=PublishDraft, model=MODEL, client=openrouter)
 def polish(topic: str, brief: ResearchBrief) -> str:
-    return (
-        "你是严格的主编。把研究员的 brief 改成一段发得出去的正文："
-        "保留 brief 里的事实，去掉重复，照顾 caveats（至少带到一条），"
-        "节奏自然不像机翻。最后写一句你用了什么基调。\n"
-        f"话题：{topic}\n\n"
-        f"研究员 brief：\n"
-        f"要点：\n{chr(10).join('- ' + p for p in brief.key_points)}\n\n"
-        f"容易被误解的地方：\n{chr(10).join('- ' + c for c in brief.caveats)}"
-    )
+    key_points = "\n".join(f"- {p}" for p in brief.key_points)
+    caveats = "\n".join(f"- {c}" for c in brief.caveats)
+    return cleandoc(
+        """
+        你是严格的主编。把研究员的 brief 改成一段发得出去的正文：
+        保留 brief 里的事实，去掉重复，照顾 caveats（至少带到一条），
+        节奏自然不像机翻。最后写一句你用了什么基调。
+
+        话题：{topic}
+
+        研究员 brief：
+        要点：
+        {key_points}
+
+        容易被误解的地方：
+        {caveats}
+        """
+    ).format(topic=topic, key_points=key_points, caveats=caveats)
 
 
 def editor_agent(topic: str, brief: ResearchBrief) -> PublishDraft:
