@@ -197,8 +197,7 @@ mkdocs.yml        文档站配置
 7. 公共面变了同步 AGENTS.md、README 与文档站。
 8. Commit，正文承担 "本次做了什么、为什么" 的职责（CHANGELOG 已废弃，
    git log + GitHub Releases 就是变更历史）。由 AI 编程助手提交时，commit
-   message 末尾固定加当前助手自己的 co-author；例如 Codex 用
-   `Co-authored-by: Codex <codex@openai.com>`。
+   message 末尾固定加当前助手自己的 co-author。
 
 临时规格不长期留在仓库里。当前事实放在代码、测试、docstring 和正式文档；
 历史解释交给 commit message。
