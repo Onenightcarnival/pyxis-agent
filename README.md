@@ -1,6 +1,6 @@
 # pyxis-agent
 
-**声明式思维链的 Python agent 框架 —— agent-for-machine 阵营。**
+**把大模型调用写成 Python 函数，返回 Pydantic 实例。**
 
 > **`声明式思维链 = schema as workflow`**
 
@@ -10,15 +10,15 @@
 
 ## 一句话
 
-- LLM = 带自然语言理解能力的**结构化数据生成器**
-- 每次调用直出一个 Pydantic 实例，下一段 Python 代码直接消费
-- `@step` 把一次 LLM 调用收束成可组合、可替换、可测试的 **AI 函数**
+- 从函数式思想的视角，把 LLM 视为带自然语言理解能力的函数
+- 每次调用返回一个 Pydantic 实例，下一段 Python 代码继续处理
+- `@step` 把 input builder 变成可组合、可替换、可测试的 LLM 调用
 - `Tool` / `@tool` 把外部动作表达成可被 LLM 选择、可由 Python 执行的 schema
-- 多步编排直接写普通 Python 函数
+- 多步编排继续写普通 Python 函数
 - 给人看的内容由应用层从字段里拼
 
 **适合**：数据 pipeline 里的 LLM 节点 · 要回归测试的业务 agent · 多 agent 机器对机器协作。
-**不适合**：丝滑聊天 UI（用 Claude Desktop / ChatGPT 更顺手）。
+**不适合**：聊天 UI 优先的产品。
 
 ## 安装
 ```bash
@@ -67,8 +67,7 @@ assert v.sentiment == "positive"
 ## 继续读
 
 - [文档站首页](https://onenightcarnival.github.io/pyxis-agent/)——核心概念与场景化 Cookbook
-- [哲学与定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——
-  函数式思想、agent-for-machine 定位与完整的"故意不做"清单
+- [哲学与定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——函数式视角与能力范围
 
 - [Cookbook](https://onenightcarnival.github.io/pyxis-agent/cookbook/)——
   测试、可观测、MCP、Interrupt 和 agent 模式的使用姿势

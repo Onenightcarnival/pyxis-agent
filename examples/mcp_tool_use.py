@@ -1,4 +1,5 @@
 """把 FastMCP server 工具和本地 pyxis 工具放进同一个判别式联合。
+
 - server 端用 `mcp.server.fastmcp.FastMCP` 写（见 `_mcp_demo_server.py`），
   也可以直接连接已有 FastMCP server（`uvx mcp-server-filesystem
   /tmp` 之类）。
@@ -7,11 +8,14 @@
   拿到 `list[type[Tool]]`。
 - 把远端 tools 放进判别式联合，`@step(output=Decision)` 的 `action` 字段
   就能统一分派，`d.action.run()` 一行调用不区分来源。
+
 换生产 MCP server：`StdioMCP(...)` 指到真 server 的启动命令
 （`StdioMCP(command="uvx", args=["mcp-server-filesystem", "/tmp"])`），
 或 `HttpMCP(url="https://your.host/mcp", headers={"Authorization": "..."})`。
 本文件其他代码不用动。
+
 跑起来（demo 会自动 Popen `_mcp_demo_server.py` 做 stdio 子进程）：
+
     OPENROUTER_API_KEY=... uv run --env-file .env \\
         python examples/mcp_tool_use.py
 """

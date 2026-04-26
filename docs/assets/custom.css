@@ -2,3 +2,34 @@
 .md-header__button.md-logo {
   display: none;
 }
+
+/* 中文长文默认再松一点，避免 Cookbook 的说明文字挤成一整块。 */
+.md-typeset {
+  font-size: 0.82rem;
+  line-height: 1.85;
+}
+
+.md-typeset p,
+.md-typeset ul,
+.md-typeset ol,
+.md-typeset blockquote {
+  margin-top: 0.85em;
+  margin-bottom: 0.85em;
+}
+
+.md-typeset li + li {
+  margin-top: 0.35em;
+}
+
+.md-typeset h2 {
+  margin-top: 2.1em;
+}
+
+.md-typeset h3 {
+  margin-top: 1.7em;
+}
+
+.md-typeset pre {
+  margin-top: 1em;
+  margin-bottom: 1.2em;
+}

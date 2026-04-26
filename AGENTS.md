@@ -63,8 +63,9 @@ pyxis 不抢这些位子。
   不进入 LLM 上下文。
 - **schema as workflow**：Pydantic 输出模型的**字段顺序**就是思维链——
   LLM 必须自上而下把它们填完，于是 schema 直接声明了推理步骤。
-- **functional boundary**：pyxis 不是函数式编程框架，但借用函数式思想的
-  边界感——把一次 LLM 调用收束成可组合、可替换、可测试的"AI 函数"。
+- **functional boundary**：pyxis 从函数式思想的视角看待 LLM 调用——把
+  大模型视为一个带自然语言理解能力的函数，输入是一段任务说明，输出是
+  一个 Pydantic 实例。
   LLM 的不确定性包在 `Step[T]` 里；边界外回到普通 Python。
 
 ## 两层编排

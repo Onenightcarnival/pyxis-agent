@@ -1,18 +1,20 @@
 # pyxis-agent
-**用 Python 函数和 Pydantic schema 写 agent。**
+**把大模型调用写成 Python 函数，返回 Pydantic 实例。**
 > schema as workflow
 
 ---
 
 ## 适用场景
-pyxis 让 LLM 输出 Pydantic 实例，再交给下一段 Python 代码处理。页面、气泡、报告等给人看的内容，由应用层从字段里渲染。
+pyxis 从函数式思想的视角组织 LLM 调用：把大模型视为一个带自然语言理解能力的函数，调用结果是 Pydantic 实例。页面、气泡、报告等给人看的内容，由应用层从字段里渲染。
+
 适合：
 
 - 数据 pipeline 里的 LLM 节点
 - 需要回归测试的业务 agent
 - 多个 agent 之间的结构化协作
 - LLM 产出需要入库、统计或审计的场景
-如果主要需求是聊天界面的流畅体验、prompt 自动调优或图式工作流，可以先看 [与其他框架对比](comparison.md)。
+
+如果主要需求是聊天界面、prompt 自动调优或图式工作流，可以先看 [与其他框架对比](comparison.md)。
 
 ---
 
@@ -53,10 +55,9 @@ assert v.sentiment == "positive"
 这个函数会生成一次结构化 LLM 调用：
 
 - `Verdict` 是结构化契约，字段顺序决定输出顺序
-- 函数体是 input builder，`-> str` 表示它只负责加工本次调用的 user message
+- 函数体是 input builder，`-> str` 表示它负责加工本次调用的 user message
 - 被 `@step` 装饰后，`classify` 绑定到 `Step[Verdict]`；调用 `classify(...)`
   会完成 LLM 调用，返回 `Verdict` 实例
-
 - 函数 docstring 只用于 Python 文档，不进入 LLM 上下文
 
 ---
@@ -67,7 +68,8 @@ assert v.sentiment == "positive"
 |---|---|---|
 | 单次 LLM 调用 | `@step` + Pydantic schema | 生成结构化输出 |
 | 多次 LLM 调用 | 普通 Python 函数 | 组合、分支、循环 |
-多步逻辑直接写 Python：
+
+多步逻辑继续写 Python：
 ```python
 def triage(text: str) -> str:
     v = classify(text)

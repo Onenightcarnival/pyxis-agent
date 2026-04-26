@@ -174,6 +174,50 @@ def _rewrite_intro_links(text: str) -> str:
     return re.sub(r"\]\(\.\./docs/", "](../", text)
 
 
+def _format_intro_markdown(text: str) -> str:
+    """给 example docstring 补 Markdown 段落边界。
+
+    示例文件里的 docstring 首先服务于源码阅读，常常写得比较紧凑；渲染成
+    Cookbook 时，如果不补空行，列表和运行命令会挤进同一个段落。
+    """
+    heading_prefixes = ("跑起来", "运行前需要", "拓扑", "展示两件事", "换生产 MCP server")
+    lines = text.splitlines()
+    out: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        previous = out[-1] if out else ""
+        previous_stripped = previous.strip()
+
+        if not stripped:
+            if previous_stripped:
+                out.append("")
+            continue
+
+        starts_list = stripped.startswith("- ") or bool(re.match(r"\d+\.\s", stripped))
+        starts_code = line.startswith("    ")
+        previous_starts_list = previous_stripped.startswith("- ") or bool(
+            re.match(r"\d+\.\s", previous_stripped)
+        )
+        previous_starts_code = previous.startswith("    ")
+        starts_heading = any(stripped.startswith(prefix) for prefix in heading_prefixes)
+
+        needs_blank = False
+        if out and previous_stripped:
+            needs_blank = (
+                starts_heading
+                or (starts_list and not previous_starts_list)
+                or (starts_code and not previous_starts_code)
+                or (previous_starts_code and not starts_code)
+            )
+
+        if needs_blank:
+            out.append("")
+        out.append(line)
+
+    return "\n".join(out).strip()
+
+
 # ---- Cookbook index 页 ----
 index_lines = [
     "# Cookbook",
@@ -217,7 +261,7 @@ for name, title, subtitle in RECIPES:
         "",
     ]
     if intro:
-        page.append(_rewrite_intro_links(intro))
+        page.append(_format_intro_markdown(_rewrite_intro_links(intro)))
         page.append("")
     page.append(f"源码：[examples/{name}.py]({GH_BLOB}/examples/{name}.py)")
     page.append("")

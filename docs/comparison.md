@@ -3,8 +3,8 @@
 
 ## TL;DR
 
-| 维度           | pyxis                      | LangGraph                  | DSPy                      |
-|----------------|----------------------------|----------------------------|---------------------------|
+| 维度 | pyxis | LangGraph | DSPy |
+|---|---|---|---|
 | 核心抽象       | Pydantic schema + Python 函数 | 状态机 + 节点图 DSL        | 声明式 program + teleprompter |
 | 多轮编排       | 普通 Python 函数            | `StateGraph.add_node/edge` | 类里的 `forward(...)`     |
 | Prompt 形态    | Pydantic schema + user input | 字符串 + PromptTemplate    | `Signature` 声明式字段    |
@@ -186,7 +186,7 @@ result = Research()(topic="AI agents")
 - 托管 trace UI：LangSmith
 - 聊天界面体验优先：原生 chat SDK
 
-## 总结
+## 怎么选
 
 - **LangGraph**：状态机和图编排
 - **DSPy**：prompt 优化

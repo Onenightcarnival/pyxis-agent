@@ -1,5 +1,5 @@
-# Step：schema-first 的单次调用
-`@step` 把 Python 函数包装成一次结构化 LLM 调用。
+# Step：把 LLM 调用写成函数
+`@step` 把一个 input builder 变成结构化 LLM 调用。调用它时，输入是 Python 参数，输出是 Pydantic 实例。
 
 ## 最小例子
 ```python
@@ -29,26 +29,28 @@ print(s.one_liner)
 
 - `output=Summary` 是这次调用的结构化契约
 - `Summary` 的字段名、类型、字段说明和字段顺序会进入结构化输出约束
-- 函数体是 input builder，`-> str` 表示它只负责加工本次调用的 `user` message
+- 函数体是 input builder，`-> str` 表示它负责加工本次调用的 `user` message
 - 被 `@step` 装饰后，`summarize` 绑定到 `Step[Summary]`；调用
   `summarize(article)` 会完成 LLM 调用，返回 `Summary` 实例
-
 - `summarize` 的 docstring 只用于 Python 文档，不进入 LLM 上下文
+
 如果要给模型更多任务说明，优先写进 Pydantic schema；与本次输入强相关的上下文，
 写进函数返回的字符串。
 
 ## code as contract
-pyxis 里的 code-as-contract 不是“把 prompt 藏在 docstring 里”，而是：
+pyxis 里的 code-as-contract 指的是：一次 LLM 调用的约定写在 Python 类型和函数里。
 
 - `BaseModel` / `Field(description=...)` 描述输出契约
 - 字段顺序声明单次调用内部的生成步骤
 - 函数签名声明应用层输入
 - input builder 的返回值把这次调用的业务上下文序列化成 `user` message
 - 装饰后的 step callable 返回 Pydantic 实例
-这让 LLM 调用契约变成可测试、可审计、可复用的 Python 类型，而不是一段游离的模板文本。
+
+prompt 不藏在 docstring 里。函数 docstring 只给 Python 文档使用，不进入 LLM 上下文。
 
 ## 字段顺序
 Pydantic 字段顺序会影响结构化输出的生成顺序。下面的 `Summary` 会先生成 `key_points`，再生成 `one_liner`。
+
 颠倒顺序：
 ```python
 class SummaryReversed(BaseModel):
@@ -85,6 +87,7 @@ for partial in summarize.stream(article):
 
 - 底层使用 instructor 的 `create_partial`
 - 适合实时 UI 和调试 schema 顺序
+
 异步版：
 ```python
 async for partial in summarize_async.astream(article):

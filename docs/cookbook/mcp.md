@@ -21,6 +21,7 @@ async with mcp_toolset(server) as tools:
 
 ## 混合注册
 本地工具和 MCP 工具可以放进同一个判别式联合：
+
 ```python
 async with mcp_toolset(server) as remote_tools:
     Tools = Union[LocalTool, *remote_tools]
@@ -52,7 +53,8 @@ async with mcp_toolset(server) as remote_tools:
 - 老的 SSE 传输（`GET /sse` 长连接那种）
 - resources / prompts / sampling
 - 全局 registry · 断线重连 · schema 动态刷新 · `ToolSet` 抽象 protocol
-这些能力可以直接使用官方 MCP SDK。
+
+这些能力由官方 MCP SDK 处理。
 
 ---
 
