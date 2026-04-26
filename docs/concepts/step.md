@@ -1,5 +1,5 @@
 # Step：把 LLM 调用写成函数
-`@step` 把一个 input builder 变成结构化 LLM 调用。调用它时，输入是 Python 参数，输出是 Pydantic 实例。
+`@step` 把一个 input builder 变成 LLM 调用。调用它时，输入是 Python 参数，输出是 Pydantic 实例。
 
 ## 最小例子
 ```python
@@ -27,7 +27,7 @@ print(s.one_liner)
 ```
 调用时：
 
-- `output=Summary` 是这次调用的结构化契约
+- `output=Summary` 定义这次调用的返回格式
 - `Summary` 的字段名、类型、字段说明和字段顺序会进入结构化输出约束
 - 函数体是 input builder，`-> str` 表示它负责加工本次调用的 `user` message
 - 被 `@step` 装饰后，`summarize` 绑定到 `Step[Summary]`；调用
@@ -37,24 +37,24 @@ print(s.one_liner)
 更多任务要求优先写进 Pydantic schema；本次输入相关的上下文，写进函数返回的字符串。
 不要在 input builder 里把 response model 用自然语言重讲一遍。
 
-## code as contract
-pyxis 里的 code-as-contract 指的是：一次 LLM 调用的约定写在 Python 类型和函数里。
+## 输入输出写在代码里
+pyxis 要求把一次 LLM 调用的输入和输出写在 Python 类型和函数里。
 
-- `BaseModel` / `Field(description=...)` 描述输出契约
+- `BaseModel` / `Field(description=...)` 描述返回字段
 - 字段顺序声明单次调用内部的生成步骤
 - 函数签名声明应用层输入
-- input builder 的返回值把这次调用的业务上下文序列化成 `user` message
+- input builder 的返回值把这次调用的业务上下文整理成 `user` message
 - 装饰后的 step callable 返回 Pydantic 实例
 
 prompt 不藏在 docstring 里。函数 docstring 只给 Python 文档使用，不进入 LLM 上下文。
 
-## 少写口水 prompt
+## 少写重复 prompt
 `output=...` 已经把返回结构交给 Pydantic。input builder 不要再写：
 
 ```python
 def summarize(article: str) -> str:
     return f"""
-    你是一位摘要专家。请先抽取 3-5 个关键点，再基于关键点写一句话摘要。
+    请先抽取 3-5 个关键点，再基于关键点写一句话摘要。
     输出字段包括 key_points 和 one_liner。
 
     文章：{article}

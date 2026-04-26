@@ -43,7 +43,7 @@ class Facts(BaseModel):
 def extract_facts(user: str) -> str:
     return cleandoc(
         f"""
-        你是信息抽取器。只抽关于用户自身的事实（姓名、项目、偏好、角色、居住地等）
+        只抽关于用户自身的事实（姓名、项目、偏好、角色、居住地等）
         并放进 facts 列表。用户提问或闲聊时给空列表。
 
         例子：用户说"我叫张三"，facts=[{{"key":"user_name","value":"张三"}}]。
@@ -66,7 +66,7 @@ class Answer(BaseModel):
 def answer(mem_snapshot: str, user: str) -> str:
     return cleandoc(
         """
-        你是只靠长期记忆作答的助手。没有对话历史，只有记忆快照。
+        只根据长期记忆作答。没有对话历史，只有记忆快照。
         用户问到你之前该记住的东西时，从快照里选择相关键填 recall_keys，
         再在 reply 里引用那些键对应的值。快照里没有就诚实说不知道。
 
@@ -100,7 +100,7 @@ def chat(turns: list[str]) -> list[str]:
 
 TURNS: list[str] = [
     "我叫 Chao，在做一个叫 pyxis 的 agent 框架。",
-    "我最欣赏的设计是 schema-as-CoT。",
+    "我最欣赏的设计是用字段顺序组织输出。",
     "对了，我刚才说我在做啥来着？",
     "那我最欣赏什么设计？",
 ]

@@ -1,4 +1,4 @@
-"""Tool：把动作声明成 schema。
+"""Tool：用 Pydantic 描述工具参数。
 
 一个 `Tool` 就是一个 `BaseModel`：它的字段**就是**动作的参数，它的 `run()`
 **就是**动作的实现。LLM 通过在 Step 输出 schema 的 `action` 字段里填入
@@ -6,8 +6,7 @@
 Python 用 `isinstance` / `action.run()` 分派。
 
 `@tool` 装饰器把一个普通 Python 函数自动转成 Tool 子类，参数推为字段、
-函数名推为 `kind` 字面量、函数本体接管 `run()` —— 小工具的定义成本降到
-"就是一个函数"。
+函数名推为 `kind` 字面量、函数本体接管 `run()`。简单工具可以直接写成函数。
 """
 
 from __future__ import annotations
@@ -43,7 +42,7 @@ def tool(fn: Callable[..., Any]) -> type[Tool]:
     """把一个普通函数转成 Tool 子类。
 
     - 类名：函数名的 PascalCase 形式。
-    - `kind`：`Literal[函数名] = 函数名` 自动加上，判别式联合开箱即用。
+    - `kind`：自动加上 `Literal[函数名] = 函数名`，可直接用于判别式联合。
     - 字段：函数的每个普通参数变成一个 Pydantic 字段；无默认值 → 必选，
       有默认值 → 沿用；无类型注解 → 按 `str` 推断。
     - `run()`：实例化后的 `.run()` 直接调原函数；非字符串返回用 `str()` 转。

@@ -97,7 +97,7 @@ import dspy
 
 
 class Analyze(dspy.Signature):
-    """你是严谨的分析师。"""
+    """按观察、推理、结论分析。"""
 
     topic: str = dspy.InputField()
     observation: str = dspy.OutputField(desc="你注意到什么")

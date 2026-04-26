@@ -124,7 +124,7 @@ def test_live_tool_decorator_agent(openrouter_sync: OpenAI, model: str) -> None:
     @step(output=Decision, model=model, max_retries=3, client=openrouter_sync)
     def decide(question: str, scratch: str) -> str:
         return (
-            "你是一个会推理的 agent。先思考，再恰好发一次工具调用，"
+            "先判断下一步动作，再恰好发一次工具调用，"
             "拿到答案用 `finish` 结束。\n"
             f"问题：{question}\n草稿：\n{scratch or '（空）'}"
         )
@@ -152,7 +152,7 @@ def test_live_stream_yields_progressively(openrouter_sync: OpenAI, model: str) -
 
     @step(output=Analysis, model=model, client=openrouter_sync)
     def analyze(topic: str) -> str:
-        return f"你是严谨的分析师。按观察、推理、结论分析主题：{topic}"
+        return f"按观察、推理、结论分析主题：{topic}"
 
     frames: list[Analysis] = []
     for partial in analyze.stream("为什么雨是咸的"):
@@ -178,7 +178,7 @@ def test_live_interrupt_review(openrouter_sync: OpenAI, model: str) -> None:
 
     @step(output=Plan, model=model, client=openrouter_sync)
     def make_plan(q: str) -> str:
-        return f"你是严谨的规划者。先复述目标，再列 3-5 个具体步骤。\n问题：{q}"
+        return f"先复述目标，再列 3-5 个具体步骤。\n问题：{q}"
 
     def plan_then_review(q: str):
         plan = make_plan(q)
@@ -188,7 +188,7 @@ def test_live_interrupt_review(openrouter_sync: OpenAI, model: str) -> None:
         return {"status": "done", "plan_goal": plan.goal}
 
     result = run_flow(
-        plan_then_review("怎么演示声明式 CoT 框架？"),
+        plan_then_review("怎么演示用字段顺序组织输出的 agent 框架？"),
         on_interrupt=lambda q: Decision(approve=True),
     )
     assert result["status"] == "done"

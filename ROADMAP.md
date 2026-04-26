@@ -17,21 +17,21 @@
 
 ## 故意不做
 
-违反核心哲学，**永远不加**：
+这些功能不加：
 
 - **图 / DAG DSL、YAML pipeline 配置** — Python 已经能组合函数。图状控制流用 LangGraph
 - **内置 agent loop helper**（ReAct / Plan-and-Execute 模板）— loop 是用户自己的普通 Python 函数；要模板走 LangGraph
 - **function-calling 协议适配层** — 输出 schema 就是接口；要用 provider 的 function-calling 直接用 instructor
 - **响应式状态 / 全局可变 agent context** — 显式传参
-- **对标 Claude Desktop / ChatGPT 的对话丝滑度** — pyxis 是 agent-for-machine，LLM 直出 Pydantic 给代码用；要聊天顺滑用 Anthropic SDK 原生 tool use
+- **对标 Claude Desktop / ChatGPT 的聊天体验** — pyxis 是 agent-for-machine，LLM 直出 Pydantic 给代码用；要聊天顺滑用 Anthropic SDK 原生 tool use
 - **客户端封装**（~~`InstructorClient`~~、~~`openrouter_client`~~、~~`openai_client`~~、~~`set_default_client`~~）— `@step(client=...)` 吃 `OpenAI` / `AsyncOpenAI` / instructor 实例
 - **观测体系**（~~`trace()`~~、~~`TraceRecord`~~、~~`Usage`~~、~~`StepHook`~~、~~`add_hook`~~）— 接 Langfuse / OpenTelemetry / Datadog，instrument OpenAI SDK 层；自定义打点用 Python 装饰器叠加
-- **手写 messages 列表的入口** — schema 是主契约、函数体返回是 user message；多轮 chat / assistant 轮次控制直接用 OpenAI SDK
+- **手写 messages 列表的入口** — schema 定义返回格式、函数体返回 user message；多轮 chat / assistant 轮次控制直接用 OpenAI SDK
 
 ## 怎么贡献一个迭代
 
 1. 挑一项 → 开分支
-2. 产品 / 哲学 / 定位层变化 → 直接改 `docs/concepts/`、`README.md`、`CLAUDE.md`
+2. 产品 / 定位层变化 → 直接改 `docs/concepts/`、`README.md`、`CLAUDE.md`
 3. 代码 / API / 行为层变化 → 先建真实文件、类、函数签名和 docstring，在实现区留下 `TODO(...)` / `NotImplementedError`
 4. 先写失败的测试
 5. 写实现，直到本轮 `TODO(...)` 清零

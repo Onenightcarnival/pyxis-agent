@@ -56,7 +56,7 @@ def _build_research(client):
     def analyze(topic: str) -> str:
         return cleandoc(
             f"""
-            你是严谨的分析师。观察、推理、结论。
+            按观察、推理、结论分析。
 
             主题：{topic}
             """
@@ -81,7 +81,7 @@ def _build_research(client):
 def main() -> None:
     client = _make_langfuse_client()
     research = _build_research(client)
-    result = research("声明式思维链的 agent 框架")
+    result = research("用 Pydantic 字段顺序组织 LLM 输出的 agent 框架")
     print("=== 最终计划 ===")
     print(result.model_dump_json(indent=2))
     print("\n=== Langfuse ===")

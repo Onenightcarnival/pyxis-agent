@@ -38,7 +38,7 @@ class Route(BaseModel):
 def route(user_input: str) -> str:
     return cleandoc(
         f"""
-        你是意图分类器。先解释一两句再给标签。
+        判断用户意图。先用一两句话说明依据，再给标签。
 
         sql：涉及表、查询、报表、统计；
         code_debug：贴了报错或代码片段问题；
@@ -60,8 +60,8 @@ class SqlAnswer(BaseModel):
 def handle_sql(user_input: str) -> str:
     return cleandoc(
         f"""
-        你是数据分析师。为用户需求写一句可执行的 PostgreSQL。
-        未知表就合理假设名字，写完后一句话说明。
+        为用户需求写一句可执行的 PostgreSQL。
+        如果缺少表名，就用最常见的命名补上，写完后一句话说明。
 
         需求：{user_input}
         """
@@ -77,7 +77,7 @@ class DebugAnswer(BaseModel):
 def handle_debug(user_input: str) -> str:
     return cleandoc(
         f"""
-        你是代码 reviewer。只给最可能的原因和具体修法，不要泛泛而谈。
+        检查代码问题。只给最可能的原因和具体修法，不要泛泛而谈。
 
         问题：{user_input}
         """
@@ -93,7 +93,7 @@ class CreativeAnswer(BaseModel):
 def handle_creative(user_input: str) -> str:
     return cleandoc(
         f"""
-        你是有品味的文案。先点一句核心创意再给成品，不废话。
+        写一版文案。先给核心创意，再给成品，不废话。
 
         需求：{user_input}
         """
@@ -108,7 +108,7 @@ class FallbackAnswer(BaseModel):
 def handle_other(user_input: str) -> str:
     return cleandoc(
         f"""
-        你是礼貌的助手。用户问题不属于 SQL / 调试 / 创意任何一类，
+        用户问题不属于 SQL / 调试 / 创意任何一类，
         给一句短回应引导他说得更具体。
 
         用户：{user_input}
@@ -133,7 +133,7 @@ def dispatch(user_input: str) -> tuple[str, BaseModel]:
 INPUTS: list[str] = [
     "帮我查最近 7 天每个用户的订单总额 Top 10",
     "这段 Python：`sum([1,2,3], start='x')` 为啥报 TypeError？",
-    "给一个做声明式 agent 框架的创业项目起个中文名",
+    "给一个做结构化输出 agent 框架的创业项目起个中文名",
     "今天广州天气怎么样？",
 ]
 

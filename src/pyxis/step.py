@@ -1,9 +1,8 @@
-"""Step：一次 LLM 调用 + 结构即思维链（schema-as-CoT）。
+"""Step：把一次 LLM 调用写成函数。
 
-- code-as-contract：Pydantic 输出模型、字段说明、函数签名和函数体返回的输入文本
-  共同构成代码化契约；函数 docstring 只用于 Python 文档，不进入 LLM 上下文。
-- schema-as-CoT：Pydantic 输出模型的字段顺序就是思维链——LLM 必须
-  自上而下把它们填完。
+Pydantic 输出模型、字段说明、函数签名和函数体返回的输入文本，共同定义
+一次调用。函数 docstring 只用于 Python 文档，不进入 LLM 上下文。
+Pydantic 输出模型的字段顺序，就是模型生成字段的顺序。
 
 `@step` 按 `def` / `async def` 分派到 `Step` / `AsyncStep`。
 `client` 参数必填，吃 `openai.OpenAI` / `openai.AsyncOpenAI` 或已经
@@ -60,7 +59,7 @@ class Step[T: BaseModel]:
         )
 
     def stream(self, *args: object, **kwargs: object) -> Iterator[T]:
-        """按字段逐步 yield partial 实例；最后一帧即完整实例。"""
+        """按字段逐步 yield partial 实例；最后一帧是完整实例。"""
         user_content = self.input_fn(*args, **kwargs)
         messages = _build_messages(self.input_fn, user_content)
         yield from self._backend.stream(
@@ -108,7 +107,7 @@ class AsyncStep[T: BaseModel]:
         )
 
     async def astream(self, *args: object, **kwargs: object) -> AsyncIterator[T]:
-        """异步流式对偶。"""
+        """异步流式输出。"""
         ret = self.input_fn(*args, **kwargs)
         user_content = await ret if inspect.isawaitable(ret) else ret
         messages = _build_messages(self.input_fn, user_content)
@@ -133,7 +132,7 @@ def step[T: BaseModel](
     """装饰器：把输入函数变成一个类型化的 Step。
 
     - 同步 `def` 得到 `Step[T]`；异步 `async def` 得到 `AsyncStep[T]`。
-    - `output` 的 Pydantic schema 是这次调用的结构化契约；字段顺序就是隐式 workflow。
+    - `output` 的 Pydantic schema 定义这次调用的返回格式；字段顺序就是生成顺序。
     - 被装饰的 input builder 必须返回 `str`（异步版 await 后得到 `str`），
       它就是本次调用的 user message。
     - 装饰后绑定到原函数名的是 `Step[T]` / `AsyncStep[T]`，调用它会返回

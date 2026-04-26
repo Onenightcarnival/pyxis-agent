@@ -17,7 +17,7 @@ from pyxis import step
 MODEL = "openai/gpt-5.4-nano"
 
 
-# ---- Schema：字段顺序即思维链 ----
+# ---- Schema：字段顺序就是输出顺序 ----
 class Analysis(BaseModel):
     """观察 -> 推理 -> 结论，按这个顺序。"""
 
@@ -41,12 +41,12 @@ openrouter = OpenAI(
 )
 
 
-# ---- Step：schema 是主契约，函数体返回 user message，调用返回 Pydantic ----
+# ---- Step：schema 定义返回格式，函数体返回 user message，调用返回 Pydantic ----
 @step(output=Analysis, model=MODEL, client=openrouter)
 def analyze(topic: str) -> str:
     return cleandoc(
         f"""
-        你是严谨的分析师。先观察，再推理，最后下结论。
+        按观察、推理、结论分析下面的主题。
 
         主题：{topic}
         """
@@ -57,7 +57,7 @@ def analyze(topic: str) -> str:
 def plan_from_analysis(a: Analysis) -> str:
     return cleandoc(
         """
-        你是一丝不苟的规划者。把分析转成行动计划。
+        把分析转成行动计划。
 
         分析：
         {analysis_json}
@@ -86,7 +86,7 @@ def render_plan(p: Plan) -> str:
 
 
 def main() -> None:
-    result = research("用声明式思维链搭一个 agent 框架")
+    result = research("用 Pydantic 字段顺序搭一个 agent 框架")
     print("=" * 60)
     print("最终计划（给人看）")
     print("=" * 60)

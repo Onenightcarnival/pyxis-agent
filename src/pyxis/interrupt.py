@@ -1,12 +1,12 @@
 """Interrupt：用生成器函数在中间挂起等外部输入。
 
-核心：普通生成器函数用 `yield ask_interrupt(...)` 声明外部输入点。
+普通生成器函数用 `yield ask_interrupt(...)` 声明外部输入点。
 `InterruptRequest` 描述需要什么外部输入，`FlowResult` 是异步生成器的
 终态哨兵，`run_flow` / `run_aflow` 把生成器驱动起来并把外部答案 send
 回去。
 
-没有 checkpoint、没有 state 快照、没有特殊语法——生成器本身就是活的
-状态。外部参与者在中间就是一段普通 Python 控制流。
+没有 checkpoint、没有 state 快照、没有特殊语法。生成器状态留在当前进程里，
+外部参与者在中间接一次请求，再把答案送回来。
 """
 
 from __future__ import annotations

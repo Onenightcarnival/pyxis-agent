@@ -24,7 +24,7 @@ openrouter = OpenAI(
 )
 
 
-# ---- 规划阶段：schema 直接声明"先目标再拆步骤"的隐式思维链 ----
+# ---- 规划阶段：schema 先放目标，再放步骤 ----
 class Plan(BaseModel):
     goal: str = Field(description="一行复述用户目标")
     steps: list[str] = Field(description="3-5 个具体可执行的步骤")
@@ -34,7 +34,7 @@ class Plan(BaseModel):
 def make_plan(question: str) -> str:
     return cleandoc(
         f"""
-        你是严谨的规划者。先复述目标，再列 3-5 个具体可执行步骤。
+        先复述目标，再列 3-5 个具体可执行步骤。
 
         问题：{question}
         """

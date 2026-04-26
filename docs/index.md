@@ -1,11 +1,10 @@
 # pyxis-agent
 **把大模型调用写成 Python 函数，返回 Pydantic 实例。**
-> schema as workflow
 
 ---
 
 ## 适用场景
-pyxis 从函数式思想的视角组织 LLM 调用：把大模型视为一个带自然语言理解能力的函数，调用结果是 Pydantic 实例。页面、气泡、报告等给人看的内容，由应用层从字段里渲染。
+pyxis 把一次 LLM 调用包装成函数：传入文本，返回 Pydantic 对象。页面、气泡、报告等给人看的内容，由应用层从字段里渲染。
 
 适合：
 
@@ -54,7 +53,7 @@ assert v.sentiment == "positive"
 ```
 这个函数会生成一次结构化 LLM 调用：
 
-- `Verdict` 是结构化契约，字段顺序决定输出顺序
+- `Verdict` 定义返回格式，字段顺序决定输出顺序
 - 函数体是 input builder，`-> str` 表示它负责加工本次调用的 user message
 - 被 `@step` 装饰后，`classify` 绑定到 `Step[Verdict]`；调用 `classify(...)`
   会完成 LLM 调用，返回 `Verdict` 实例
@@ -101,5 +100,5 @@ def triage(text: str) -> str:
 |---|---|
 | 找可运行示例 | [Cookbook](cookbook/index.md) |
 | 了解核心 API | [概念](concepts/index.md) |
-| 看设计边界 | [哲学与定位](concepts/philosophy.md) |
+| 看设计边界 | [定位](concepts/philosophy.md) |
 | 查类型和签名 | [API 参考](api/step.md) |

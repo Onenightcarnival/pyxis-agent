@@ -34,7 +34,7 @@ class Analysis(BaseModel):
 def analyze(topic: str) -> str:
     return cleandoc(
         f"""
-        你是严谨的分析师。先观察，再推理，最后给一句话结论。
+        先观察，再推理，最后给一句话结论。
 
         主题：{topic}
         """

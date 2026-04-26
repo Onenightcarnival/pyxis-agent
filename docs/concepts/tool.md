@@ -1,4 +1,4 @@
-# Tool：action 即 schema
+# Tool：用 Pydantic 描述工具
 pyxis 的工具是带 `run()` 方法的 Pydantic 模型。字段是参数，`run()` 执行动作。
 
 ## 最小例子

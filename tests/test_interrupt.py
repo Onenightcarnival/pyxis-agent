@@ -125,9 +125,9 @@ def test_multi_turn_conversation_via_interrupt():
 
     result = run_flow(
         chat(),
-        on_interrupt=_queued(["你好", "再聊聊 schema-as-CoT", "exit"]),
+        on_interrupt=_queued(["你好", "再聊聊字段顺序", "exit"]),
     )
-    assert result == [("user", "你好"), ("user", "再聊聊 schema-as-CoT")]
+    assert result == [("user", "你好"), ("user", "再聊聊字段顺序")]
 
 
 def test_step_calls_across_yields_are_captured_by_fake_client():

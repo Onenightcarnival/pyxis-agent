@@ -82,7 +82,7 @@ Action = Annotated[LsFiles | ReadFile | WriteFile | Finish, Field(discriminator=
 
 
 class Decision(BaseModel):
-    """schema-as-CoT：每轮先想一下，再发恰好一次工具调用。"""
+    """每轮先判断下一步动作，再恰好发一次工具调用。"""
 
     thought: str = Field(description="简短推理：当前观察到什么、接下来要做什么")
     action: Action = Field(description="这一步调用的工具")
@@ -92,7 +92,7 @@ class Decision(BaseModel):
 def decide(task: str, history: str) -> str:
     return cleandoc(
         """
-        你是一个能读写文件的编码 agent。每轮恰好发一次工具调用。
+        根据任务读写文件。每轮恰好发一次工具调用。
 
         严格遵守：
         - 历史区每条的 OBSERVATION 就是工具的实际返回值，视为 ground truth；

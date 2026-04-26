@@ -2,7 +2,7 @@
 
 **把大模型调用写成 Python 函数，返回 Pydantic 实例。**
 
-> **`声明式思维链 = schema as workflow`**
+核心概念：**声明式思维链**。稳定规则写进代码，字段顺序就是单次调用里的输出顺序。
 
 **完整文档**：<https://onenightcarnival.github.io/pyxis-agent/>
 
@@ -10,10 +10,10 @@
 
 ## 一句话
 
-- 从函数式思想的视角，把 LLM 视为带自然语言理解能力的函数
+- 把一次 LLM 调用包装成函数：传入文本，返回 Pydantic 对象
 - 每次调用返回一个 Pydantic 实例，下一段 Python 代码继续处理
-- `@step` 把 input builder 变成可组合、可替换、可测试的 LLM 调用
-- `Tool` / `@tool` 把外部动作表达成可被 LLM 选择、可由 Python 执行的 schema
+- `@step` 把 input builder 变成可组合、可替换、可测试的调用
+- `Tool` / `@tool` 用 Pydantic 描述工具参数，由 Python 执行
 - 多步编排继续写普通 Python 函数
 - 给人看的内容由应用层从字段里拼
 
@@ -54,10 +54,10 @@ v = classify("今天简直完美")
 assert v.sentiment == "positive"
 ```
 
-两件事同时发生：
+这里有两个约定：
 
-- **schema as workflow** — `Verdict` 字段顺序（`sentiment` 在 `confidence` 前）= LLM 的思维链
-- **code as contract** — Pydantic 字段、函数签名和函数体返回的输入文本共同定义这次调用；docstring 不进入 LLM 上下文
+- `Verdict` 的字段顺序就是输出顺序，先填 `sentiment`，再填 `confidence`
+- Pydantic 字段、函数签名和函数体返回的输入文本共同定义这次调用；docstring 不进入 LLM 上下文
 
 `sentiment` 和 `confidence` 怎么判断，写在 schema 里；函数返回值只放本次调用的材料。
 不要把 response model 再用自然语言复述成一段 prompt。
@@ -70,10 +70,10 @@ assert v.sentiment == "positive"
 ## 继续读
 
 - [文档站首页](https://onenightcarnival.github.io/pyxis-agent/)——核心概念与场景化 Cookbook
-- [哲学与定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——函数式视角与能力范围
+- [定位](https://onenightcarnival.github.io/pyxis-agent/concepts/philosophy/)——pyxis 做什么、不做什么
 
 - [Cookbook](https://onenightcarnival.github.io/pyxis-agent/cookbook/)——
-  测试、可观测、MCP、Interrupt 和 agent 模式的使用姿势
+  测试、可观测、MCP、Interrupt 和 agent 模式的用法
 
 ## 仓库结构 ↔ 文档站
 

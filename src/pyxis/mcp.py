@@ -2,12 +2,12 @@
 
 职责范围：
 
-- `MCPServer` / `StdioMCP` / `HttpMCP`：声明式连接配置（Pydantic 数据）。
+- `MCPServer` / `StdioMCP` / `HttpMCP`：连接配置（Pydantic 数据）。
 - `mcp_toolset(server)`：异步上下文管理器；入口建立连接、发 `tools/list`、
   把每个远端工具翻成一个 pyxis `Tool` 子类（`run()` 同步调 `tools/call`）。
 - 传输复杂度全部吸收在本模块：HTTP 用 `httpx.Client`（无状态请求/响应）；
   stdio 用持久子进程 + `id → response` 关联 + 锁。
-- **`Tool.run()` 契约保持同步**——调用方（agent loop）完全不知道工具从哪来。
+- **`Tool.run()` 保持同步方法**——调用方（agent loop）不用关心工具从哪来。
 
 故意不做：`arun` / 老 SSE 传输（`GET /sse` 长连接那种，**不是** Streamable
 HTTP 的 SSE 响应体——后者已完整支持）/ resources / prompts / sampling /
@@ -52,7 +52,7 @@ Transport = Annotated[StdioMCP | HttpMCP, Field(discriminator="kind")]
 
 
 class MCPServer(BaseModel):
-    """一个 MCP server 的声明式描述——数据，不是行为。
+    """一个 MCP server 的配置——数据，不是行为。
 
     `include` / `exclude` 用**精确名**筛选工具；`include` 指定的名字必须
     真的出现在 server 的 `tools/list` 返回里，否则抛 `ValueError`。

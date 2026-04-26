@@ -42,7 +42,7 @@ class ResearchBrief(BaseModel):
 def find_angles(topic: str) -> str:
     return cleandoc(
         f"""
-        你是资深分析师。为下面的话题列 3-5 个值得展开的切入角度，不用长句。
+        为下面的话题列 3-5 个值得展开的切入角度，不用长句。
 
         话题：{topic}
         """
@@ -54,7 +54,7 @@ def write_brief(topic: str, angles: list[str]) -> str:
     lines = "\n".join(f"- {a}" for a in angles)
     return cleandoc(
         """
-        你是研究员。基于给你的角度，先列 3-5 条具体事实 / 主张做成要点，
+        基于给你的角度，先列 3-5 条具体事实 / 主张做成要点，
         再列 2-3 条容易被误解或有争议的地方（caveats）。中立口吻、不带营销腔。
 
         话题：{topic}
@@ -84,7 +84,7 @@ def polish(topic: str, brief: ResearchBrief) -> str:
     caveats = "\n".join(f"- {c}" for c in brief.caveats)
     return cleandoc(
         """
-        你是严格的主编。把研究员的 brief 改成一段发得出去的正文：
+        把研究员的 brief 改成一段发得出去的正文：
         保留 brief 里的事实，去掉重复，照顾 caveats（至少带到一条），
         节奏自然不像机翻。最后写一句你用了什么基调。
 
@@ -112,7 +112,7 @@ def pipeline(topic: str) -> PublishDraft:
 
 
 def main() -> None:
-    topic = "schema-as-CoT：用结构化字段顺序把 LLM 的推理步骤声明出来"
+    topic = "用 Pydantic 字段顺序组织 LLM 输出"
     print(f"话题：{topic}\n")
     draft = pipeline(topic)
     print(f"=== 标题 ===\n{draft.headline}")

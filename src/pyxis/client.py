@@ -1,8 +1,8 @@
-"""LLM 客户端：内部规范化层 + 测试用 `FakeClient`。
+"""LLM 客户端：内部适配层 + 测试用 `FakeClient`。
 
 `@step(client=...)` 吃 `openai.OpenAI` / `openai.AsyncOpenAI` 或
 `instructor.from_openai(...)` 返回的实例。`@step` 内部用
-`_adapt_sync_client` / `_adapt_async_client` 把它规范化成内部的
+`_adapt_sync_client` / `_adapt_async_client` 把它适配成内部的
 `_SyncBackend` / `_AsyncBackend`。
 
 对外导出的只有 `FakeClient` + `FakeCall`：零网络、按队列返回预置
@@ -24,7 +24,7 @@ _Messages = list[dict[str, str]]
 
 @runtime_checkable
 class _SyncBackend(Protocol):
-    """pyxis 内部契约：同步后端。用户不直接实现，仅 `FakeClient` 与内部
+    """pyxis 内部接口：同步后端。用户不直接实现，仅 `FakeClient` 与内部
     adapter 走这个接口。"""
 
     def complete[T: BaseModel](
@@ -50,7 +50,7 @@ class _SyncBackend(Protocol):
 
 @runtime_checkable
 class _AsyncBackend(Protocol):
-    """pyxis 内部契约：异步后端。"""
+    """pyxis 内部接口：异步后端。"""
 
     async def acomplete[T: BaseModel](
         self,
@@ -261,7 +261,7 @@ def _looks_like_async_instructor(client: Any) -> bool:
 
 
 def _adapt_sync_client(client: Any) -> _SyncBackend:
-    """把用户传进来的 client 规范化为 `_SyncBackend`。
+    """把用户传进来的 client 适配为 `_SyncBackend`。
 
     - `FakeClient` / 鸭子类型实现了 `_SyncBackend`（带 `complete` + `stream`）
       的对象 → 直接返回。用户要接第三方 mock / cache wrapper 走这条路。
@@ -295,7 +295,7 @@ def _adapt_sync_client(client: Any) -> _SyncBackend:
 
 
 def _adapt_async_client(client: Any) -> _AsyncBackend:
-    """把用户传进来的 client 规范化为 `_AsyncBackend`。"""
+    """把用户传进来的 client 适配为 `_AsyncBackend`。"""
     if isinstance(client, FakeClient):
         return client
 

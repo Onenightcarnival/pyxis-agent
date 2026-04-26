@@ -47,7 +47,7 @@ Action = Annotated[Calculate | Finish, Field(discriminator="kind")]
 
 
 class Decision(BaseModel):
-    """schema-as-CoT：先思考，再发出一次工具调用。"""
+    """先判断下一步动作，再发出一次工具调用。"""
 
     thought: str = Field(description="先推理一下接下来要做什么")
     action: Action = Field(description="这一步要调用的工具")
@@ -57,7 +57,7 @@ class Decision(BaseModel):
 def decide(question: str, scratch: str) -> str:
     return cleandoc(
         """
-        你是一个会推理的 agent。先思考，再恰好发一次工具调用。
+        先判断下一步动作，再恰好发一次工具调用。
         拿到答案之后就用 `finish` 工具停止。
 
         问题：{question}

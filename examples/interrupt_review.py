@@ -39,7 +39,7 @@ class ReviewDecision(BaseModel):
 def make_plan(question: str) -> str:
     return cleandoc(
         f"""
-        你是严谨的规划者。先复述目标，再列 3-5 个具体可执行步骤。
+        先复述目标，再列 3-5 个具体可执行步骤。
 
         问题：{question}
         """
@@ -50,7 +50,7 @@ def make_plan(question: str) -> str:
 def refine_plan(question: str, prev: Plan, comments: str) -> str:
     return cleandoc(
         """
-        你是规划者。上一个计划被审阅者打回，请根据意见改好。
+        上一个计划被审阅者打回，请根据意见改好。
 
         问题：{question}
 

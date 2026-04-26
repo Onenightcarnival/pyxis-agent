@@ -1,18 +1,25 @@
-# 哲学与定位
+# 定位
 
 ## 基本设定
-pyxis 从函数式思想的视角看待 LLM 调用：把大模型视为一个带自然语言理解能力的函数，输入是一段任务说明，输出是一个 Pydantic 实例。后续逻辑继续用 Python 代码处理这个实例。
+pyxis 把一次 LLM 调用包装成函数：输入是一段任务说明，输出是一个 Pydantic 实例。后续逻辑继续用 Python 处理这个实例。
+
+这里的核心概念叫**声明式思维链**。它有两层意思：
+
+- **code as prompt**：稳定规则写进 Python 类型、字段说明和函数签名；函数体返回本次调用的输入材料。
+- **schema as workflow**：Pydantic 字段顺序就是单次调用里的输出顺序。
+
+这不是让项目多一层术语，而是把 prompt 里长期有效的要求挪到代码里。
 
 ## 设计要求
 这个设定带来四个要求：
 
 - 输出用 Pydantic 表达
 - 测试可以用 `FakeClient` 预置响应并断言结果
-- Pydantic schema 是单次调用的主契约，字段顺序表示输出步骤
+- Pydantic schema 定义返回格式，字段顺序表示输出步骤
 - 被装饰函数是 input builder，返回值是本次调用的输入消息；装饰后的 step callable 返回 Pydantic 实例；函数 docstring 不进入 LLM 上下文
 
-## schema 不是 prompt 的翻译稿
-不要把一段口水 prompt 换个地方放。输出契约应该写成代码。
+## 不要重复 schema
+不要把 schema 已经写清楚的要求，再换成一段 prompt 重说。稳定的返回要求应该写进 Pydantic。
 
 字段名、字段类型、`Field(description=...)` 和字段顺序，已经说明了要产出什么、先产出什么、可选值是什么。input builder 只放本次调用才有的内容，比如用户原文、业务背景、少量角色设定。不要再用自然语言把 response model 复述一遍：
 
@@ -34,19 +41,19 @@ def extract(text: str) -> str:
 
 `summary -> sentiment -> topic -> severity` 这条顺序由 schema 声明，不需要在 prompt 里再写“先总结，再判断情感、话题和严重度”。长期生效的规则放字段定义；本次输入的材料放函数返回值。
 
-## 函数式视角
-在 pyxis 里，一次 LLM 调用被写成一个函数调用。这个函数边界可组合、可替换，也方便测试。
+## 一次调用就是一次函数调用
+在 pyxis 里，一次 LLM 调用被写成一个函数调用。这个函数可以组合、替换，也方便测试。
 
 `@step` 装饰前，函数是普通的 input builder：应用层输入进去，返回本次调用的
 user message。`@step` 装饰后，同一个名字绑定到 `Step[T]`：调用它会执行一次
 LLM 调用，并返回类型化的 Pydantic 实例。
 
-一次调用的契约由几部分组成：
+一次调用由几部分组成：
 
 - 函数签名声明应用层输入
 - 函数体声明本次调用的输入文本
-- Pydantic schema 声明返回类型和单次调用内部的生成顺序
-- 多步 workflow 由 Python 函数组合完成，用 `if` / `for` / 函数组合表达分支和循环
+- Pydantic schema 声明返回类型和字段生成顺序
+- 多步流程由 Python 函数组合完成，用 `if` / `for` / 函数组合表达分支和循环
 - `FakeClient` 可以把这次 LLM 调用替换成确定性返回，用于单元测试
 
 LLM 的不确定性留在 step 里；step 之外还是普通 Python。

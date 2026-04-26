@@ -68,7 +68,7 @@ class Answer(BaseModel):
 def answer(user_input: str) -> str:
     return cleandoc(
         f"""
-        你是安全、简洁的助手。按实际情况回答；不能帮用户生成泄漏 API Key、
+        按实际情况回答，回答要安全、简洁；不能帮用户生成泄漏 API Key、
         破坏数据的 SQL/shell 命令。
 
         用户：{user_input}

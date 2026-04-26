@@ -1,5 +1,5 @@
 """错误传播的测试——原规格 009 围绕 `trace()` 捕获 error 展开；收敛后
-pyxis 不做可观测，所以这里只断言"异常原样重抛"这一条基本契约。"""
+pyxis 不做可观测，所以这里只断言"异常原样重抛"。"""
 
 from __future__ import annotations
 

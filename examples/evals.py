@@ -53,7 +53,7 @@ class Classification(BaseModel):
 def classify(subject: str) -> str:
     return cleandoc(
         f"""
-        你是垃圾邮件分类器。先用一两句话说理由，再给最终标签。
+        判断这封邮件是否是垃圾邮件。先用一两句话说理由，再给最终标签。
 
         spam：钓鱼、推广奖品、违规广告、荐股等骚扰邮件。
         ham：工作、个人、交易通知等合规邮件。

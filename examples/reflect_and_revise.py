@@ -37,7 +37,7 @@ SOURCE = (
 )
 
 
-# ---- 三个 schema，三段隐式思维链 ----
+# ---- 三个 schema，各自定义字段生成顺序 ----
 class Draft(BaseModel):
     keywords: list[str] = Field(description="原文里不能丢的 3-5 个关键信息点")
     text: str = Field(description="信息完整的第一版 tagline，允许偏长（60-90 字）")
@@ -57,7 +57,7 @@ class Revision(BaseModel):
     text: str = Field(description=f"改进后的 tagline，≤{MAX_CHARS} 个字")
 
 
-# ---- 三个 step：schema 是主契约，函数体返回 user message ----
+# ---- 三个 step：schema 定义返回格式，函数体返回 user message ----
 @step(output=Draft, model=MODEL, client=openrouter)
 def draft(source: str) -> str:
     return cleandoc(
@@ -76,7 +76,7 @@ def draft(source: str) -> str:
 def critique(source: str, text: str) -> str:
     return cleandoc(
         """
-        你是严格但务实的编辑，按硬标准评判：
+        按硬标准评判这版文案：
         - 长度：严格 ≤ 100 个字；超过即 high severity。
         - 核心信息：不能漏 Pydantic schema 字段顺序、普通 Python 编排、
           避开 DSL 这三点里至少两点。
@@ -98,7 +98,7 @@ def revise(source: str, text: str, must_fix: list[str]) -> str:
     fixes = "\n".join(f"- {x}" for x in must_fix)
     return cleandoc(
         """
-        你是压缩文案的高手。≤ 100 字是硬约束，超一字都算失败。
+        压缩这版文案。≤ 100 字是硬约束，超一字都算失败。
         优先压缩：比上一版至少短 10 个字，宁可只保留 1-2 个最核心关键词
         也要卡死 100 字内。先逐条说明你怎么砍的，再给新文案。
 

@@ -69,7 +69,7 @@ async def agent(question: str, max_steps: int = 10) -> str:
         Action = Annotated[reduce(or_, tool_classes), Field(discriminator="kind")]
 
         class Decision(BaseModel):
-            """schema-as-CoT：先思考，再发一次工具调用。"""
+            """先判断下一步动作，再发一次工具调用。"""
 
             thought: str = Field(description="先推理接下来要做什么")
             action: Action = Field(description="这一步要调用的工具")  # type: ignore[valid-type]
@@ -78,7 +78,7 @@ async def agent(question: str, max_steps: int = 10) -> str:
         async def decide(question: str, scratch: str) -> str:
             return cleandoc(
                 """
-                你是一个会推理的 agent。规则：
+                规则：
                 1. 先仔细读草稿板。草稿板里已经出现过的工具调用和结果，
                    是过去的事实。不要重复调用，要基于它推进下一步。
                 2. 每一轮返回一个 Decision：`thought` 写你基于草稿板的新推理

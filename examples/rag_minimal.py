@@ -27,11 +27,11 @@ openrouter = OpenAI(
 )
 # ---- "知识库"：几条关于 pyxis 的事实。真场景换成 vector DB / 文档库 ----
 KB: list[str] = [
-    "pyxis 是一个声明式思维链的 Python agent 框架，核心哲学是 schema as workflow。",
-    "pyxis 里一次 LLM 调用叫 Step：schema 是主契约，函数体字符串返回是 user message。",
-    "pyxis 里 Pydantic 模型的字段顺序就是思维链，LLM 必须自上而下把字段填完。",
+    "pyxis 是一个把 LLM 调用写成 Python 函数、返回 Pydantic 实例的 agent 框架。",
+    "pyxis 里一次 LLM 调用叫 Step：schema 定义返回格式，函数体字符串返回 user message。",
+    "pyxis 里 Pydantic 模型的字段顺序就是输出顺序，LLM 会自上而下填字段。",
     "pyxis 的多轮编排直接用普通 Python 写 if/for/函数组合，不提供 DSL 或 graph。",
-    "pyxis 的 Tool 是 BaseModel 子类，带 run() 方法，动作即 schema、run() 即代码。",
+    "pyxis 的 Tool 是 BaseModel 子类，字段是参数，run() 执行动作。",
     "pyxis 本体不做观测；生产用 Langfuse / OpenTelemetry / APM 直接适配 OpenAI SDK 调用。",
     "pyxis 用 instructor 库调用 OpenAI 兼容的 provider；client 直接传 OpenAI SDK 实例。",
     "Claude Desktop 面向聊天体验，pyxis 面向结构化输出和后续 Python 处理。",
@@ -57,8 +57,8 @@ class Answer(BaseModel):
 def answer_with_context(question: str, context: str) -> str:
     return cleandoc(
         """
-        你是严谨的问答助手。只能基于提供的上下文作答；上下文没说的就承认不知道，
-        不要编。先列引用，再推理，最后给答案。
+        只能基于提供的上下文作答；上下文没说的就承认不知道，不要编。
+        先列引用，再给依据，最后给答案。
 
         上下文：
         {context}
@@ -76,7 +76,7 @@ def rag(question: str) -> Answer:
 
 
 def main() -> None:
-    question = "pyxis 里的 schema-as-workflow 是什么意思？"
+    question = "pyxis 为什么重视 Pydantic 字段顺序？"
     print(f"问题：{question}\n")
     ans = rag(question)
     print("=== 检索到的片段 ===")

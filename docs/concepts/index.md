@@ -5,11 +5,11 @@
 
 | 概念 | 职责 |
 |---|---|
-| [Step](step.md) | 一次结构化 LLM 调用；schema 定义隐式 workflow，函数返回本次输入 |
-| [Tool](tool.md) | 动作即 schema；`BaseModel + run()` 让 Python 执行动作 |
+| [Step](step.md) | 一次 LLM 调用；schema 定义返回字段，函数返回本次输入 |
+| [Tool](tool.md) | 用 `BaseModel` 描述参数，用 `run()` 执行动作 |
 
 ## 怎么读
-建议先读 [哲学与定位](philosophy.md)，再读 [Step](step.md)、[Tool](tool.md)。
+建议先读 [定位](philosophy.md)，再读 [Step](step.md)、[Tool](tool.md)。
 按任务找示例：
 
 - 测输入消息与调用参数：[测试与 FakeClient](../cookbook/testing.md)
