@@ -5,7 +5,7 @@
 - `MCPServer` / `StdioMCP` / `HttpMCP`：连接配置（Pydantic 数据）。
 - `mcp_toolset(server)`：异步上下文管理器；入口建立连接、发 `tools/list`、
   把每个远端工具翻成一个 pyxis `Tool` 子类（`run()` 同步调 `tools/call`）。
-- 传输复杂度全部吸收在本模块：HTTP 用 `httpx.Client`（无状态请求/响应）；
+- 传输细节放在本模块：HTTP 用 `httpx.Client`（无状态请求/响应）；
   stdio 用持久子进程 + `id → response` 关联 + 锁。
 - **`Tool.run()` 保持同步方法**——调用方（agent loop）不用关心工具从哪来。
 

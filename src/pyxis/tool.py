@@ -1,7 +1,7 @@
 """Tool：用 Pydantic 描述工具参数。
 
-一个 `Tool` 就是一个 `BaseModel`：它的字段**就是**动作的参数，它的 `run()`
-**就是**动作的实现。LLM 通过在 Step 输出 schema 的 `action` 字段里填入
+一个 `Tool` 是带 `run()` 的 `BaseModel`：字段是动作参数，`run()` 是动作实现。
+LLM 通过在 Step 输出 schema 的 `action` 字段里填入
 一个判别式联合成员来选择工具（典型做法是加一个 `Literal` 的 `kind` 字段）；
 Python 用 `isinstance` / `action.run()` 分派。
 
@@ -27,7 +27,7 @@ class Tool(BaseModel):
     2. 覆盖 `run()`，返回一个字符串作为观测值；
     3. 若要放进判别式联合，加一个 `Literal["..."] = "..."` 的 `kind` 字段。
 
-    如果工具的形态就是"一个普通函数"，直接用 `@tool` 装饰器更省事。
+    如果工具只是一个普通函数，直接用 `@tool` 装饰器更省事。
     """
 
     def run(self) -> str:

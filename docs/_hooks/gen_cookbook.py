@@ -314,7 +314,7 @@ def _format_intro_markdown(text: str) -> str:
 index_lines = [
     "# Cookbook",
     "",
-    "这里不按流行词堆例子，而按问题来选案例。",
+    "这里按问题来选案例。",
     "",
     "带源码的 recipe 来自 `examples/` 下的单文件。运行这些示例通常需要 `OPENROUTER_API_KEY`，也可以把 `OpenAI(base_url=..., api_key=...)` 改成其他 OpenAI-compatible provider。",
     "",

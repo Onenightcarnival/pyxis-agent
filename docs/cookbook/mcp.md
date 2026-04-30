@@ -52,7 +52,7 @@ async with mcp_toolset(server) as remote_tools:
 
 - 老的 SSE 传输（`GET /sse` 长连接那种）
 - resources / prompts / sampling
-- 全局 registry · 断线重连 · schema 动态刷新 · `ToolSet` 抽象 protocol
+- 全局 registry、断线重连、schema 动态刷新、`ToolSet` 抽象 protocol
 
 这些能力由官方 MCP SDK 处理。
 
